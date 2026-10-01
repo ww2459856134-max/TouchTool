@@ -1,0 +1,1146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="window_anchor">悬浮窗锚点</string>
+    <string name="screen_anchor">屏幕锚点</string>
+    <string name="screen_anchor_pos">窗相对屏位置</string>
+    <string name="realtime_mode">实时模式</string>
+
+    <!-- 动作-Start -->
+    <string name="start_action_enable">启用</string>
+    <string name="start_action_restart">重入策略</string>
+    <string name="start_action_break">中断条件</string>
+    <string name="start_action_show">执行时显示</string>
+
+    <string name="manual_start_action">手动执行</string>
+    <string name="manual_start_action_desc">在选中应用内显示执行悬浮窗</string>
+    <string name="manual_start_action_app">触发界面</string>
+    <string name="manual_start_action_type">显示模式</string>
+    <string name="manual_start_action_expand">自动展开</string>
+    <string name="manual_start_action_lock">锁定位置</string>
+
+    <string name="application_start_action">进应用或界面时执行</string>
+    <string name="application_start_action_desc">进入对应应用或界面时自动执行</string>
+    <string name="application_start_action_break">自动中断</string>
+    <string name="application_start_action_app">触发界面</string>
+
+    <string name="application_quit_start_action">退出应用时执行</string>
+    <string name="application_quit_start_action_desc">退出对应应用时自动执行</string>
+    <string name="application_quit_start_action_app">触发界面</string>
+
+    <string name="time_start_action">定时执行</string>
+    <string name="time_start_action_desc">在设定的时间执行</string>
+    <string name="time_start_action_show_time_log">定时日志</string>
+    <string name="time_start_action_date">日期</string>
+    <string name="time_start_action_time">时间</string>
+    <string name="time_start_action_periodic">间隔</string>
+    <string name="time_start_action_tips">未设置间隔时设置00:00为间隔24小时\n有间隔时设置00:00为移除间隔</string>
+    <string name="time_start_action_set_tips">已设置定时任务，下次开始时间为: %s</string>
+
+    <string name="notification_start_action">收到新通知时执行</string>
+    <string name="notification_start_action_desc">收到新通知或Toast时执行</string>
+    <string name="notification_start_action_match">匹配文本</string>
+    <string name="notification_start_action_type">通知类型</string>
+    <string name="notification_start_action_notify_app">通知应用</string>
+    <string name="notification_start_action_notify_text">通知文本</string>
+    <string name="notification_start_action_notify_value">通知详情</string>
+
+    <string name="network_start_action">网络状态变更时执行</string>
+    <string name="network_start_action_desc">WIFI、数据、VPN变更时执行</string>
+    <string name="network_start_action_state">网络</string>
+
+    <string name="battery_start_action">电池状态变更时执行</string>
+    <string name="battery_start_action_desc">电量变更或充电变更时执行</string>
+    <string name="battery_start_action_state">状态</string>
+    <string name="battery_start_action_value">电量</string>
+
+    <string name="screen_start_action">屏幕状态变更时执行</string>
+    <string name="screen_start_action_desc">屏幕亮起关闭解锁时执行</string>
+    <string name="screen_start_action_state">状态</string>
+
+    <string name="bluetooth_start_action">蓝牙连接变更时执行</string>
+    <string name="bluetooth_start_action_desc">蓝牙设备连接或断开时执行</string>
+    <string name="bluetooth_start_action_device">设备名</string>
+    <string name="bluetooth_start_action_state">连接或断开</string>
+
+    <string name="received_share_start_action">收到分享时执行</string>
+    <string name="received_share_start_action_desc">接受分享行为，分享的内容将自动转换为对应参数</string>
+
+    <string name="broadcast_start_action">收到广播时执行</string>
+    <string name="broadcast_start_action_desc">收到指定广播时自动执行</string>
+    <string name="broadcast_start_action_name">广播动作</string>
+    <string name="broadcast_start_action_uri_scheme">Uri Scheme</string>
+    <string name="broadcast_start_action_category">分类(Category)</string>
+    <string name="broadcast_start_action_data">Uri数据</string>
+    <string name="broadcast_start_action_extra">参数</string>
+
+    <string name="out_call_start_action">外部调用</string>
+    <string name="out_call_start_action_desc">外部调用任务，能自动将传入的参数转换到任务内同名变量中去</string>
+    <string name="out_call_start_action_url">链接</string>
+    <string name="out_call_start_action_shortcut">快捷方式</string>
+
+    <!-- 动作-Logic -->
+    <string name="if_action">如果…就…</string>
+    <string name="if_action_desc">满足条件时执行，否则执行未达成节点</string>
+    <string name="if_action_else">未达成</string>
+
+    <string name="wait_if_action">等待条件成立</string>
+    <string name="wait_if_action_desc">在一定时间内满足条件就执行，否则执行未达成节点</string>
+    <string name="wait_if_action_timeout">超时(ms)</string>
+    <string name="wait_if_action_else">未达成</string>
+
+    <string name="find_execute_action">搜索查找</string>
+    <string name="find_execute_action_timeout">超时(ms)"</string>
+    <string name="find_execute_action_interval">检查间隔(ms)"</string>
+
+    <string name="switch_action">选择执行</string>
+    <string name="switch_action_desc">根据文本值执行对应针脚</string>
+    <string name="switch_action_default">默认</string>
+
+    <string name="choice_action">手动选择执行</string>
+    <string name="choice_action_desc">弹出选择窗口供使用者手动选择</string>
+    <string name="choice_action_default">默认</string>
+    <string name="choice_action_timeout">超时(ms)</string>
+
+    <string name="for_loop_action">循环执行…次</string>
+    <string name="for_loop_action_desc">循环多次执行节点</string>
+    <string name="for_loop_action_help">从开始值执行，当前值每次执行后增加步长量，直到当前值大于结束值</string>
+    <string name="for_loop_action_break">跳出循环</string>
+    <string name="for_loop_action_start">开始值</string>
+    <string name="for_loop_action_end">结束值</string>
+    <string name="for_loop_action_step">步长</string>
+    <string name="for_loop_action_current">当前值</string>
+    <string name="for_loop_action_complete">完成</string>
+
+    <string name="while_loop_action">条件循环执行</string>
+    <string name="while_loop_action_desc">满足条件时执行，否则执行完成节点</string>
+    <string name="while_loop_action_break">跳出循环</string>
+    <string name="while_loop_action_complete">完成</string>
+
+    <string name="sequence_action">顺序执行</string>
+    <string name="sequence_action_desc">执行针脚从左到右顺序执行</string>
+    <string name="sequence_action_complete">完成</string>
+
+    <string name="random_action">随机执行</string>
+    <string name="random_action_desc">从所有执行针脚中随机一个执行</string>
+    <string name="random_action_times">执行次数</string>
+    <string name="random_action_allow_repeat">允许重复</string>
+    <string name="random_action_complete">完成</string>
+
+    <string name="parallel_action">并行执行</string>
+    <string name="parallel_action_desc">多条执行并行执行，直到超时或者达成指定完成数量</string>
+    <string name="parallel_action_count">完成数</string>
+    <string name="parallel_action_timeout">超时(ms)</string>
+    <string name="parallel_action_result">结果</string>
+    <string name="parallel_action_complete">结束</string>
+
+
+    <!-- 动作-Task -->
+    <string name="execute_task_action">执行任务</string>
+    <string name="execute_task_action_task_id">任务</string>
+
+    <string name="stop_task_action">停止任务</string>
+    <string name="stop_task_action_desc">停止对应任务</string>
+    <string name="stop_task_action_task_id">任务(默认当前)</string>
+    <string name="stop_task_action_task_all">除自身所有任务</string>
+
+    <string name="switch_task_action">开关任务</string>
+    <string name="switch_task_action_desc">打开或关闭对应任务，关闭任务后手动执行悬浮窗会刷新</string>
+    <string name="switch_task_action_task_id">任务</string>
+    <string name="switch_task_action_switch">关/开</string>
+
+    <string name="is_task_running_action">任务是否运行中</string>
+    <string name="is_task_running_action_desc">判断任务是否正在运行中</string>
+    <string name="is_task_running_action_task_id">任务</string>
+
+    <string name="get_all_running_task_action">获取所有运行中的任务</string>
+    <string name="get_all_running_task_action_desc">获取所有正在运行的任务</string>
+    <string name="get_all_running_task_action_result">所有任务</string>
+
+    <string name="custom_start_action">自定义开始</string>
+    <string name="custom_start_action_desc">任务内有自定义开始才能被其他任务调用</string>
+    <string name="custom_end_action">自定义结束</string>
+    <string name="custom_end_action_desc">返回自定义任务结果</string>
+    <string name="custom_pin_name">针脚名</string>
+    <string name="custom_action_single_error">这个动作不能重复添加</string>
+
+    <string name="set_value_action">设置%s</string>
+    <string name="set_value_action_save">保存值</string>
+    <string name="get_value_action">获取%s</string>
+    <string name="get_or_set_value_action">%s变量-%s</string>
+    <string name="get_or_set_value_action_get_value">设置/获取</string>
+
+    <!-- 动作-Normal -->
+    <string name="delay_action">延时</string>
+    <string name="delay_action_desc">等待一段时间后再继续执行</string>
+    <string name="delay_action_help">任务执行到该节点时，等待配置的时间后再继续执行之后的节点</string>
+    <string name="delay_action_time">时长(ms)</string>
+
+    <string name="log_action">输出日志</string>
+    <string name="log_action_desc">输出日志到日志界面</string>
+    <string name="log_action_text">日志</string>
+    <string name="log_action_show">弹出提示</string>
+    <string name="log_action_save">保存日志</string>
+
+    <string name="stick_screen_action">贴图到屏幕上</string>
+    <string name="stick_screen_action_desc">将针脚内容贴到屏幕上</string>
+    <string name="stick_screen_action_id">标志</string>
+
+    <string name="stick_close_action">关闭贴图</string>
+    <string name="stick_close_action_desc">关闭对应贴图</string>
+    <string name="stick_close_action_id">标志</string>
+
+    <string name="stick_close_all_action">关闭所有贴图</string>
+    <string name="stick_close_all_action_desc">关闭屏幕所有贴图</string>
+
+    <string name="input_param_action">手动输入参数</string>
+    <string name="input_param_action_desc">手动输入任务运行需要的参数</string>
+    <string name="input_param_action_param">参数</string>
+
+    <string name="input_config_action">配置面板</string>
+    <string name="input_config_action_desc">手动输入任务运行需要的配置</string>
+    <string name="input_config_action_save">保存运行参数</string>
+    <string name="input_config_action_timeout">自动确认等待(ms)</string>
+    <string name="input_config_action_else">未达成</string>
+
+    <string name="mark_area_action">标记区域</string>
+    <string name="mark_area_action_desc">手动标记目标区域</string>
+
+    <string name="show_text_action">区域备注</string>
+    <string name="show_text_action_desc">对一片区域内的卡片进行备注</string>
+
+    <!-- 动作-App -->
+    <string name="open_app_action">打开应用</string>
+    <string name="open_app_action_desc">打开选定的应用</string>
+    <string name="open_app_action_action">动作(Action)</string>
+    <string name="open_app_action_flags">启动标志(Flags)</string>
+    <string name="open_app_action_category">分类(Category)</string>
+    <string name="open_app_action_uri_data">Uri数据</string>
+    <string name="open_app_action_params">参数</string>
+    <string name="open_app_action_bundle">额外信息(Bundle)</string>
+
+    <string name="open_uri_scheme_action">打开链接</string>
+    <string name="open_uri_scheme_action_desc">打开Uri Scheme链接</string>
+    <string name="open_uri_scheme_action_uri">链接</string>
+
+    <string name="open_shortcut_action">打开快捷方式</string>
+    <string name="open_shortcut_action_desc">打开应用的快捷方式</string>
+
+    <string name="get_current_app_action">获取当前应用</string>
+    <string name="get_current_app_action_desc">获取当前运行的应用与界面</string>
+    <string name="get_current_app_action_app_name">应用名称</string>
+
+    <string name="check_in_app_action">是否在应用内</string>
+    <string name="check_in_app_action_desc">判断待测应用或界面是否被包含</string>
+    <string name="check_in_app_action_package">待测应用</string>
+
+    <string name="string_to_app_action">文本转应用或界面</string>
+    <string name="string_to_app_action_desc">将文本转为应用或界面值</string>
+    <string name="string_to_app_action_package">包名</string>
+    <string name="string_to_app_action_activity">界面类名</string>
+
+    <string name="wait_in_app_action">等待在应用内</string>
+    <string name="wait_in_app_action_desc">等待当前处于某个应用或界面内</string>
+
+    <!-- 动作-System -->
+    <string name="execute_shell_action">执行Shell命令</string>
+    <string name="execute_shell_action_desc">执行Shell命令</string>
+    <string name="execute_shell_action_cmd">命令</string>
+    <string name="execute_shell_action_output">输出</string>
+    <string name="execute_shell_action_else">未达成</string>
+
+    <string name="system_key_action">模拟按键</string>
+    <string name="system_key_action_desc">模拟系统按键功能</string>
+    <string name="system_key_action_key">按键</string>
+
+    <string name="play_ringtone_action">播放铃声</string>
+    <string name="play_ringtone_action_desc">播放选定的铃声</string>
+    <string name="play_ringtone_action_ringtone">铃声</string>
+    <string name="play_ringtone_action_usage">通道</string>
+
+    <string name="stop_ringtone_action">停止铃声</string>
+    <string name="stop_ringtone_action_desc">停止播放铃声</string>
+    <string name="stop_ringtone_action_ringtone">铃声</string>
+
+    <string name="text_to_speak_action">文本转语音</string>
+    <string name="text_to_speak_action_desc">将文本转为语音并播放</string>
+    <string name="text_to_speak_action_mode">阻塞模式</string>
+
+    <string name="vibrate_action">震动</string>
+    <string name="vibrate_action_desc">震动手机</string>
+    <string name="vibrate_action_time">时长(ms)</string>
+
+    <string name="get_volume_action">获取音量</string>
+    <string name="get_volume_action_desc">获取音量大小</string>
+    <string name="get_volume_action_current">当前音量值</string>
+    <string name="get_volume_action_max">最大音量值</string>
+
+    <string name="set_volume_action">设置音量</string>
+    <string name="set_volume_action_desc">设置音量大小</string>
+    <string name="set_volume_action_value">音量值</string>
+
+    <string name="send_notification_action">发送通知</string>
+    <string name="send_notification_action_desc">发送自定义通知到通知栏</string>
+    <string name="send_notification_action_title">标题</string>
+    <string name="send_notification_action_content">内容</string>
+    <string name="send_notification_action_icon">图标</string>
+    <string name="send_notification_action_auto_cancel">自动取消</string>
+    <string name="send_notification_action_execute">点按执行</string>
+    <string name="send_notification_action_override">覆盖</string>
+
+    <string name="send_broadcast_action">发送广播</string>
+    <string name="send_broadcast_action_desc">发送自定义广播</string>
+    <string name="send_broadcast_action_name">广播动作</string>
+    <string name="send_broadcast_action_category">分类(Category)</string>
+    <string name="send_broadcast_action_data">Uri数据</string>
+    <string name="send_broadcast_action_extra">参数</string>
+
+    <string name="send_toast_action">弹出提示</string>
+    <string name="send_toast_action_desc">弹出自定义提示文本</string>
+    <string name="send_toast_action_content">内容</string>
+    <string name="send_toast_action_duration">时长</string>
+
+
+    <string name="write_to_clipboard_action">复制到剪贴板</string>
+    <string name="write_to_clipboard_action_desc">将针脚值复制到剪贴板</string>
+
+    <string name="read_from_clipboard_action">从剪贴板读取</string>
+    <string name="read_from_clipboard_action_desc">将剪贴板中的内容复制到针脚</string>
+
+    <string name="share_to_action">分享到</string>
+    <string name="share_to_action_desc">将针脚值分享到选定的应用</string>
+    <string name="share_to_action_as">作为</string>
+
+    <string name="capture_switch_action">屏幕录制开关</string>
+    <string name="capture_switch_action_desc">打开或关闭屏幕录制</string>
+    <string name="capture_switch_action_switch">关/开</string>
+    <string name="capture_switch_action_wait">等待授权</string>
+
+    <string name="check_capture_ready_action">屏幕录制状态</string>
+    <string name="check_capture_ready_action_desc">判断屏幕录制是否开启</string>
+
+    <string name="get_date_action">获取日期</string>
+    <string name="get_date_action_desc">获取当前日期</string>
+    <string name="get_date_action_year">年</string>
+    <string name="get_date_action_month">月</string>
+    <string name="get_date_action_day">日</string>
+    <string name="get_date_action_week">星期</string>
+    <string name="get_date_action_timestamp">时间戳(默认当前时间)</string>
+
+    <string name="get_time_action">获取时间</string>
+    <string name="get_time_action_desc">获取当前时间</string>
+    <string name="get_time_action_hour">时</string>
+    <string name="get_time_action_minute">分</string>
+    <string name="get_time_action_second">秒</string>
+    <string name="get_time_action_millisecond">毫秒</string>
+    <string name="get_time_action_timestamp">时间戳</string>
+    <string name="get_time_action_in_timestamp">时间戳(默认当前时间)</string>
+
+    <string name="switch_screen_action">开关屏幕</string>
+    <string name="switch_screen_action_desc">打开或关闭屏幕</string>
+    <string name="switch_screen_action_switch">开关</string>
+
+    <string name="get_screen_status_action">获取屏幕状态</string>
+    <string name="get_screen_status_action_desc">获取屏幕当前开关或锁定状态</string>
+    <string name="get_screen_status_action_state">锁屏状态</string>
+    <string name="get_screen_status_action_size">分辨率</string>
+    <string name="get_screen_status_action_orientation">是否竖屏</string>
+
+    <string name="get_battery_status_action">获取电池状态</string>
+    <string name="get_battery_status_action_desc">获取电池电量与充放电状态</string>
+    <string name="get_battery_status_action_state">状态</string>
+    <string name="get_battery_status_action_percent">电量</string>
+
+    <string name="get_network_status_action">获取网络状态</string>
+    <string name="get_network_status_action_desc">获取当前网络状态</string>
+    <string name="get_network_status_action_state">状态</string>
+
+    <string name="get_wifi_info_action">获取WiFi信息</string>
+    <string name="get_wifi_info_action_desc">获取当前连接的WiFi信息</string>
+    <string name="get_wifi_info_action_wifi_name">WiFi名称</string>
+    <string name="get_wifi_info_action_gateway">网关</string>
+    <string name="get_wifi_info_action_ip">IP</string>
+
+    <string name="get_bluetooth_devices_action">获取蓝牙设备</string>
+    <string name="get_bluetooth_devices_action_desc">获取当前已连接的蓝牙设备列表</string>
+    <string name="get_bluetooth_devices_action_result">设备列表</string>
+
+    <!-- 动作-Number -->
+    <string name="math_expression_action">数学公式</string>
+    <string name="math_expression_action_desc">支持复杂的公式计算</string>
+    <string name="math_expression_action_express">公式</string>
+    <string name="math_expression_action_result">结果</string>
+    <string name="math_expression_action_tips">表达式错误</string>
+
+    <string name="number_add_action">数值相加</string>
+    <string name="number_add_action_desc">将多个数值相加</string>
+
+    <string name="number_subtract_action">数值相减</string>
+    <string name="number_subtract_action_desc">两个数值相减</string>
+
+    <string name="number_multiply_action">数值相乘</string>
+    <string name="number_multiply_action_desc">将多个数值相乘</string>
+
+    <string name="number_divide_action">数值相除</string>
+    <string name="number_divide_action_desc">两个数值相除</string>
+
+    <string name="number_mod_action">取余数</string>
+    <string name="number_mod_action_desc">取两个数值的余数</string>
+
+    <string name="number_abs_action">取绝对值</string>
+    <string name="number_abs_action_desc">取一个数值的绝对值</string>
+    <string name="number_abs_action_value">绝对值</string>
+
+    <string name="number_equal_action">数值比较 =</string>
+    <string name="number_equal_action_desc">判断两个数值是否相等</string>
+    <string name="number_equal_action_offset">精度</string>
+
+    <string name="number_less_action">数值比较 &lt;</string>
+    <string name="number_less_action_desc">判断第一个数值是否小于第二个数值</string>
+
+    <string name="number_greater_action">数值比较 &gt;</string>
+    <string name="number_greater_action_desc">判断第一个数值是否大于第二个数值</string>
+
+    <string name="number_random_action">随机数</string>
+    <string name="number_random_action_desc">生成一个随机数值</string>
+    <string name="number_random_action_offset">精度</string>
+
+    <string name="number_to_integer_action">取整</string>
+    <string name="number_to_integer_action_desc">将数值按规则取整</string>
+    <string name="number_to_integer_action_type">取整方式</string>
+
+    <string name="check_number_in_value_area_action">数值范围判断</string>
+    <string name="check_number_in_value_area_action_desc">判断数值是否在指定范围内</string>
+
+    <string name="number_to_value_area_action">组合为数值范围</string>
+    <string name="number_to_value_area_action_desc">将两个数值组合为一个数值范围</string>
+
+
+    <!-- 动作-String -->
+    <string name="string_to_number_action">文本转数值</string>
+    <string name="string_to_number_action_desc">提取文本中的数值</string>
+
+    <string name="string_match_action">文本正则匹配</string>
+    <string name="string_match_action_desc">执行正则匹配，判断是否包含特定文本</string>
+    <string name="string_match_action_match">匹配文本</string>
+    <string name="string_match_action_match_all_result">匹配结果</string>
+    <string name="string_match_action_match_all_matchers">捕获结果</string>
+
+    <string name="string_append_action">文本拼接</string>
+    <string name="string_append_action_desc">将多个文本拼接成一个文本</string>
+
+    <string name="string_substring_action">文本截取</string>
+    <string name="string_substring_action_desc">将文本截取为指定范围的文本</string>
+    <string name="string_substring_action_start">起始位置</string>
+    <string name="string_substring_action_end">结束位置</string>
+    <string name="string_substring_action_result">结果</string>
+
+    <string name="string_split_action">文本分割</string>
+    <string name="string_split_action_desc">将文本按特定字符分割为多个文本</string>
+    <string name="string_split_action_split">分割符</string>
+    <string name="string_split_action_empty">剔除空字符</string>
+    <string name="string_split_action_regex">正则模式</string>
+
+    <string name="string_from_object_action">转换为文本</string>
+    <string name="string_from_object_action_desc">将任意对象转换为文本</string>
+
+    <string name="string_equal_action">文本比较</string>
+    <string name="string_equal_action_desc">判断两个文本是否相等</string>
+    <string name="string_equal_action_ignore_case">忽略大小写</string>
+    <string name="string_equal_action_regex">正则模式</string>
+    <string name="string_equal_action_value">比较值</string>
+
+    <string name="string_replace_action">文本替换</string>
+    <string name="string_replace_action_desc">将文本中的特定文本替换为另一个文本</string>
+    <string name="string_replace_action_find">查找文本</string>
+    <string name="string_replace_action_replace">替换文本</string>
+    <string name="string_replace_action_regex">正则模式</string>
+    <string name="string_replace_action_result">替换结果</string>
+
+    <string name="string_encode_action">文本编码</string>
+    <string name="string_encode_action_desc">将文本编码为指定编码</string>
+    <string name="string_encode_action_type">编码方式</string>
+
+    <string name="string_decode_action">文本解码</string>
+    <string name="string_decode_action_desc">将文本解码为指定编码</string>
+    <string name="string_decode_action_type">解码方式</string>
+
+    <string name="string_encrypt_action">文本加密</string>
+    <string name="string_encrypt_action_desc">将文本加密为指定编码</string>
+    <string name="string_encrypt_action_type">加密方式</string>
+
+    <string name="get_ocr_text_action">OCR识别文本</string>
+    <string name="get_ocr_text_action_desc">识别图片中指定区域文字</string>
+    <string name="get_ocr_text_action_similar">置信度</string>
+    <string name="get_ocr_text_action_type">模型</string>
+    <string name="get_ocr_text_action_text">所有文字</string>
+
+    <string name="find_ocr_text_action">OCR查找文本</string>
+    <string name="find_ocr_text_action_desc">在图片中查找指定文字</string>
+    <string name="find_ocr_text_action_similar">置信度</string>
+    <string name="find_ocr_text_action_type">模型</string>
+    <string name="find_ocr_text_action_result_confidence">匹配置信度</string>
+
+    <string name="is_ocr_text_exist_action">OCR文本是否存在</string>
+    <string name="is_ocr_text_exist_action_desc">判断图片中是否存在指定文字</string>
+    <string name="is_ocr_text_exist_action_similar">置信度</string>
+    <string name="is_ocr_text_exist_action_type">模型</string>
+
+    <string name="parse_json_action">JSON解析</string>
+    <string name="parse_json_action_desc">解析JSON字符串</string>
+
+    <string name="string_to_single_select_action">新建单选</string>
+    <string name="string_to_single_select_action_desc">创建一个自定义单选</string>
+    <string name="string_to_single_select_action_options">选项(可为空)</string>
+    <string name="string_to_single_select_action_select">选中项</string>
+
+    <!-- 动作-Area -->
+    <string name="area_to_integer_action">区域转数值</string>
+    <string name="area_to_integer_action_desc">提取区域的上下左右数值</string>
+
+    <string name="area_from_integer_action">数值转区域</string>
+    <string name="area_from_integer_action_desc">将数值转换为区域</string>
+
+    <string name="area_offset_action">区域偏移</string>
+    <string name="area_offset_action_desc">将区域进行偏移</string>
+    <string name="area_offset_action_offset">偏移</string>
+
+    <string name="check_area_contain_pos_action">位置是否在区域里</string>
+    <string name="check_area_contain_pos_action_desc">判断一个位置是否在指定区域内</string>
+
+    <string name="check_area_relation_action">区域关系</string>
+    <string name="check_area_relation_action_desc">判断两个区域是否包含、相交、不相交</string>
+    <string name="check_area_relation_action_relation">关系</string>
+
+    <string name="get_area_intersection_action">取区域交集</string>
+    <string name="get_area_intersection_action_desc">取两个区域相交的区域</string>
+
+    <string name="get_area_center_action">取区域中心</string>
+    <string name="get_area_center_action_desc">取指定区域的中心位置</string>
+
+    <string name="get_area_random_action">取区域随机位置</string>
+    <string name="get_area_random_action_desc">取指定区域的随机位置</string>
+
+    <string name="pick_area_action">手动选择区域</string>
+    <string name="pick_area_action_desc">选择一个区域</string>
+    <string name="pick_area_action_else">未达成</string>
+
+    <!-- 动作-Point -->
+    <string name="point_to_integer_action">位置转数值</string>
+    <string name="point_to_integer_action_desc">提取位置的横纵坐标</string>
+
+    <string name="point_from_integer_action">数值转位置</string>
+    <string name="point_from_integer_action_desc">将数值转换为位置</string>
+
+    <string name="point_offset_action">位置偏移</string>
+    <string name="point_offset_action_desc">将位置进行偏移</string>
+    <string name="point_offset_action_offset">偏移</string>
+
+    <string name="point_to_touch_action">位置转为手势</string>
+    <string name="point_to_touch_action_desc">将位置转换为手势</string>
+    <string name="point_to_touch_action_time">触摸时间(ms)</string>
+
+    <string name="points_to_touch_action">位置列表转为手势</string>
+    <string name="points_to_touch_action_desc">将位置列表转换为手势</string>
+    <string name="points_to_touch_action_time">触摸总时间(ms)</string>
+
+    <string name="touch_action">执行手势</string>
+    <string name="touch_action_desc">执行指定手势</string>
+    <string name="touch_action_time">手势速度</string>
+    <string name="touch_action_offset">随机偏移</string>
+
+    <string name="touch_point_action">点击位置</string>
+    <string name="touch_point_action_desc">点击指定位置</string>
+    <string name="touch_point_action_time">触摸时间(ms)</string>
+    <string name="touch_point_action_offset">随机偏移</string>
+    <string name="touch_point_action_type">点击方式</string>
+
+    <!-- 动作-Boolean -->
+    <string name="boolean_and_action">所有条件达成</string>
+    <string name="boolean_and_action_desc">所有条件达成结果才是达成</string>
+
+    <string name="boolean_or_action">任意条件达成</string>
+    <string name="boolean_or_action_desc">任意条件达成结果就能达成</string>
+
+    <string name="boolean_not_action">反转条件</string>
+    <string name="boolean_not_action_desc">取与条件相反的结果</string>
+
+    <string name="boolean_and_short_action">短路所有条件达成</string>
+    <string name="boolean_and_short_action_desc">短路所有条件达成结果才是达成（遇到false则停止）</string>
+    <string name="boolean_and_short_action_index">短路索引</string>
+
+    <string name="boolean_or_short_action">短路任意条件达成</string>
+    <string name="boolean_or_short_action_desc">短路任意条件达成结果就能达成（遇到true则停止）</string>
+    <string name="boolean_or_short_action_index">短路索引</string>
+
+
+    <!-- 动作-Node -->
+    <string name="pin_node_first">首个控件</string>
+    <string name="pin_node_top">最上层控件</string>
+
+    <string name="find_node_action">查找控件</string>
+    <string name="find_node_action_desc">根据条件获取控件</string>
+    <string name="find_node_action_type">方式</string>
+    <string name="find_node_action_path">身份</string>
+    <string name="find_node_action_full_path">精确身份</string>
+    <string name="find_node_action_id">控件ID</string>
+    <string name="find_node_action_class">类名</string>
+    <string name="find_node_action_node_desc">描述</string>
+    <string name="find_node_action_regex_path">正则路径</string>
+
+    <string name="is_node_exist_action">控件是否存在</string>
+    <string name="is_node_exist_action_desc">判断控件是否存在</string>
+    <string name="is_node_exist_action_type">方式</string>
+    <string name="is_node_exist_action_path">身份</string>
+    <string name="is_node_exist_action_full_path">精确身份</string>
+    <string name="is_node_exist_action_id">控件ID</string>
+    <string name="is_node_exist_action_class">类名</string>
+    <string name="is_node_exist_action_node_desc">描述</string>
+    <string name="is_node_exist_action_regex_path">正则路径</string>
+
+    <string name="find_nodes_in_area_action">获取区域内控件</string>
+    <string name="find_nodes_in_area_action_desc">获取与区域相交的所有控件</string>
+
+    <string name="get_node_info_action">获取控件信息</string>
+    <string name="get_node_info_action_desc">获取控件详细信息</string>
+    <string name="get_node_info_action_clazz">类名</string>
+    <string name="get_node_info_action_id">控件ID</string>
+    <string name="get_node_info_action_node_desc">描述</string>
+    <string name="get_node_info_action_visible">是否可见</string>
+    <string name="get_node_info_action_usable">是否可用</string>
+
+    <string name="get_node_children_action">获取子控件</string>
+    <string name="get_node_children_action_desc">获取控件所有子控件</string>
+    <string name="get_node_children_action_get_all">包括子孙</string>
+
+    <string name="get_node_parent_action">获取父控件</string>
+    <string name="get_node_parent_action_desc">获取控件的父控件</string>
+
+    <string name="get_windows_action">获取所有窗口</string>
+    <string name="get_windows_action_desc">获取界面上所有窗口</string>
+
+    <string name="check_node_valid_action">是有效控件?</string>
+    <string name="check_node_valid_action_desc">检查控件是否有效</string>
+
+    <string name="node_touch_action">点击控件</string>
+    <string name="node_touch_action_desc">点击传入的控件(非精确点击会自动查找上层可点击控件)</string>
+    <string name="node_touch_action_long">长按</string>
+    <string name="node_touch_action_precise">精确点击</string>
+    <string name="node_touch_action_else">未达成</string>
+
+    <string name="edit_text_input_action">输入框输入文本</string>
+    <string name="edit_text_input_action_desc">对文本输入框输入文本</string>
+    <string name="edit_text_input_action_edit_text">输入框(留空按序号查找)</string>
+    <string name="edit_text_input_action_index">输入框序号（-1 为最后一个）</string>
+    <string name="edit_text_input_action_append">追加</string>
+    <string name="edit_text_input_action_mode">输入方式</string>
+    <string name="edit_text_input_action_enter">尝试模拟回车</string>
+
+    <string name="edit_text_paste_action">输入框粘贴</string>
+    <string name="edit_text_paste_action_desc">对文本输入框粘贴文本</string>
+    <string name="edit_text_paste_action_edit_text">输入框(默认首个)</string>
+    <string name="edit_text_paste_action_enter">尝试模拟回车</string>
+
+    <string name="pick_node_action">手动选择控件</string>
+    <string name="pick_node_action_desc">选择一个控件</string>
+    <string name="pick_node_action_else">未达成</string>
+
+
+    <!-- 动作-Image -->
+    <string name="pin_area_first">首个区域</string>
+    <string name="image_action_scale">缩放加速</string>
+    <string name="image_action_canny">去色加速</string>
+
+    <string name="get_image_action">获取屏幕界面</string>
+    <string name="get_image_action_desc">获取当前屏幕指定区域图片</string>
+    <string name="get_image_action_use_accessibility">无障碍截屏</string>
+
+    <string name="load_image_action">加载图片</string>
+    <string name="load_image_action_desc">加载图片到任务</string>
+
+    <string name="crop_image_action">裁剪图片</string>
+    <string name="crop_image_action_desc">裁剪图片</string>
+    <string name="crop_image_action_offset">偏移</string>
+
+    <string name="resize_image_action">缩放图片</string>
+    <string name="resize_image_action_desc">缩放图片</string>
+    <string name="resize_image_action_scale">缩小倍数</string>
+
+    <string name="save_image_action">保存图片</string>
+    <string name="save_image_action_desc">静默保存图片到图片文件夹</string>
+    <string name="save_image_action_name">文件名(默认当前时间)</string>
+    <string name="save_image_action_delay_delete">延迟删除</string>
+
+    <string name="find_image_action">识别图片</string>
+    <string name="find_image_action_desc">识别目标图片在图片中的位置</string>
+    <string name="find_image_action_template">目标</string>
+    <string name="find_image_action_similarity">相似度</string>
+    <string name="find_image_action_result_similarity">匹配相似度</string>
+
+    <string name="find_images_action">识别所有匹配图片</string>
+    <string name="find_images_action_desc">识别目标图片在图片中的所有区域</string>
+    <string name="find_images_action_template">目标</string>
+    <string name="find_images_action_similarity">相似度</string>
+
+    <string name="is_image_exist_action">图片是否存在</string>
+    <string name="is_image_exist_action_desc">判断目标图片是否存在</string>
+    <string name="is_image_exist_action_template">目标</string>
+    <string name="is_image_exist_action_similarity">相似度</string>
+
+    <string name="touch_image_action">点击图片</string>
+    <string name="touch_image_action_desc">点击目标图片</string>
+    <string name="touch_image_action_template">目标</string>
+    <string name="touch_image_action_similarity">相似度</string>
+    <string name="touch_image_action_area">区域限制</string>
+    <string name="touch_image_action_use_accessibility">无障碍截屏</string>
+    <string name="touch_image_action_offset">随机偏移</string>
+
+    <string name="create_qrcode_action">生成二维码</string>
+    <string name="create_qrcode_action_desc">生成二维码</string>
+    <string name="create_qrcode_action_content">内容</string>
+    <string name="create_qrcode_action_size">大小</string>
+    <string name="create_qrcode_action_qrcode">二维码</string>
+
+    <string name="parse_qrcode_action">解析二维码</string>
+    <string name="parse_qrcode_action_desc">解析二维码</string>
+    <string name="parse_qrcode_action_image">图片</string>
+    <string name="parse_qrcode_action_content">内容</string>
+
+    <string name="yolo_detect_action">目标识别</string>
+    <string name="yolo_detect_action_desc">识别图片中的目标</string>
+    <string name="yolo_detect_action_model">模型</string>
+    <string name="yolo_detect_action_similarity">置信度</string>
+    <string name="yolo_detect_action_target">所有目标</string>
+    <string name="yolo_detect_action_area">所有区域</string>
+
+    <!-- 动作-Color -->
+    <string name="get_color_action">获取颜色</string>
+    <string name="get_color_action_desc">获取图片指定位置颜色</string>
+
+    <string name="find_colors_action">识别颜色</string>
+    <string name="find_colors_action_desc">识别指定颜色在图片中的所有区域</string>
+    <string name="find_colors_action_template">颜色</string>
+    <string name="find_colors_action_similarity">相似度</string>
+
+    <string name="is_color_exist_action">颜色是否存在</string>
+    <string name="is_color_exist_action_desc">判断指定颜色是否存在</string>
+    <string name="is_color_exist_action_template">颜色</string>
+    <string name="is_color_exist_action_similarity">相似度</string>
+
+    <string name="color_equal_action">颜色比较</string>
+    <string name="color_equal_action_desc">判断两个颜色是否相似</string>
+    <string name="color_equal_action_offset">RGB偏移</string>
+
+    <string name="touch_color_action">点击颜色</string>
+    <string name="touch_color_action_desc">点击指定颜色</string>
+    <string name="touch_color_action_template">颜色</string>
+    <string name="touch_color_action_similarity">相似度</string>
+    <string name="touch_color_action_area">区域限制</string>
+    <string name="touch_color_action_use_accessibility">无障碍截屏</string>
+    <string name="touch_color_action_offset">随机偏移</string>
+    <string name="touch_color_action_touch_all">点击所有</string>
+    <string name="touch_color_action_touch_interval">点击间隔(ms)</string>
+
+    <!-- 动作-List -->
+    <string name="list_action_index">索引</string>
+
+    <string name="list_make_action">新建列表</string>
+    <string name="list_make_action_desc">新建一个列表</string>
+
+    <string name="list_size_action">列表长度</string>
+    <string name="list_size_action_desc">获取列表长度</string>
+
+    <string name="list_is_empty_action">列表是否为空</string>
+    <string name="list_is_empty_action_desc">判断列表是否为空</string>
+
+    <string name="list_contain_action">是否包含元素</string>
+    <string name="list_contain_action_desc">判断列表是否包含元素</string>
+
+    <string name="list_add_action">添加元素</string>
+    <string name="list_add_action_desc">向列表中添加元素</string>
+    <string name="list_add_action_index">元素位置</string>
+
+    <string name="list_remove_action">移除索引元素</string>
+    <string name="list_remove_action_desc">按索引从列表中移除元素</string>
+
+    <string name="list_remove_object_action">移除元素对象</string>
+    <string name="list_remove_object_action_desc">按对象从列表中移除元素</string>
+
+    <string name="list_append_action">列表拼接</string>
+    <string name="list_append_action_desc">将两个列表拼接</string>
+
+    <string name="list_clear_action">清空列表</string>
+    <string name="list_clear_action_desc">清空列表</string>
+
+    <string name="list_get_action">获取元素</string>
+    <string name="list_get_action_desc">从列表中获取元素</string>
+
+    <string name="list_choice_action">手动选择元素</string>
+    <string name="list_choice_action_desc">弹出选择窗口供使用者选择列表的一项</string>
+    <string name="list_choice_action_default">默认</string>
+    <string name="list_choice_action_timeout">超时(ms)</string>
+
+    <string name="list_set_action">设置元素</string>
+    <string name="list_set_action_desc">向列表中设置元素</string>
+    <string name="list_set_action_value">之前的对象</string>
+
+    <string name="list_index_of_action">元素索引</string>
+    <string name="list_index_of_action_desc">获取元素在列表中的索引</string>
+
+    <string name="list_sublist_action">获取子列表</string>
+    <string name="list_sublist_action_desc">获取列表中指定范围的子列表</string>
+    <string name="list_sublist_action_start">起始索引</string>
+    <string name="list_sublist_action_end">结束索引</string>
+
+    <string name="list_foreach_action">遍历列表</string>
+    <string name="list_foreach_action_desc">遍历列表中的每个元素</string>
+    <string name="list_foreach_action_break">跳出循环</string>
+
+    <string name="list_sort_action">列表排序</string>
+    <string name="list_sort_action_desc">对列表中的元素进行排序</string>
+    <string name="list_sort_action_compare">比较</string>
+    <string name="list_sort_action_result">比较结果</string>
+
+    <string name="list_reverse_action">列表翻转</string>
+    <string name="list_reverse_action_desc">对列表中的元素进行翻转</string>
+
+
+    <!-- 动作-Map -->
+    <string name="map_action_key">键</string>
+    <string name="map_action_value">值</string>
+
+    <string name="map_make_action">新建字典</string>
+    <string name="map_make_action_desc">新建一个字典</string>
+
+    <string name="map_size_action">字典长度</string>
+    <string name="map_size_action_desc">获取字典长度</string>
+
+    <string name="map_is_empty_action">字典是否为空</string>
+    <string name="map_is_empty_action_desc">判断字典是否为空</string>
+
+    <string name="map_contain_key_action">字典是否包含键</string>
+    <string name="map_contain_key_action_desc">判断字典是否包含键</string>
+
+    <string name="map_contain_value_action">字典是否包含值</string>
+    <string name="map_contain_value_action_desc">判断字典是否包含值</string>
+
+    <string name="map_add_action">添加键值对</string>
+    <string name="map_add_action_desc">向字典中添加键值对</string>
+
+    <string name="map_remove_action">移除键值对</string>
+    <string name="map_remove_action_desc">从字典中移除键值对</string>
+    <string name="map_remove_action_pre_value">之前的值</string>
+
+    <string name="map_append_action">字典拼接</string>
+    <string name="map_append_action_desc">将两个字典拼接</string>
+
+    <string name="map_clear_action">清空字典</string>
+    <string name="map_clear_action_desc">清空字典</string>
+
+    <string name="map_get_action">获取值</string>
+    <string name="map_get_action_desc">从字典中获取值</string>
+
+    <string name="map_set_action">添加或替换值</string>
+    <string name="map_set_action_desc">向字典中添加或替换值</string>
+    <string name="map_set_action_pre_value">替换前的值</string>
+
+    <string name="map_keys_action">获取所有键</string>
+    <string name="map_keys_action_desc">获取字典中的所有键</string>
+
+    <string name="map_values_action">获取所有值</string>
+    <string name="map_values_action_desc">获取字典中的所有值</string>
+
+    <string name="map_foreach_action">遍历字典</string>
+    <string name="map_foreach_action_desc">遍历字典中的每个键值对</string>
+    <string name="map_foreach_action_break">跳出循环</string>
+
+
+    <string name="file_start_action">文件变更</string>
+    <string name="file_start_action_desc">当监控目录中的文件发生新建、修改、删除或移动时执行任务</string>
+    <string name="file_start_action_path">监控目录</string>
+    <string name="file_start_action_event">监控事件</string>
+    <string name="file_start_action_changed_path">变更路径</string>
+    <string name="file_start_action_changed_event">变更事件</string>
+
+    <string name="quick_tile_start_action">任务磁贴</string>
+    <string name="quick_tile_start_action_desc">点击下拉通知栏中绑定的任务磁贴时执行任务，有 4 个磁贴可选，需先在快捷设置中添加对应磁贴</string>
+    <string name="quick_tile_start_action_slot">磁贴编号</string>
+    <string name="quick_tile_start_action_name">备注名称</string>
+    <string name="quick_tile_1">任务磁贴1</string>
+    <string name="quick_tile_2">任务磁贴2</string>
+    <string name="quick_tile_3">任务磁贴3</string>
+    <string name="quick_tile_4">任务磁贴4</string>
+    <string name="quick_tile_start_service_off">请先开启无障碍服务</string>
+    <string name="quick_tile_start_no_task">没有绑定此磁贴的任务</string>
+
+    <string name="geofence_start_action">地理围栏</string>
+    <string name="geofence_start_action_desc">进入或离开指定圆形区域时执行任务，需授予精确定位权限</string>
+    <string name="geofence_start_action_lat">中心纬度</string>
+    <string name="geofence_start_action_lng">中心经度</string>
+    <string name="geofence_start_action_radius">半径（米）</string>
+    <string name="geofence_start_action_type">触发类型</string>
+    <string name="geofence_start_action_current_lat">当前纬度</string>
+    <string name="geofence_start_action_current_lng">当前经度</string>
+    <string name="geofence_start_action_distance">当前距离（米）</string>
+    <string name="geofence_type_enter">进入区域</string>
+    <string name="geofence_type_exit">离开区域</string>
+
+    <string name="node_appear_start_action">控件出现</string>
+    <string name="node_appear_start_action_desc">指定应用的界面上出现包含指定文本的控件时执行任务</string>
+    <string name="node_appear_start_action_package">应用包名（可留空）</string>
+    <string name="node_appear_start_action_text">控件文本</string>
+    <string name="node_appear_start_action_found_text">匹配文本</string>
+    <string name="node_appear_start_action_found_package">来源应用</string>
+
+    <string name="notification_button_start_action">通知栏按钮</string>
+    <string name="notification_button_start_action_desc">在常驻通知上生成按钮，点击按钮执行任务（最多三个）</string>
+    <string name="notification_button_start_action_name">按钮名称</string>
+    <string name="notification_button_start_title">任务按钮</string>
+
+    <string name="file_event_create">新建</string>
+    <string name="file_event_modify">修改</string>
+    <string name="file_event_delete">删除</string>
+    <string name="file_event_move">移动</string>
+
+    <string name="file_action_path">路径</string>
+    <string name="file_action_source_path">源路径</string>
+    <string name="file_action_target_path">目标路径</string>
+    <string name="file_action_content">内容</string>
+    <string name="file_action_success">成功</string>
+    <string name="file_action_overwrite">覆盖已存在</string>
+
+    <string name="list_dir_action">列出目录</string>
+    <string name="list_dir_action_desc">列出目录下的所有文件和子目录路径</string>
+    <string name="list_dir_action_files">文件列表</string>
+
+    <string name="read_file_action">读取文件</string>
+    <string name="read_file_action_desc">读取文本文件的内容</string>
+
+    <string name="write_file_action">写入文件</string>
+    <string name="write_file_action_desc">将文本内容写入文件，自动创建父目录</string>
+    <string name="write_file_action_append">追加写入</string>
+
+    <string name="delete_file_action">删除文件</string>
+    <string name="delete_file_action_desc">删除文件或目录，目录需开启递归删除，拒绝删除根目录</string>
+    <string name="delete_file_action_recursive">递归删除目录</string>
+    <string name="delete_file_action_count">删除数量</string>
+
+    <string name="copy_file_action">复制文件</string>
+    <string name="copy_file_action_desc">复制文件或目录到目标路径</string>
+
+    <string name="move_file_action">移动文件</string>
+    <string name="move_file_action_desc">移动文件或目录到目标路径</string>
+
+    <string name="get_file_info_action">获取文件信息</string>
+    <string name="get_file_info_action_desc">获取文件是否存在、是否目录、大小与修改时间</string>
+    <string name="get_file_info_action_exist">是否存在</string>
+    <string name="get_file_info_action_is_dir">是否目录</string>
+    <string name="get_file_info_action_size">大小（字节）</string>
+    <string name="get_file_info_action_modified">修改时间（毫秒）</string>
+
+    <string name="create_dir_action">创建目录</string>
+    <string name="create_dir_action_desc">创建目录，自动创建缺失的父目录</string>
+
+    <string name="create_file_action">创建文件</string>
+    <string name="create_file_action_desc">创建空文件，自动创建父目录，已存在则成功</string>
+
+    <string name="rename_file_action">重命名</string>
+    <string name="rename_file_action_desc">重命名文件或目录，目标名已存在则失败</string>
+    <string name="rename_file_action_new_name">新名称</string>
+
+    <string name="zip_create_action">压缩 ZIP</string>
+    <string name="zip_create_action_desc">把文件或整个目录压缩为 ZIP 文件</string>
+
+    <string name="zip_extract_action">解压 ZIP</string>
+    <string name="zip_extract_action_desc">解压 ZIP 文件到目标目录</string>
+    <string name="zip_extract_action_target_dir">目标目录</string>
+
+    <string name="read_file_lines_action">按行读取</string>
+    <string name="read_file_lines_action_desc">读取文本文件的每一行到列表</string>
+    <string name="read_file_lines_action_lines">行列表</string>
+
+    <string name="append_line_action">追加一行</string>
+    <string name="append_line_action_desc">在文本文件末尾追加一行，自动补换行符</string>
+    <string name="append_line_action_line">行内容</string>
+
+    <string name="search_file_content_action">搜索文件内容</string>
+    <string name="search_file_content_action_desc">在文本文件中搜索关键字，输出首次出现的行号与内容</string>
+    <string name="search_file_content_action_keyword">关键字</string>
+    <string name="search_file_content_action_found">是否找到</string>
+    <string name="search_file_content_action_line_number">行号</string>
+    <string name="search_file_content_action_line_content">行内容</string>
+    <string name="search_file_content_action_count">匹配次数</string>
+
+    <string name="write_image_file_action">写图片到文件</string>
+    <string name="write_image_file_action_desc">把图片针脚保存为 PNG 或 JPEG 文件</string>
+    <string name="write_image_file_action_format">格式</string>
+    <string name="write_image_file_action_quality">质量</string>
+
+    <string name="read_image_file_action">从文件读图片</string>
+    <string name="read_image_file_action_desc">读取图片文件到图片针脚</string>
+
+    <string name="string_contain_action">文本包含</string>
+    <string name="string_contain_action_desc">查找文本中是否包含指定内容，输出首次位置与出现次数</string>
+    <string name="string_contain_action_find">查找内容</string>
+    <string name="string_contain_action_contain">是否包含</string>
+    <string name="string_contain_action_position">首次位置</string>
+    <string name="string_contain_action_count">出现次数</string>
+
+    <string name="string_join_action">列表拼接</string>
+    <string name="string_join_action_desc">把列表中的所有项用分隔符拼接成文本</string>
+    <string name="string_join_action_separator">分隔符</string>
+
+    <string name="string_regex_extract_action">正则提取</string>
+    <string name="string_regex_extract_action_desc">按正则表达式提取捕获组内容，组号 0 为整个匹配</string>
+    <string name="string_regex_extract_action_pattern">正则表达式</string>
+    <string name="string_regex_extract_action_group">组号</string>
+    <string name="string_regex_extract_action_match">是否匹配</string>
+
+    <string name="string_length_action">文本长度</string>
+    <string name="string_length_action_desc">统计文本的字符数量</string>
+    <string name="string_length_action_length">长度</string>
+
+    <string name="string_cut_action">前后截取</string>
+    <string name="string_cut_action_desc">按前部与后部标记夹取中间文本，标记留空表示到开头或末尾，可选保留标记本身</string>
+    <string name="string_cut_action_help">如“我是点击器啊”，前部填“我是”、后部填“啊”，提取出“点击”；后部留空则截取到末尾；开启保留标记则结果包含标记本身</string>
+    <string name="string_cut_action_start">前部标记（可留空）</string>
+    <string name="string_cut_action_end">后部标记（可留空）</string>
+    <string name="string_cut_action_keep_start">保留前标记</string>
+    <string name="string_cut_action_keep_end">保留后标记</string>
+
+    <string name="node_scroll_action">控件滚动</string>
+    <string name="node_scroll_action_desc">对可滚动控件执行原生滚动操作</string>
+    <string name="node_scroll_action_direction">滚动方向</string>
+
+    <string name="node_scroll_until_action">滚动直到出现</string>
+    <string name="node_scroll_until_action_desc">反复滚动直到界面出现包含指定文本的控件，超时后失败，支持手势兜底</string>
+    <string name="node_scroll_until_action_container">滚动容器（可留空自动查找）</string>
+
+    <string name="node_wait_action">等待控件</string>
+    <string name="node_wait_action_desc">在超时时间内等待包含指定文本的控件出现或消失</string>
+    <string name="node_wait_action_type">等待类型</string>
+    <string name="node_wait_action_timeout">超时（毫秒）</string>
+
+    <string name="node_expand_action">控件展开收起</string>
+    <string name="node_expand_action_desc">对支持展开操作的控件执行展开或收起</string>
+    <string name="node_expand_action_type">操作类型</string>
+
+    <string name="node_touch_all_action">遍历点击</string>
+    <string name="node_touch_all_action_desc">按顺序点击列表中的所有控件</string>
+    <string name="node_touch_all_action_nodes">控件列表</string>
+    <string name="node_touch_all_action_interval">点击间隔（毫秒）</string>
+    <string name="node_touch_all_action_count">点击数量</string>
+
+    <string name="node_set_progress_action">进度条设置</string>
+    <string name="node_set_progress_action_desc">设置 SeekBar 等控件的进度值（0-100）</string>
+    <string name="node_set_progress_action_progress">进度（百分比）</string>
+
+    <string name="find_node_action_match_mode">匹配方式</string>
+    <string name="find_node_action_only_visible">仅匹配可见控件</string>
+    <string name="find_node_action_only_clickable">仅匹配可点击控件</string>
+    <string name="find_node_action_index">输出序号（-1 为最后一个）</string>
+
+    <string name="image_preprocess_action">图像预处理</string>
+    <string name="image_preprocess_action_desc">对图像做灰度化、二值化或反色处理，找图前对模板图和屏幕图应用相同处理可大幅提升匹配稳定性</string>
+    <string name="image_preprocess_action_help">使用方法：截图后先接本动作处理屏幕图，模板图也用本动作做相同处理，再把两张图交给找图。深色模式、壁纸变化导致的找图失败大多可以靠二值化解决</string>
+    <string name="image_preprocess_action_mode">处理方式</string>
+    <string name="image_preprocess_action_threshold">二值化阈值（0-255）</string>
+
+    <string name="find_image_action_delay">识别前延时（毫秒）</string>
+    <string name="touch_image_action_delay">点击前延时（毫秒）</string>
+    <string name="touch_image_action_type">点击方式</string>
+    <string name="touch_image_action_duration">长按时长（毫秒）</string>
+    <string name="touch_image_action_repeat">重复次数</string>
+    <string name="touch_image_action_click_interval">点击间隔（毫秒）</string>
+    <string name="touch_image_action_offset_x">点击偏移 X</string>
+    <string name="touch_image_action_offset_y">点击偏移 Y</string>
+
+    <string name="touch_image_all_action">多图点击</string>
+    <string name="touch_image_all_action_desc">对多张不同的模板图依次查找并点击，每张点击前重新截图，输出成功点击的模板数量</string>
+    <string name="touch_image_all_action_templates">模板图列表</string>
+    <string name="touch_image_all_action_count">点击数量</string>
+
+    <string name="http_request_action">HTTP 请求</string>
+    <string name="http_request_action_desc">向指定 URL 发起 HTTP 请求，输出状态码与响应体，支持 GET/POST/PUT/DELETE</string>
+    <string name="http_request_action_url">URL</string>
+    <string name="http_request_action_method">请求方式</string>
+    <string name="http_request_action_headers">请求头（每行一条"键: 值"）</string>
+    <string name="http_request_action_body">请求体（POST/PUT）</string>
+    <string name="http_request_action_timeout">超时（毫秒）</string>
+    <string name="http_request_action_status">状态码</string>
+    <string name="http_request_action_response">响应体</string>
+
+    <string name="json_get_value_action">JSON 取值</string>
+    <string name="json_get_value_action_desc">按路径从 JSON 文本取值，如 data.user.name 或 list[0].price</string>
+    <string name="json_get_value_action_path">取值路径</string>
+
+    <string name="json_array_action">JSON 数组</string>
+    <string name="json_array_action_desc">取 JSON 数组的长度或按下标取元素，下标 -1 为最后一个</string>
+    <string name="json_array_action_mode">操作</string>
+    <string name="json_array_action_index">元素下标</string>
+    <string name="json_array_action_length">数组长度</string>
+
+    <string name="js_code_action">JS 代码运行</string>
+    <string name="js_code_action_desc">使用 Rhino 引擎运行 JavaScript 代码，输出最后一个表达式的值，出错时走失败分支</string>
+    <string name="js_code_action_code">代码</string>
+    <string name="js_code_action_result">运行结果</string>
+    <string name="js_code_action_error">错误信息</string>
+    <string name="js_code_action_input">输入数据（赋值给 input 变量）</string>
+    <string name="js_code_action_logs">运行日志</string>
+    <string name="js_code_action_max_time">最长运行时间（毫秒）</string>
+    <string name="pin_string_code">代码文本</string>
+
+    <string name="notification_action_package">包名过滤（留空为全部）</string>
+    <string name="notification_read_action">读取最新通知</string>
+    <string name="notification_read_action_desc">读取最新一条匹配通知的来源应用、标题与内容</string>
+    <string name="notification_read_all_action">读取全部通知</string>
+    <string name="notification_read_all_action_desc">读取所有匹配通知，按行输出"包名 标题: 内容"</string>
+    <string name="notification_remove_action">移除通知</string>
+    <string name="notification_remove_action_desc">移除所有匹配的通知，输出移除数量</string>
+    <string name="notification_action_from">来源应用</string>
+    <string name="notification_action_title">通知标题</string>
+    <string name="notification_action_text">通知内容</string>
+    <string name="notification_action_count">通知数量</string>
+    <string name="notification_action_all_text">全部通知文本</string>
+    <string name="notification_action_removed_count">移除数量</string>
+    <string name="notification_permission_tips">请先在系统设置中授予本应用"通知使用权"</string>
+
+    <string name="wechat_mini_action">打开微信小程序</string>
+    <string name="wechat_mini_action_desc">通过微信小程序协议打开指定小程序，需要已安装微信</string>
+    <string name="wechat_mini_action_app_id">小程序 AppID（如 wx1234567890abcdef）</string>
+    <string name="wechat_mini_action_path">页面路径（可选，如 pages/index/index）</string>
+    <string name="wechat_mini_action_env">小程序版本</string>
+
+    <string name="close_app_action">关闭应用</string>
+    <string name="close_app_action_desc">强制停止目标应用：已配置 Root/Shizuku 时完整关闭，否则仅结束后台进程</string>
+    <string name="restart_app_action">重启应用</string>
+    <string name="restart_app_action_desc">关闭应用后等待片刻再重新打开</string>
+    <string name="restart_app_action_delay">重启间隔（毫秒）</string>
+
+    <string name="excel_read_action">读取 Excel</string>
+    <string name="excel_read_action_desc">读取 xlsx 表格：读指定单元格或读全表文本（全表列间用制表符分隔、行间用换行分隔）</string>
+    <string name="excel_write_action">写入 Excel</string>
+    <string name="excel_write_action_desc">写入 xlsx 表格：写指定单元格或按英文逗号分隔追加一行，文件不存在自动创建；所有值按文本写入并保存为单工作表</string>
+    <string name="excel_action_path">文件路径（.xlsx）</string>
+    <string name="excel_action_mode">操作</string>
+    <string name="excel_action_row">行号（从 1 开始）</string>
+    <string name="excel_action_col">列号（从 1 开始）</string>
+    <string name="excel_action_sheet">工作表序号（从 1 开始）</string>
+    <string name="excel_action_value">内容</string>
+
+    <string name="multi_finger_tap_action">多指点击</string>
+    <string name="multi_finger_tap_action_desc">多根手指在中心坐标周围水平分布同时点击</string>
+    <string name="multi_finger_swipe_action">多指滑动</string>
+    <string name="multi_finger_swipe_action_desc">多根手指同时滑动，支持张开(放大)、捏合(缩小)与同向滑动</string>
+    <string name="continuous_tap_action">连续点击</string>
+    <string name="continuous_tap_action_desc">对指定坐标连续点击多次</string>
+    <string name="multi_finger_action_x">中心坐标 X</string>
+    <string name="multi_finger_action_y">中心坐标 Y</string>
+    <string name="multi_finger_action_count">手指数量（2-5）</string>
+    <string name="multi_finger_action_spacing">手指间距（像素）</string>
+    <string name="multi_finger_action_time">按压时长（毫秒）</string>
+    <string name="multi_finger_action_mode">滑动方式</string>
+    <string name="multi_finger_action_direction">滑动方向</string>
+    <string name="multi_finger_action_distance">滑动距离（像素）</string>
+    <string name="multi_finger_action_duration">滑动时长（毫秒）</string>
+
+</resources>

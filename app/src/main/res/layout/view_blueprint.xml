@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    tools:context=".ui.blueprint.BlueprintView">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/backBox"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardElevation="5dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="?attr/iconButtonSize"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/backButton"
+                style="?attr/iconButton"
+                app:icon="@drawable/icon_arrow_back" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="?attr/defaultPadding"
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                android:textColor="?attr/colorOnSurface" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/saveBox"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardElevation="5dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+        <com.google.android.material.button.MaterialButtonGroup
+            android:layout_width="wrap_content"
+            android:layout_height="?attr/iconButtonSize"
+            android:spacing="?attr/defaultOffset">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/searchButton"
+                style="?attr/iconButton"
+                android:backgroundTint="@color/fill_button_background_check"
+                android:checkable="true"
+                app:icon="@drawable/icon_search"
+                app:iconTint="@color/button_container_check" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveButton"
+                style="?attr/iconButton"
+                app:icon="@drawable/icon_save" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/moreButton"
+                style="?attr/iconButton"
+                app:icon="@drawable/icon_more_horiz" />
+
+        </com.google.android.material.button.MaterialButtonGroup>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/searchBox"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="?attr/iconButtonSize"
+        android:layout_gravity="center_horizontal"
+        android:visibility="gone"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardElevation="10dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/preButton"
+                style="?attr/iconButton"
+                app:icon="@drawable/icon_keyboard_arrow_left" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="?attr/textInputFilledStyle"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginVertical="?attr/defaultOffset"
+                android:layout_weight="1"
+                app:boxBackgroundColor="?attr/colorSurfaceBright"
+                app:boxStrokeWidth="0dp"
+                app:boxStrokeWidthFocused="0dp"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/searchEdit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:paddingVertical="0dp"
+                    android:singleLine="true" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/nextButton"
+                style="?attr/iconButton"
+                app:icon="@drawable/icon_keyboard_arrow_right" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <LinearLayout
+        android:id="@+id/searchOptionBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:elevation="10dp"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardElevation="10dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+            <com.google.android.material.button.MaterialButtonGroup
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:baselineAligned="false"
+                android:padding="?attr/defaultOffset"
+                android:spacing="?attr/defaultOffset">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/pinyinCheck"
+                    style="?attr/materialIconButtonStyle"
+                    android:layout_width="?attr/halfIconButtonSize"
+                    android:layout_height="?attr/halfIconButtonSize"
+                    android:backgroundTint="@color/fill_button_background_check"
+                    android:checkable="true"
+                    android:checked="false"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
+                    android:padding="2dp"
+                    app:icon="@drawable/icon_pinyin"
+                    app:iconSize="14dp"
+                    app:iconTint="@color/button_container_check" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/posCheck"
+                    style="?attr/materialIconButtonStyle"
+                    android:layout_width="?attr/halfIconButtonSize"
+                    android:layout_height="?attr/halfIconButtonSize"
+                    android:backgroundTint="@color/fill_button_background_check"
+                    android:checkable="true"
+                    android:checked="false"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
+                    android:padding="0dp"
+                    app:icon="@drawable/icon_123"
+                    app:iconSize="?attr/halfIconButtonSize"
+                    app:iconTint="@color/button_container_check" />
+
+            </com.google.android.material.button.MaterialButtonGroup>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="?attr/defaultPadding"
+            app:cardBackgroundColor="?attr/colorTertiaryContainer"
+            app:cardElevation="10dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/resultCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="?attr/defaultOffset"
+                android:textSize="9sp" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardElevation="10dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+            <com.google.android.material.button.MaterialButtonGroup
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:baselineAligned="false"
+                android:padding="?attr/defaultOffset"
+                android:spacing="?attr/defaultOffset">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/caseCheck"
+                    style="?attr/materialIconButtonStyle"
+                    android:layout_width="?attr/halfIconButtonSize"
+                    android:layout_height="?attr/halfIconButtonSize"
+                    android:backgroundTint="@color/fill_button_background_check"
+                    android:checkable="true"
+                    android:checked="false"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
+                    android:padding="2dp"
+                    app:icon="@drawable/icon_match_case"
+                    app:iconSize="14dp"
+                    app:iconTint="@color/button_container_check" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/regCheck"
+                    style="?attr/materialIconButtonStyle"
+                    android:layout_width="?attr/halfIconButtonSize"
+                    android:layout_height="?attr/halfIconButtonSize"
+                    android:backgroundTint="@color/fill_button_background_check"
+                    android:checkable="true"
+                    android:checked="false"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
+                    android:padding="0dp"
+                    app:icon="@drawable/icon_regular_expression"
+                    app:iconSize="?attr/halfIconButtonSize"
+                    app:iconTint="@color/button_container_check" />
+
+            </com.google.android.material.button.MaterialButtonGroup>
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+    <top.bogey.touch_tool.ui.blueprint.CardLayoutView
+        android:id="@+id/cardLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <FrameLayout
+        android:id="@+id/cachedPinBar"
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="30dp"
+        android:clipChildren="false"
+        android:visibility="gone">
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardElevation="5dp" />
+
+        <LinearLayout
+            android:id="@+id/cachedPinBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:elevation="5dp"
+            android:gravity="bottom"
+            android:orientation="horizontal" />
+
+    </FrameLayout>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/baseToolBar"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="?attr/minTouchTargetSize"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardElevation="5dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+        <com.google.android.material.button.MaterialButtonGroup
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:spacing="0dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/editButton"
+                style="?attr/defaultIconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/fill_button_background_check"
+                android:checkable="true"
+                app:icon="@drawable/icon_visibility"
+                app:iconTint="@color/button_container_check" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/addButton"
+                style="?attr/defaultIconButtonFilled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:icon="@drawable/icon_add" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/sortButton"
+                style="?attr/defaultIconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:icon="@drawable/icon_refresh" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pasteButton"
+                style="?attr/defaultIconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="4dp"
+                android:visibility="gone"
+                app:icon="@drawable/icon_content_paste_more"
+                app:iconSize="32dp" />
+        </com.google.android.material.button.MaterialButtonGroup>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/floatingToolBar"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="48dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardElevation="5dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full">
+
+        <com.google.android.material.button.MaterialButtonGroup
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:spacing="0dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/exchangeButton"
+                style="?attr/defaultIconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:icon="@drawable/icon_swap_horiz" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/lockButton"
+                style="?attr/defaultIconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/fill_button_background_check"
+                android:checkable="true"
+                app:icon="@drawable/icon_lock"
+                app:iconTint="@color/button_container_check" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/copyButton"
+                style="?attr/defaultIconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="4dp"
+                app:icon="@drawable/icon_content_copy_more"
+                app:iconSize="32dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/deleteButton"
+                style="?attr/defaultIconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/fill_button_background_error_check"
+                android:checkable="true"
+                app:icon="@drawable/icon_delete"
+                app:iconTint="@color/button_container_check" />
+
+        </com.google.android.material.button.MaterialButtonGroup>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

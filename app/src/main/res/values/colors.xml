@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="StringPinColor">#FF44FF</color>
+    <color name="IntegerPinColor">#00FF44</color>
+    <color name="FloatPinColor">#00FF88</color>
+    <color name="LongPinColor">#00FFBB</color>
+    <color name="BooleanPinColor">#BB0000</color>
+    <color name="ValueAreaPinColor">#00BBBB</color>
+    <color name="PointPinColor">#00BB88</color>
+    <color name="AreaPinColor">#008844</color>
+    <color name="SelectPinColor">#0088BB</color>
+    <color name="TouchPinColor">#008888</color>
+    <color name="NodePinColor">#888844</color>
+    <color name="ImagePinColor">#FF4400</color>
+    <color name="ColorPinColor">#FF8800</color>
+    <color name="AppPinColor">#444444</color>
+    <color name="TaskPinColor">#0088FF</color>
+
+    <color name="SelectedPinMul">#ffffff</color>
+    <color name="SelectedPinAdd">#222222</color>
+
+    <color name="launcherBackgroundColor">#FFFAFAFA</color>
+    <color name="HalfAlpha">#66000000</color>
+    <color name="HalfAlphaRed">#66110000</color>
+    <color name="HalfAlphaGreen">#66001100</color>
+</resources>

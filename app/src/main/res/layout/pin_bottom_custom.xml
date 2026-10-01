@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <com.google.android.material.button.MaterialButtonGroup
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:spacing="0dp"
+        app:buttonSizeChange="@null">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/visibleButton"
+            style="?attr/iconButton"
+            app:icon="@drawable/icon_visibility" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/removeButton"
+            style="?attr/iconButtonOutlined"
+            app:icon="@drawable/icon_remove" />
+
+        <com.google.android.material.button.MaterialButton
+            style="?attr/iconButton"
+            app:icon="@drawable/icon_drag_pan" />
+
+    </com.google.android.material.button.MaterialButtonGroup>
+
+    <FrameLayout
+        android:id="@+id/pinBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="wrap_content"
+        android:layout_height="?attr/iconButtonSize"
+        android:clipChildren="false"
+        android:hint="@string/custom_pin_name"
+        android:maxWidth="192dp"
+        android:minWidth="96dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:breakStrategy="simple"
+            android:gravity="center"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingHorizontal="?attr/defaultPadding"
+            android:paddingVertical="0dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <LinearLayout
+        android:id="@+id/pinSlotBox"
+        android:layout_width="?attr/halfIconButtonSize"
+        android:layout_height="?attr/smallIconButtonSize"
+        android:layout_gravity="start"
+        android:layout_marginStart="15dp"
+        android:gravity="bottom"
+        android:orientation="vertical" />
+
+</LinearLayout>

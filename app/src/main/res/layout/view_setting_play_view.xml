@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.setting.SettingPlayView">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fitsSystemWindows="true">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolBar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:layout_scrollEffect="compress"
+            app:layout_scrollFlags="scroll|enterAlways|snap"
+            app:navigationIcon="@drawable/menu_arrow_back"
+            app:title="@string/preference_setting_manual_play" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="?attr/defaultPadding">
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSelect
+                        android:id="@+id/manualPlaySelect"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_desc_2"
+                        app:icon="@drawable/icon_touch_app"
+                        app:options="@array/manual_play_type"
+                        app:title="@string/preference_setting_manual_play" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSelect
+                        android:id="@+id/manualPlayPauseSelect"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_pause_desc"
+                        app:icon="@drawable/icon_pause"
+                        app:options="@array/manual_play_pause_type"
+                        app:title="@string/preference_setting_manual_play_pause" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSwitch
+                        android:id="@+id/manualPlayGotoTaskSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_goto_task_desc"
+                        app:icon="@drawable/icon_draw"
+                        app:title="@string/preference_setting_manual_play_goto_task" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetNormal
+                        android:id="@+id/manualPlayReset"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_reset_desc"
+                        app:icon="@drawable/icon_refresh"
+                        app:title="@string/preference_setting_manual_play_reset" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="?attr/defaultPadding" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSelect
+                        android:id="@+id/hideManualPlaySelect"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_hide_desc"
+                        app:icon="@drawable/icon_visibility_off"
+                        app:options="@array/manual_play_hide_type"
+                        app:title="@string/preference_setting_manual_play_hide" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSwitch
+                        android:id="@+id/hideManualPlaySelectWhenScreenShot"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_hide_when_screen_shot_desc"
+                        app:icon="@drawable/icon_visibility_off"
+                        app:title="@string/preference_setting_manual_play_hide_when_screen_shot" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSwitch
+                        android:id="@+id/manualPlayingHideSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_playing_hide_desc"
+                        app:icon="@drawable/icon_visibility_off"
+                        app:title="@string/preference_setting_manual_playing_hide" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSwitch
+                        android:id="@+id/notPlayHideSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_not_play_hide_desc"
+                        app:icon="@drawable/icon_symptoms"
+                        app:title="@string/preference_setting_manual_not_play_hide" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSlider
+                        android:id="@+id/notPlayHideAlpha"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_not_play_hide_alpha_desc"
+                        app:icon="@drawable/icon_symptoms"
+                        app:max="80"
+                        app:min="20"
+                        app:step="10"
+                        app:title="@string/preference_setting_manual_not_play_hide_alpha"
+                        app:value="50" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="?attr/defaultPadding" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="?attr/defaultPadding">
+
+                    <com.google.android.material.card.MaterialCardView
+                        style="?attr/materialCardViewFilledStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        app:cardBackgroundColor="?attr/colorSurface"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium">
+
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:paddingVertical="?attr/defaultPadding">
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/playButtonBox"
+                                style="?attr/materialCardViewFilledStyle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="end|center_vertical"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.LargeIncreased">
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center_horizontal"
+                                    android:orientation="vertical"
+                                    android:padding="?attr/defaultOffset">
+
+                                    <com.google.android.material.button.MaterialButton
+                                        style="?attr/iconButton"
+                                        android:layout_height="?attr/smallIconButtonSize"
+                                        app:icon="@drawable/icon_keyboard_arrow_up" />
+
+                                    <FrameLayout
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content">
+
+                                        <com.google.android.material.card.MaterialCardView
+                                            android:id="@+id/playButton"
+                                            style="?attr/materialCardViewFilledStyle"
+                                            android:layout_width="?attr/iconButtonSize"
+                                            android:layout_height="?attr/iconButtonSize"
+                                            app:cardBackgroundColor="?attr/colorSurface"
+                                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+                                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                                            android:id="@+id/lineProgress"
+                                            android:layout_width="?attr/iconButtonSize"
+                                            android:layout_height="wrap_content"
+                                            android:layout_gravity="bottom|center_horizontal"
+                                            android:indeterminate="false"
+                                            android:visibility="visible"
+                                            app:indicatorInset="0dp"
+                                            app:indicatorSize="?attr/iconButtonSize"
+                                            app:trackCornerRadius="1dp"
+                                            app:trackThickness="3dp" />
+
+                                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                                            android:id="@+id/circleProgress"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:indeterminate="false"
+                                            app:indeterminateAnimationTypeCircular="advance"
+                                            app:indicatorInset="0dp"
+                                            app:indicatorSize="?attr/iconButtonSize"
+                                            app:trackCornerRadius="1dp"
+                                            app:trackThickness="3dp" />
+
+                                        <com.google.android.material.textview.MaterialTextView
+                                            android:id="@+id/playTitle"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_gravity="center"
+                                            android:gravity="center"
+                                            android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                                            android:textColor="?attr/colorPrimary" />
+
+                                    </FrameLayout>
+
+                                </LinearLayout>
+
+                            </com.google.android.material.card.MaterialCardView>
+
+                        </FrameLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <Space
+                        android:layout_width="?attr/defaultPadding"
+                        android:layout_height="match_parent" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        style="?attr/materialCardViewFilledStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        app:cardBackgroundColor="?attr/colorSurface"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium">
+
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/dragSpace"
+                            style="?attr/materialCardViewFilledStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end|center_vertical"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.LargeIncreased">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/dragButton"
+                                style="?attr/iconButton"
+                                android:textScaleX="0"
+                                app:icon="@drawable/icon_keyboard_arrow_left"
+                                app:iconGravity="textStart" />
+
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <FrameLayout
+                            android:id="@+id/singleButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center">
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:id="@+id/singleButtonCard"
+                                style="?attr/materialCardViewFilledStyle"
+                                android:layout_width="?attr/iconButtonSize"
+                                android:layout_height="?attr/iconButtonSize"
+                                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+                            <com.google.android.material.progressindicator.CircularProgressIndicator
+                                android:id="@+id/singleProgress"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:indeterminate="false"
+                                app:indeterminateAnimationTypeCircular="advance"
+                                app:indicatorInset="0dp"
+                                app:indicatorSize="?attr/iconButtonSize"
+                                app:trackCornerRadius="1dp"
+                                app:trackThickness="3dp" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/singleTitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:gravity="center"
+                                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                                android:textColor="?attr/colorPrimary" />
+
+                        </FrameLayout>
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="?attr/defaultPadding" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSlider
+                        android:id="@+id/manualPlayPadding"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_padding_desc"
+                        app:icon="@drawable/icon_mobile"
+                        app:max="10"
+                        app:title="@string/preference_setting_manual_play_padding"
+                        app:value="0" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSlider
+                        android:id="@+id/manualPlaySize"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_size_desc"
+                        app:icon="@drawable/icon_zoom_out_map"
+                        app:max="3"
+                        app:min="1"
+                        app:title="@string/preference_setting_manual_play_size"
+                        app:value="1" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSlider
+                        android:id="@+id/manualPlayHeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_height_desc"
+                        app:icon="@drawable/icon_straighten"
+                        app:max="3"
+                        app:min="1"
+                        app:title="@string/preference_setting_manual_play_height"
+                        app:value="1" />
+
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSlider
+                        android:id="@+id/manualPlayCloseSize"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_close_size_desc"
+                        app:icon="@drawable/icon_zoom_in_map"
+                        app:max="3"
+                        app:min="1"
+                        app:title="@string/preference_setting_manual_play_close_size"
+                        app:value="1" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSlider
+                        android:id="@+id/manualPlaySingleSize"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/preference_setting_manual_play_single_size_desc"
+                        app:icon="@drawable/icon_area"
+                        app:max="3"
+                        app:min="1"
+                        app:title="@string/preference_setting_manual_play_single_size"
+                        app:value="1" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

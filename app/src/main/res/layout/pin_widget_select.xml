@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="?attr/iconButtonSize">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/spinner"
+        style="?attr/defaultIconButtonOutlined"
+        android:layout_width="wrap_content"
+        android:layout_height="?attr/iconButtonSize"
+        android:minWidth="?attr/iconButtonSize"
+        android:paddingHorizontal="?attr/defaultPadding"
+        android:paddingVertical="?attr/iconButtonPadding"
+        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+        app:icon="@drawable/icon_keyboard_arrow_down"
+        app:iconGravity="textEnd"
+        app:iconPadding="?attr/defaultOffset" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/editTextBox"
+        android:layout_width="wrap_content"
+        android:layout_height="?attr/iconButtonSize"
+        android:layout_gravity="center_horizontal"
+        android:clipChildren="false"
+        android:hint="@string/pin_string_select_hint"
+        android:minWidth="108dp"
+        android:translationY="-2dp"
+        android:visibility="gone"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editText"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:inputType="text"
+            android:paddingHorizontal="?attr/defaultPadding"
+            android:paddingVertical="0dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+</LinearLayout>

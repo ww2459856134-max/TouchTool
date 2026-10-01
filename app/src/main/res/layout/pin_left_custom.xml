@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:minHeight="?attr/iconButtonSize"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:id="@+id/pinSlotBox"
+        android:layout_width="?attr/halfIconButtonSize"
+        android:layout_height="?attr/halfIconButtonSize"
+        android:orientation="horizontal" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="wrap_content"
+        android:layout_height="?attr/iconButtonSize"
+        android:layout_marginHorizontal="?attr/defaultPadding"
+        android:clipChildren="false"
+        android:hint="@string/custom_pin_name"
+        android:maxWidth="96dp"
+        android:translationY="-2dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:breakStrategy="simple"
+            android:gravity="center"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingHorizontal="?attr/defaultPadding"
+            android:paddingVertical="0dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <FrameLayout
+        android:id="@+id/pinBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <Space
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/visibleButton"
+        style="?attr/iconButton"
+        app:icon="@drawable/icon_visibility" />
+
+    <com.google.android.material.button.MaterialButtonGroup
+        android:id="@+id/varBox"
+        style="@style/Widget.Material3.MaterialButtonGroup.Connected"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:spacing="-2dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/keySlot"
+            style="?attr/defaultIconButtonOutlined"
+            android:layout_width="wrap_content"
+            android:layout_height="?attr/iconButtonSize"
+            android:layout_weight="1"
+            android:minWidth="?attr/iconButtonSize"
+            android:paddingHorizontal="?attr/defaultPadding"
+            android:paddingVertical="?attr/iconButtonPadding"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+            app:icon="@drawable/icon_keyboard_arrow_down"
+            app:iconGravity="textEnd"
+            app:iconPadding="?attr/defaultOffset" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/typeSpinner"
+            style="?attr/iconButtonFilled"
+            android:paddingHorizontal="0dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/valueSlot"
+            style="?attr/defaultIconButtonOutlined"
+            android:layout_width="wrap_content"
+            android:layout_height="?attr/iconButtonSize"
+            android:layout_weight="1"
+            android:minWidth="?attr/iconButtonSize"
+            android:paddingHorizontal="?attr/defaultPadding"
+            android:paddingVertical="?attr/iconButtonPadding"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+            app:icon="@drawable/icon_keyboard_arrow_down"
+            app:iconGravity="textEnd"
+            app:iconPadding="?attr/defaultOffset" />
+
+    </com.google.android.material.button.MaterialButtonGroup>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/removeButton"
+        style="?attr/iconButtonOutlined"
+        app:icon="@drawable/icon_remove" />
+
+    <com.google.android.material.button.MaterialButton
+        style="?attr/iconButton"
+        app:icon="@drawable/icon_drag_pan" />
+
+</LinearLayout>

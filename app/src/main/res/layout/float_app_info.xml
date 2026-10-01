@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="?attr/materialCardViewFilledStyle"
+    android:layout_width="320dp"
+    android:layout_height="400dp"
+    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/expandButton"
+        style="?iconButton"
+        android:layout_marginStart="?attr/defaultPadding"
+        app:icon="@drawable/icon_zoom_in_map" />
+
+    <FrameLayout
+        android:id="@+id/contentBox"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:minWidth="168dp"
+            android:orientation="vertical">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="?attr/iconButtonSize"
+                android:paddingHorizontal="?attr/defaultPadding">
+
+                <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingBottom="0dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/closeButton"
+                    style="?iconButton"
+                    android:layout_gravity="end|center"
+                    app:icon="@drawable/icon_close" />
+
+            </FrameLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewFilledStyle"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginHorizontal="?attr/defaultPadding"
+                android:layout_marginBottom="?attr/defaultPadding"
+                android:layout_weight="1"
+                app:cardBackgroundColor="?attr/colorSurface"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="?attr/defaultPadding"
+                    android:clipToPadding="false"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    tools:listitem="@layout/float_app_info_item" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/dragImage"
+            android:layout_width="?attr/iconButtonSize"
+            android:layout_height="?attr/iconButtonSize"
+            android:layout_gravity="end|bottom"
+            android:scaleType="centerInside"
+            android:src="@drawable/icon_line_curve"
+            android:tint="?attr/colorOutlineVariant"
+            android:translationX="?attr/defaultOffset"
+            android:translationY="?attr/defaultOffset" />
+
+    </FrameLayout>
+
+</com.google.android.material.card.MaterialCardView>

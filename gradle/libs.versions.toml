@@ -1,0 +1,53 @@
+[versions]
+appcompat = "1.8.0"
+material = "1.14.0"
+nav = "2.10.0"
+agp = "9.3.2"
+
+#序列化与反序列化
+gson = "2.14.0"
+#存储
+mmkv = "2.4.2"
+
+# 自动换行的流式布局
+flexbox = "3.0.0"
+# shizuku
+shizuku = "13.1.5"
+# 数学运算
+exp4j = "0.4.8"
+# 二维码
+zxing = "3.5.0"
+# 拼音
+tinypinyin = "2.0.3"
+# 隐藏api
+hiddenapibypass = "6.1"
+
+# 端侧模型运行环境
+litert = "2.1.5"
+
+[libraries]
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+
+nav-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "nav" }
+nav-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "nav" }
+
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+mmkv = { group = "com.tencent", name = "mmkv", version.ref = "mmkv" }
+
+flexbox = { group = "com.google.android.flexbox", name = "flexbox", version.ref = "flexbox" }
+
+shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
+shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
+
+exp4j = { group = "net.objecthunter", name = "exp4j", version.ref = "exp4j" }
+zxinglite = { group = "com.github.jenly1314", name = "zxing-lite", version.ref = "zxing" }
+tinypinyin = { group = "com.github.promeg", name = "tinypinyin", version.ref = "tinypinyin" }
+hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version.ref = "hiddenapibypass" }
+
+litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
+
+[plugins]
+application = { id = "com.android.application", version.ref = "agp" }
+nav-safeargs = { id = "androidx.navigation.safeargs", version.ref = "nav" }
+

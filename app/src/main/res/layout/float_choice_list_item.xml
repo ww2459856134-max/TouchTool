@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="?attr/materialCardViewFilledStyle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="?attr/defaultOffset"
+    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/icon"
+            android:layout_width="?attr/halfIconButtonSize"
+            android:layout_height="?attr/halfIconButtonSize"
+            android:layout_gravity="center"
+            android:layout_marginStart="?attr/defaultPadding"
+            android:padding="?attr/defaultOffset"
+            android:tint="?attr/colorOnSurface"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/titleText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="?attr/defaultPadding"
+            android:ellipsize="end"
+            android:gravity="start|center_vertical"
+            android:maxLines="3"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
