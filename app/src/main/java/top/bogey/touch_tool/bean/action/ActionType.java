@@ -129,6 +129,7 @@ public enum ActionType {
     READ_IMAGE_FILE,
     EXCEL_READ,
     EXCEL_WRITE,
+    SQL_EXECUTE,
 
     // 数值
     NUMBER_ADD,
@@ -218,6 +219,7 @@ public enum ActionType {
     IS_IMAGE_EXIST,
     TOUCH_IMAGE,
     TOUCH_IMAGE_ALL,
+    DRAG_IMAGE,
     CREATE_QRCODE,
     PARSE_QRCODE,
     YOLO_DETECT,
@@ -249,7 +251,6 @@ public enum ActionType {
     TOUCH,
     TOUCH_POINT,
 
-    MULTI_FINGER_TAP,
     MULTI_FINGER_SWIPE,
     CONTINUOUS_TAP,
 

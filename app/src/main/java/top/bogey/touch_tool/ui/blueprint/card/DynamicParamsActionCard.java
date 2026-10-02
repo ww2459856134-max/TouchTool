@@ -53,7 +53,7 @@ public class DynamicParamsActionCard extends ActionCard implements IDynamicPinCa
         initLock(binding.lockButton);
         initPosView(binding.position);
 
-        binding.addButton.setOnClickListener(v -> action.addPin(new Pin(new PinString(), 0, true, true)));
+        binding.addButton.setOnClickListener(v -> action.addPin(action.createDynamicPin()));
     }
 
     @Override

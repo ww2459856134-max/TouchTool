@@ -1127,8 +1127,24 @@
     <string name="excel_action_sheet">工作表序号（从 1 开始）</string>
     <string name="excel_action_value">内容</string>
 
-    <string name="multi_finger_tap_action">多指点击</string>
-    <string name="multi_finger_tap_action_desc">多根手指在中心坐标周围水平分布同时点击</string>
+    <string name="drag_image_action">拖拽图片</string>
+    <string name="drag_image_action_desc">匹配到模板位置后按住拖动到目标坐标或目标区域中心（滑块验证、拖拽排序）</string>
+    <string name="drag_image_action_target_x">目标坐标 X</string>
+    <string name="drag_image_action_target_y">目标坐标 Y</string>
+    <string name="drag_image_action_target_area">目标区域(已连接时优先)</string>
+
+    <string name="sql_action">SQL 执行</string>
+    <string name="sql_action_desc">对 SQLite 数据库执行 SQL：SELECT 返回查询结果，其他语句自动建库执行，支持分号分隔多条</string>
+    <string name="sql_action_path">数据库文件路径</string>
+    <string name="sql_action_sql">SQL 语句</string>
+    <string name="sql_action_count">行数</string>
+
+    <string name="execute_shell_action_timeout">超时（毫秒）</string>
+    <string name="execute_shell_action_channel_tips">请先在应用设置中配置 Shizuku 或 Root 通道</string>
+
+    <string name="while_loop_action_max_count">最大迭代次数（0 为不限）</string>
+    <string name="continuous_tap_action_offset">随机偏移（像素，0 为固定坐标）</string>
+
     <string name="multi_finger_swipe_action">多指滑动</string>
     <string name="multi_finger_swipe_action_desc">多根手指同时滑动，支持张开(放大)、捏合(缩小)与同向滑动</string>
     <string name="continuous_tap_action">连续点击</string>

@@ -68,6 +68,7 @@ public class ActionMap {
                     ActionType.NODE_TOUCH,
                     ActionType.TOUCH_IMAGE,
                     ActionType.TOUCH_IMAGE_ALL,
+                    ActionType.DRAG_IMAGE,
                     ActionType.TOUCH_COLOR
             ));
 
@@ -142,7 +143,8 @@ public class ActionMap {
                     ActionType.WRITE_IMAGE_FILE,
                     ActionType.READ_IMAGE_FILE,
                     ActionType.EXCEL_READ,
-                    ActionType.EXCEL_WRITE
+                    ActionType.EXCEL_WRITE,
+                    ActionType.SQL_EXECUTE
             ));
 
             case NUMBER -> list.addAll(Arrays.asList(
@@ -230,6 +232,7 @@ public class ActionMap {
                     ActionType.IS_IMAGE_EXIST,
                     ActionType.TOUCH_IMAGE,
                     ActionType.TOUCH_IMAGE_ALL,
+                    ActionType.DRAG_IMAGE,
                     ActionType.CREATE_QRCODE,
                     ActionType.PARSE_QRCODE,
                     ActionType.YOLO_DETECT,
@@ -261,7 +264,6 @@ public class ActionMap {
                     ActionType.POINTS_TO_TOUCH,
                     ActionType.TOUCH,
                     ActionType.TOUCH_POINT,
-                    ActionType.MULTI_FINGER_TAP,
                     ActionType.MULTI_FINGER_SWIPE,
                     ActionType.CONTINUOUS_TAP
             ));

@@ -47,22 +47,26 @@ public class TouchImageAction extends ExecuteAction {
     private final transient Pin randomPin = new Pin(new PinBoolean(), R.string.touch_image_action_offset, false, false, true);
     private final transient Pin offsetXPin = new Pin(new PinInteger(0), R.string.touch_image_action_offset_x, false, false, true);
     private final transient Pin offsetYPin = new Pin(new PinInteger(0), R.string.touch_image_action_offset_y, false, false, true);
+    private final transient Pin timeoutPin = new NotLinkAblePin(new PinInteger(0), R.string.wait_if_action_timeout, false, false, true);
+    private final transient Pin retryIntervalPin = new NotLinkAblePin(new PinInteger(200), R.string.find_execute_action_interval, false, false, true);
     private final transient Pin elsePin = new Pin(new PinExecute(), R.string.if_action_else, true);
 
     public TouchImageAction() {
         super(ActionType.TOUCH_IMAGE);
-        addPins(templatePin, delayPin, typePin, durationPin, repeatPin, intervalPin, similarityPin, areaPin, scalePin, cannyPin, randomPin, offsetXPin, offsetYPin, elsePin);
+        addPins(templatePin, delayPin, typePin, durationPin, repeatPin, intervalPin, similarityPin, areaPin, scalePin, cannyPin, randomPin, offsetXPin, offsetYPin, timeoutPin, retryIntervalPin, elsePin);
     }
 
     public TouchImageAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(templatePin, delayPin, typePin, durationPin, repeatPin, intervalPin, similarityPin, areaPin, scalePin, cannyPin, randomPin, offsetXPin, offsetYPin, elsePin);
+        reAddPins(templatePin, delayPin, typePin, durationPin, repeatPin, intervalPin, similarityPin, areaPin, scalePin, cannyPin, randomPin, offsetXPin, offsetYPin, timeoutPin, retryIntervalPin, elsePin);
         // 兼容旧任务：旧数据里保存的 hide=false 会盖掉新默认值，这里强制归入高级页
         delayPin.setHide(true);
         cannyPin.setHide(true);
         randomPin.setHide(true);
         offsetXPin.setHide(true);
         offsetYPin.setHide(true);
+        timeoutPin.setHide(true);
+        retryIntervalPin.setHide(true);
     }
 
     @Override
@@ -72,7 +76,6 @@ public class TouchImageAction extends ExecuteAction {
         runnable.sleep(delay.getRandomValue());
 
         MainAccessibilityService service = MainApplication.getInstance().getService();
-        Bitmap bitmap = service.tryGetScreenShot();
 
         PinImage template = getPinValue(runnable, templatePin);
         PinNumber<?> similarity = getPinValue(runnable, similarityPin);
@@ -84,8 +87,23 @@ public class TouchImageAction extends ExecuteAction {
         if (getPinValue(runnable, offsetXPin) instanceof PinInteger pinInteger) offsetX = pinInteger.getValue();
         int offsetY = 0;
         if (getPinValue(runnable, offsetYPin) instanceof PinInteger pinInteger) offsetY = pinInteger.getValue();
+        // 等待图片出现：超时时间内每间隔重新截图匹配，0 为仅匹配一次
+        long timeout = 0;
+        if (getPinValue(runnable, timeoutPin) instanceof PinInteger pinInteger) timeout = Math.max(0, pinInteger.getValue());
+        long retryInterval = 200;
+        if (getPinValue(runnable, retryIntervalPin) instanceof PinInteger pinInteger) retryInterval = Math.max(50, pinInteger.getValue());
 
-        Rect rect = DisplayUtil.matchTemplate(bitmap, template.getImage(), area.getValue(), similarity.intValue(), scale.getIndex(), canny.getValue());
+        long startTime = System.currentTimeMillis();
+        Bitmap bitmap;
+        Rect rect = null;
+        while (true) {
+            bitmap = service.tryGetScreenShot();
+            rect = DisplayUtil.matchTemplate(bitmap, template.getImage(), area.getValue(), similarity.intValue(), scale.getIndex(), canny.getValue());
+            if (rect != null && !rect.isEmpty()) break;
+            if (runnable.isCurrentInterrupt()) return;
+            if (System.currentTimeMillis() - startTime >= timeout) break;
+            runnable.sleep(retryInterval);
+        }
         if (rect == null || rect.isEmpty()) {
             executeNext(runnable, elsePin);
             return;

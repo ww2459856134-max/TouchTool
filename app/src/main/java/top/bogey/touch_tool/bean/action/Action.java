@@ -32,6 +32,9 @@ import top.bogey.touch_tool.bean.pin.pin_objects.pin_list.PinList;
 import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.task.Task;
 import top.bogey.touch_tool.service.TaskRunnable;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
+
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.utils.GsonUtil;
 
 public abstract class Action extends Identity implements PinListener {
@@ -138,6 +141,12 @@ public abstract class Action extends Identity implements PinListener {
             if (tmpPins.isEmpty()) break;
             tmpPin = tmpPins.get(0);
         }
+    }
+
+    // 动态针脚工厂：动态参数卡片（DynamicParamsActionCard）的添加按钮调用
+    // 需要自定义动态针脚类型的动作覆写此方法
+    public Pin createDynamicPin() {
+        return new Pin(new PinString(), 0, true, true);
     }
 
     // 从临时列表获取一系列针脚加入到正式列表中，直到出现添加针脚或到结束
