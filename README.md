@@ -24,6 +24,40 @@ TouchTool 采用直观的**蓝图式任务编辑器**，通过可视化节点连
 |-----------------------------------------------------------------------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------------|
 | ![截图4](docs/assets/images/screenshot7-d5e5302485c85d5a1384961ab1dfb7e5.jpg) | ![截图5](docs/assets/images/screenshot5-09dd0fa2d306e088cc2dca8b4a916b51.jpg) | ![截图6](docs/assets/images/screenshot6-f840352c9c9e6c4220ccbcea0dad2575.jpg) |
 
+## 定制版新增功能
+
+本仓库为 TouchTool 定制版，在原版基础上新增以下能力：
+
+### 云端 OCR 识别（新增动作）
+
+- 新动作 **「云端OCR识别文本」**（文本处理分类），调用百度智能云通用文字识别
+- 输出全部文本、文本列表、**文字坐标区域列表**（可接"点击位置"实现点文字）
+- 失败走未达成节点，错误信息针脚直接可读（额度用尽/鉴权失败/网络错误）
+- OAuth token 自动获取与缓存，30 天内免重新鉴权
+- API Key / Secret Key 在 **设置页** 配置（全局存储），任务分享不泄露密钥
+
+### 内置离线 OCR 模型（开箱即用）
+
+- 内置 **PP-OCRv5 中文识别模型**（轻量 FP16，支持中英文与常用符号）
+- 应用启动自动导入，零配置即可使用本地 OCR 动作
+- 模型版本自动升级、误删自动恢复，也可在模型管理中更换自定义模型
+- 本地识别免费离线；云端识别精度更高——两者按需选用
+
+### 运行结果角标体系
+
+- 每个动作卡片右上角显示运行结果：🟢成功 / 🔴未达成 / ⚪本次未执行
+- **耗时直接显示在角标上**（如 `✓ 287ms`），性能调优一目了然
+- 点击角标查看该动作详细运行结果
+- 任务级开关：更多菜单 →「显示运行角标」，每个任务独立记忆
+- 角标数据仅存内存（内存即焚），重启自动清空
+
+### 其他增强
+
+- **变量观察器**：悬浮窗实时监控任务变量值，调试利器
+- **文件类动作增强**：Excel 读写、SQL 执行、文件/目录选择等
+- 添加动作路径空值防御，杜绝注册异常导致的闪退
+- 多项稳定性修复
+
 ## 自动化动作分类
 
 ### 触发器类动作
@@ -147,6 +181,7 @@ TouchTool 采用直观的**蓝图式任务编辑器**，通过可视化节点连
 | [`OCR识别文本`](app/src/main/java/top/bogey/touch_tool/bean/action/string/GetOcrTextAction.java)        | 识别图片中指定区域文字       |
 | [`OCR查找文本`](app/src/main/java/top/bogey/touch_tool/bean/action/string/FindOcrTextAction.java)       | 在图片中查找指定文字        |
 | [`OCR文本是否存在`](app/src/main/java/top/bogey/touch_tool/bean/action/string/IsOcrTextExistAction.java)  | 判断图片中是否存在指定文字     |
+| [`云端OCR识别文本`](app/src/main/java/top/bogey/touch_tool/bean/action/string/CloudOcrAction.java)      | 调用百度智能云识别文字（含坐标，需配置密钥） |
 | [`JSON解析`](app/src/main/java/top/bogey/touch_tool/bean/action/string/ParseJsonAction.java)          | 解析JSON字符串         |
 | [`新建单选`](app/src/main/java/top/bogey/touch_tool/bean/action/string/StringToSingleSelectAction.java) | 创建一个自定义单选         |
 
