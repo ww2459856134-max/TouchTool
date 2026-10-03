@@ -1,6 +1,7 @@
 package top.bogey.touch_tool.bean.action.image;
 
 import android.graphics.Bitmap;
+import android.graphics.Point;
 import android.os.Build;
 
 import com.google.gson.JsonObject;
@@ -20,6 +21,7 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinValueArea;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinNumber;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinArea;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinPoint;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinImage;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleSelect;
 import top.bogey.touch_tool.bean.task.Task;
@@ -37,16 +39,17 @@ public class FindImageAction extends FindExecuteAction {
     private final transient Pin cannyPin = new Pin(new PinBoolean(false), R.string.image_action_canny);
     private final transient Pin areaPin = new Pin(new PinArea(), R.string.pin_area, true);
     private final transient Pin resultSimilarityPin = new Pin(new PinInteger(), R.string.find_image_action_result_similarity, true);
+    private final transient Pin pointPin = new Pin(new PinPoint(), R.string.find_image_action_point, true);
 
     public FindImageAction() {
         super(ActionType.FIND_IMAGE);
         intervalPin.getValue(PinInteger.class).setValue(200);
-        addPins(sourcePin, templatePin, delayPin, similarityPin, scalePin, cannyPin, areaPin, resultSimilarityPin);
+        addPins(sourcePin, templatePin, delayPin, similarityPin, scalePin, cannyPin, areaPin, resultSimilarityPin, pointPin);
     }
 
     public FindImageAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(sourcePin, templatePin, delayPin, similarityPin, scalePin, cannyPin, areaPin, resultSimilarityPin);
+        reAddPins(sourcePin, templatePin, delayPin, similarityPin, scalePin, cannyPin, areaPin, resultSimilarityPin, pointPin);
     }
 
     @Override
@@ -74,6 +77,7 @@ public class FindImageAction extends FindExecuteAction {
         }
         areaPin.getValue(PinArea.class).setValue(matchResult.area);
         resultSimilarityPin.getValue(PinInteger.class).setValue((int) (matchResult.value * 100));
+        pointPin.getValue(PinPoint.class).setValue(new Point(matchResult.area.centerX(), matchResult.area.centerY()));
         return true;
     }
 

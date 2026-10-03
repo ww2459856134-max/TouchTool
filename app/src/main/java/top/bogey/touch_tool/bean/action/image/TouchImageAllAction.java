@@ -38,7 +38,7 @@ public class TouchImageAllAction extends ExecuteAction {
     private final transient Pin templatesPin = new Pin(new PinList(new PinImage()), R.string.touch_image_all_action_templates);
     private final transient Pin delayPin = new Pin(new PinValueArea(0, 0), R.string.touch_image_action_delay, false, false, true);
     private final transient Pin similarityPin = new Pin(new PinInteger(80), R.string.touch_image_action_similarity);
-    private final transient Pin areaPin = new Pin(new PinArea(), R.string.touch_image_action_area, false, false, true);
+    private final transient Pin areaPin = new Pin(new PinArea(), R.string.touch_image_action_area, false, false, false);
     private final transient Pin scalePin = new Pin(new PinSingleSelect(R.array.match_image_scale, 1), R.string.image_action_scale, false, false, true);
     private final transient Pin cannyPin = new Pin(new PinBoolean(false), R.string.image_action_canny, false, false, true);
     private final transient Pin randomPin = new Pin(new PinBoolean(), R.string.touch_image_action_offset);

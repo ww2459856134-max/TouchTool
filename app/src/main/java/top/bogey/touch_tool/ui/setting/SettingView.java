@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.AlarmManager;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Environment;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -372,6 +373,41 @@ public class SettingView extends Fragment {
         });
         binding.bluetoothSwitch.setChecked(SettingSaver.PERMISSION_BLUETOOTH.get());
 
+        // 所有文件访问
+        binding.storageSwitch.setOnSwitchClickListener(v -> {
+            if (binding.storageSwitch.isChecked()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                    // 去系统授权页，返回时在 onResume 里刷新状态
+                    binding.storageSwitch.setChecked(false);
+                    AppUtil.startStoragePermissionActivity(activity);
+                } else {
+                    SettingSaver.PERMISSION_STORAGE.set(true);
+                }
+            } else {
+                // 关闭授权也只能去系统设置页操作
+                binding.storageSwitch.setChecked(true);
+                AppUtil.startStoragePermissionActivity(activity);
+            }
+        });
+        boolean storageGranted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ? Environment.isExternalStorageManager() : SettingSaver.PERMISSION_STORAGE.get();
+        binding.storageSwitch.setChecked(storageGranted);
+
+        // 云端 OCR 密钥
+        binding.cloudOcrApiKey.setOnClickListener(v -> AppUtil.showEditDialog(requireContext(), R.string.setting_cloud_ocr_key, SettingSaver.BAIDU_OCR_API_KEY.get(), result -> {
+            SettingSaver.BAIDU_OCR_API_KEY.set(result == null ? "" : result.trim());
+            binding.cloudOcrApiKey.setDescription(maskKey(SettingSaver.BAIDU_OCR_API_KEY.get()));
+        }));
+        binding.cloudOcrApiKey.setDescription(maskKey(SettingSaver.BAIDU_OCR_API_KEY.get()));
+
+        binding.cloudOcrSecretKey.setOnClickListener(v -> AppUtil.showEditDialog(requireContext(), R.string.setting_cloud_ocr_secret, SettingSaver.BAIDU_OCR_SECRET_KEY.get(), result -> {
+            SettingSaver.BAIDU_OCR_SECRET_KEY.set(result == null ? "" : result.trim());
+            binding.cloudOcrSecretKey.setDescription(maskKey(SettingSaver.BAIDU_OCR_SECRET_KEY.get()));
+        }));
+        binding.cloudOcrSecretKey.setDescription(maskKey(SettingSaver.BAIDU_OCR_SECRET_KEY.get()));
+
+
+
+
         // 定位
         binding.locationSwitch.setOnSwitchClickListener(v -> {
             if (binding.locationSwitch.isChecked()) {
@@ -468,10 +504,27 @@ public class SettingView extends Fragment {
         return binding.getRoot();
     }
 
+    private String maskKey(String key) {
+        if (key == null || key.isEmpty()) return "未配置";
+        if (key.length() <= 6) return "已配置";
+        return key.substring(0, 4) + "****";
+    }
+
     private void refreshNotificationCmd() {
         int notificationType = SettingSaver.PERMISSION_NOTIFICATION.get();
         boolean version = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM;
         binding.notificationTypeCmd.setVisibility(notificationType == 1 && version ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 从系统授权页返回时刷新所有文件访问开关状态
+        if (binding.storageSwitch != null) {
+            boolean granted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ? Environment.isExternalStorageManager() : SettingSaver.PERMISSION_STORAGE.get();
+            SettingSaver.PERMISSION_STORAGE.set(granted);
+            binding.storageSwitch.setChecked(granted);
+        }
     }
 
     private void refreshReloadService() {

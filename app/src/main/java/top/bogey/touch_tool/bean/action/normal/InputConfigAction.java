@@ -115,6 +115,7 @@ public class InputConfigAction extends ExecuteAction implements DynamicPinsActio
             }
             executeNext(runnable, outPin);
         } else {
+            markUnachieved();
             executeNext(runnable, elsePin);
         }
     }

@@ -10,12 +10,13 @@ import top.bogey.touch_tool.bean.action.ActionType;
 import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_list.PinList;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinDirPathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 列出目录内容
 public class ListDirAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.file_action_path);
+    private final transient Pin pathPin = new Pin(new PinDirPathString(), R.string.file_action_path);
     private final transient Pin filesPin = new Pin(new PinList(new PinString()), R.string.list_dir_action_files, true);
 
     public ListDirAction() {

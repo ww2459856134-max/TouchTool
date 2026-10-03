@@ -22,6 +22,10 @@ import top.bogey.touch_tool.utils.GsonUtil;
 
 public class OcrModel extends LiteRTModel {
     private List<String> labels = new ArrayList<>();
+    // PP-OCRv5 预处理模式：det 用 ImageNet 归一化，rec 输入映射到 -1~1（legacy 模型保持 /255 与 0~1）
+    private boolean v5Preprocess = false;
+    // 内置模型版本号（0=非内置/旧版内置），用于自动升级
+    private int builtinVersion = 0;
     private OcrModelConfig detConfig = null;
     private List<OcrModelConfig> recConfigs = new ArrayList<>();
     private transient int[] widths = {};
@@ -34,9 +38,19 @@ public class OcrModel extends LiteRTModel {
         super(ModelType.OCR);
     }
 
+    public boolean isV5Preprocess() {
+        return v5Preprocess;
+    }
+
+    public int getBuiltinVersion() {
+        return builtinVersion;
+    }
+
     public OcrModel(JsonObject jsonObject) {
         super(jsonObject);
         labels = GsonUtil.getAsObject(jsonObject, "labels", TypeToken.getParameterized(List.class, String.class).getType(), new ArrayList<>());
+        v5Preprocess = GsonUtil.getAsBoolean(jsonObject, "v5Preprocess", false);
+        builtinVersion = GsonUtil.getAsInt(jsonObject, "builtinVersion", 0);
         detConfig = GsonUtil.getAsObject(jsonObject, "detConfig", OcrModelConfig.class, null);
         recConfigs = GsonUtil.getAsObject(jsonObject, "recConfigs", TypeToken.getParameterized(List.class, OcrModelConfig.class).getType(), new ArrayList<>());
     }
@@ -160,9 +174,18 @@ public class OcrModel extends LiteRTModel {
         letterBox.getBitmap().getPixels(pixels, 0, inputWidth, 0, 0, inputWidth, inputHeight);
         for (int i = 0; i < pixels.length; i++) {
             int pixel = pixels[i];
-            input[i * 3] = (float) Color.red(pixel) / 255.0f;
-            input[i * 3 + 1] = (float) Color.green(pixel) / 255.0f;
-            input[i * 3 + 2] = (float) Color.blue(pixel) / 255.0f;
+            float r = (float) Color.red(pixel) / 255.0f;
+            float g = (float) Color.green(pixel) / 255.0f;
+            float b = (float) Color.blue(pixel) / 255.0f;
+            if (v5Preprocess) {
+                input[i * 3] = (r - 0.485f) / 0.229f;
+                input[i * 3 + 1] = (g - 0.456f) / 0.224f;
+                input[i * 3 + 2] = (b - 0.406f) / 0.225f;
+            } else {
+                input[i * 3] = r;
+                input[i * 3 + 1] = g;
+                input[i * 3 + 2] = b;
+            }
         }
 
         float[] output = detExecutor.execute(input);
@@ -181,6 +204,13 @@ public class OcrModel extends LiteRTModel {
         List<ModelResult> results = new ArrayList<>();
         for (OcrRecInput ocrRecInput : list) {
             LiteRTModelExecutor executor = recExecutors.get(ocrRecInput.index);
+            if (v5Preprocess) {
+                // native 生成的 rec 输入是 0~1，v5 模型期望 (x-0.5)/0.5 → -1~1
+                float[] recInput = ocrRecInput.input;
+                for (int j = 0; j < recInput.length; j++) {
+                    recInput[j] = (recInput[j] - 0.5f) * 2.0f;
+                }
+            }
             float[] recOutput = executor.execute(ocrRecInput.input);
             if (recOutput == null) continue;
 

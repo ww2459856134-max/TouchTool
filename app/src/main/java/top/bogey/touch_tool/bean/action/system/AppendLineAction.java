@@ -12,12 +12,13 @@ import top.bogey.touch_tool.bean.action.ActionType;
 import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 追加一行文本到文件末尾
 public class AppendLineAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.file_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.file_action_path);
     private final transient Pin linePin = new Pin(new PinString(), R.string.append_line_action_line);
     private final transient Pin resultPin = new Pin(new PinBoolean(), R.string.file_action_success, true);
 

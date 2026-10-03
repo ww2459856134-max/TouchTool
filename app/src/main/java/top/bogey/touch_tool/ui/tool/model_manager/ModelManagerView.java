@@ -31,6 +31,11 @@ public class ModelManagerView extends Fragment {
         binding.models.setAdapter(adapter);
         adapter.refresh();
 
+        ThreadUtil.execute(() -> {
+            boolean imported = ModelSaver.getInstance().ensureBuiltinModel(activity);
+            if (imported) binding.addButton.post(adapter::refresh);
+        });
+
         binding.addButton.setOnClickListener(v -> activity.launcherOpenDocument((code, intent) -> {
             if (code == Activity.RESULT_OK) {
                 Toast.makeText(activity, R.string.model_manager_importing, Toast.LENGTH_SHORT).show();

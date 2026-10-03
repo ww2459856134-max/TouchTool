@@ -11,6 +11,7 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_execute.PinExecute;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleSelect;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.bean.pin.special_pin.NotLinkAblePin;
 import top.bogey.touch_tool.bean.task.Task;
@@ -19,7 +20,7 @@ import top.bogey.touch_tool.utils.ExcelUtil;
 
 // 写入 Excel：写指定单元格或按分隔符追加一行，文件不存在自动创建
 public class WriteExcelAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.excel_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.excel_action_path);
     private final transient Pin modePin = new NotLinkAblePin(new PinSingleSelect(R.array.excel_write_mode), R.string.excel_action_mode);
     private final transient Pin rowPin = new RowShowablePin(new PinInteger(1), R.string.excel_action_row);
     private final transient Pin colPin = new ColShowablePin(new PinInteger(1), R.string.excel_action_col);
@@ -62,6 +63,7 @@ public class WriteExcelAction extends ExecuteAction {
             successPin.getValue(PinBoolean.class).setValue(true);
             executeNext(runnable, outPin);
         } catch (Exception e) {
+            markUnachieved();
             executeNext(runnable, elsePin);
         }
     }

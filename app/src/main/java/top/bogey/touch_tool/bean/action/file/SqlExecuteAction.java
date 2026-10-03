@@ -13,13 +13,14 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_execute.PinExecute;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinCodeString;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // SQL 执行：对 SQLite 数据库执行 SQL 语句，SELECT 返回查询结果，其他语句返回受影响状态
 // 支持建表/插入/更新/删除/查询；数据库文件不存在时自动创建
 public class SqlExecuteAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.sql_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.sql_action_path);
     private final transient Pin sqlPin = new Pin(new PinCodeString(), R.string.sql_action_sql);
     private final transient Pin countPin = new Pin(new PinInteger(0), R.string.sql_action_count, true);
     private final transient Pin resultPin = new Pin(new PinString(), R.string.pin_string, true);
@@ -46,6 +47,7 @@ public class SqlExecuteAction extends ExecuteAction {
         resultPin.setValue(new PinString(""));
 
         if (path.isEmpty() || sql.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -85,6 +87,7 @@ public class SqlExecuteAction extends ExecuteAction {
             executeNext(runnable, outPin);
         } catch (Exception e) {
             resultPin.setValue(new PinString(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+            markUnachieved();
             executeNext(runnable, elsePin);
         } finally {
             if (cursor != null) cursor.close();

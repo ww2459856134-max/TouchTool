@@ -16,13 +16,14 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinImage;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleSelect;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 把图片保存为文件
 public class WriteImageFileAction extends ExecuteAction {
     private final transient Pin imagePin = new Pin(new PinImage(), R.string.pin_image);
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.file_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.file_action_path);
     private final transient Pin formatPin = new Pin(new PinSingleSelect(R.array.image_file_format), R.string.write_image_file_action_format);
     private final transient Pin qualityPin = new Pin(new PinInteger(100), R.string.write_image_file_action_quality);
     private final transient Pin resultPin = new Pin(new PinBoolean(), R.string.file_action_success, true);

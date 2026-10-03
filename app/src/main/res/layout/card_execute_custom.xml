@@ -31,6 +31,7 @@
             android:paddingHorizontal="?attr/defaultPadding" />
 
         <LinearLayout
+            android:id="@+id/titleBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical">

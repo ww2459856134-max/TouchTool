@@ -221,6 +221,19 @@ public class AppUtil {
         }
     }
 
+    // 跳转"所有文件访问"系统授权页
+    public static void startStoragePermissionActivity(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + context.getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+            } catch (Exception e) {
+                context.startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+            }
+        }
+    }
+
     public static void startActivity(Context context, Intent intent, Bundle options) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
             ComponentName component = intent.getComponent();

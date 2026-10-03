@@ -41,6 +41,9 @@ import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFileContentString
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinNodePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinNodePathTextString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinPickString;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinCodeString;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinDirPathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinRingtoneString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinShortcutString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleLineString;
@@ -58,6 +61,7 @@ import top.bogey.touch_tool.ui.blueprint.picker.NodePickerPreview;
 import top.bogey.touch_tool.ui.blueprint.pin.PinView;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionByAllActionDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionByCustomActionDialog;
+import top.bogey.touch_tool.ui.blueprint.selecter.SelectFileDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_edit_text.SelectEditTextDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_icon.SelectIconDialog;
 import top.bogey.touch_tool.utils.AppUtil;
@@ -139,6 +143,18 @@ public class PinWidgetString extends PinWidget<PinString> {
     }
 
     public PinWidgetString(@NonNull Context context, ActionCard card, PinView pinView, PinPickString pinBase, boolean custom) {
+        this(context, card, pinView, (PinString) pinBase, custom);
+    }
+
+    public PinWidgetString(@NonNull Context context, ActionCard card, PinView pinView, PinCodeString pinBase, boolean custom) {
+        this(context, card, pinView, (PinString) pinBase, custom);
+    }
+
+    public PinWidgetString(@NonNull Context context, ActionCard card, PinView pinView, PinFilePathString pinBase, boolean custom) {
+        this(context, card, pinView, (PinString) pinBase, custom);
+    }
+
+    public PinWidgetString(@NonNull Context context, ActionCard card, PinView pinView, PinDirPathString pinBase, boolean custom) {
         this(context, card, pinView, (PinString) pinBase, custom);
     }
 
@@ -256,6 +272,26 @@ public class PinWidgetString extends PinWidget<PinString> {
                         pinView.getPin().notifyValueUpdated(card.getTask());
                     }
                 });
+            }
+            case FILE_PATH, DIR_PATH -> {
+                // 文件/目录路径选择：点击按钮打开文件浏览器
+                boolean directory = pinBase.getSubType() == PinSubType.DIR_PATH;
+                binding.editText.setEnabled(true);
+                binding.editText.setText(pinBase.getValue());
+                binding.editText.addTextChangedListener(new TextChangedListener() {
+                    @Override
+                    public void afterTextChanged(Editable s) {
+                        pinBase.setValue(s.toString());
+                        pinView.getPin().notifyValueUpdated(card.getTask());
+                    }
+                });
+                binding.pickButton.setIconResource(R.drawable.icon_folder);
+                binding.pickButton.setOnClickListener(v -> new SelectFileDialog(getContext(), directory, file -> {
+                    String value = file.getAbsolutePath();
+                    pinBase.setValue(value);
+                    pinView.getPin().notifyValueUpdated(card.getTask());
+                    binding.editText.setText(value);
+                }).show());
             }
             case PICK_STRING -> {
                 PinPickString pickString = (PinPickString) pinBase;

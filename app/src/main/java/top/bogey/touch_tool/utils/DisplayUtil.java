@@ -372,7 +372,8 @@ public class DisplayUtil {
         return matchTemplateResult(bitmap, template, area, similarity, 0, false);
     }
 
-    public static MatchResult matchTemplateResult(Bitmap bitmap, Bitmap template, Rect area, int similarity, int speed, boolean canny) {
+    // 与 matchAllTemplate/matchColor 保持一致加锁，避免并发调用 native 时互相干扰
+    public static synchronized MatchResult matchTemplateResult(Bitmap bitmap, Bitmap template, Rect area, int similarity, int speed, boolean canny) {
         if (bitmap == null) return null;
         if (template == null) return null;
         // 如果图片尺寸小于模板尺寸，则不匹配

@@ -163,6 +163,7 @@ import top.bogey.touch_tool.bean.action.start.OutCallStartAction;
 import top.bogey.touch_tool.bean.action.start.ReceivedShareStartAction;
 import top.bogey.touch_tool.bean.action.start.ScreenStartAction;
 import top.bogey.touch_tool.bean.action.start.TimeStartAction;
+import top.bogey.touch_tool.bean.action.string.CloudOcrAction;
 import top.bogey.touch_tool.bean.action.string.FindOcrTextAction;
 import top.bogey.touch_tool.bean.action.string.GetOcrTextAction;
 import top.bogey.touch_tool.bean.action.string.IsOcrTextExistAction;
@@ -410,6 +411,7 @@ public class ActionInfo {
     private final static ActionInfo GET_OCR_TEXT_INFO = new ActionInfo(ActionType.GET_OCR_TEXT, GetOcrTextAction.class, R.drawable.icon_document_scanner, R.string.get_ocr_text_action, R.string.get_ocr_text_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo IS_OCR_TEXT_EXIST_INFO = new ActionInfo(ActionType.IS_OCR_TEXT_EXIST, IsOcrTextExistAction.class, R.drawable.icon_document_scanner, R.string.is_ocr_text_exist_action, R.string.is_ocr_text_exist_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo FIND_OCR_TEXT_INFO = new ActionInfo(ActionType.FIND_OCR_TEXT, FindOcrTextAction.class, R.drawable.icon_document_scanner, R.string.find_ocr_text_action, R.string.find_ocr_text_action_desc, 0, NormalActionCard.class);
+    private final static ActionInfo CLOUD_OCR_TEXT_INFO = new ActionInfo(ActionType.CLOUD_OCR_TEXT, CloudOcrAction.class, R.drawable.icon_document_scanner, R.string.cloud_ocr_text_action, R.string.cloud_ocr_text_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo PARSE_JSON_INFO = new ActionInfo(ActionType.PARSE_JSON, ParseJsonAction.class, R.drawable.icon_text_fields, R.string.parse_json_action, R.string.parse_json_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo STRING_TO_SINGLE_SELECT_INFO = new ActionInfo(ActionType.STRING_TO_SINGLE_SELECT, StringToSingleSelectAction.class, R.drawable.icon_text_fields, R.string.string_to_single_select_action, R.string.string_to_single_select_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo STRING_CONTAIN_INFO = new ActionInfo(ActionType.STRING_CONTAIN, StringContainAction.class, R.drawable.icon_edit, R.string.string_contain_action, R.string.string_contain_action_desc, 0, NormalActionCard.class);
@@ -693,6 +695,7 @@ public class ActionInfo {
             case GET_OCR_TEXT -> GET_OCR_TEXT_INFO;
             case FIND_OCR_TEXT -> FIND_OCR_TEXT_INFO;
             case IS_OCR_TEXT_EXIST -> IS_OCR_TEXT_EXIST_INFO;
+            case CLOUD_OCR_TEXT -> CLOUD_OCR_TEXT_INFO;
             case PARSE_JSON -> PARSE_JSON_INFO;
             case STRING_TO_SINGLE_SELECT -> STRING_TO_SINGLE_SELECT_INFO;
             case STRING_CONTAIN -> STRING_CONTAIN_INFO;

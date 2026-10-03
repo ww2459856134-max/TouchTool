@@ -214,6 +214,29 @@
                         app:title="@string/permission_setting_bluetooth" />
 
                     <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSwitch
+                        android:id="@+id/storageSwitch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/permission_setting_storage_desc"
+                        app:icon="@drawable/icon_folder"
+                        app:title="@string/permission_setting_storage" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetNormal
+                        android:id="@+id/cloudOcrApiKey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/setting_cloud_ocr_key_desc"
+                        app:icon="@drawable/icon_document_scanner"
+                        app:title="@string/setting_cloud_ocr_key" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetNormal
+                        android:id="@+id/cloudOcrSecretKey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/setting_cloud_ocr_secret_desc"
+                        app:icon="@drawable/icon_lock"
+                        app:title="@string/setting_cloud_ocr_secret" />
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSwitch
                         android:id="@+id/locationSwitch"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

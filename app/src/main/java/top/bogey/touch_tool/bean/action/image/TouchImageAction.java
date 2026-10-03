@@ -41,7 +41,7 @@ public class TouchImageAction extends ExecuteAction {
     private final transient Pin repeatPin = new RepeatShowablePin(new PinInteger(3), R.string.touch_image_action_repeat, false, false, true);
     private final transient Pin intervalPin = new IntervalShowablePin(new PinInteger(100), R.string.touch_image_action_click_interval, false, false, true);
     private final transient Pin similarityPin = new Pin(new PinInteger(80), R.string.touch_image_action_similarity);
-    private final transient Pin areaPin = new Pin(new PinArea(), R.string.touch_image_action_area, false, false, true);
+    private final transient Pin areaPin = new Pin(new PinArea(), R.string.touch_image_action_area, false, false, false);
     private final transient Pin scalePin = new Pin(new PinSingleSelect(R.array.match_image_scale, 1), R.string.image_action_scale, false, false, true);
     private final transient Pin cannyPin = new Pin(new PinBoolean(false), R.string.image_action_canny, false, false, true);
     private final transient Pin randomPin = new Pin(new PinBoolean(), R.string.touch_image_action_offset, false, false, true);
@@ -105,6 +105,7 @@ public class TouchImageAction extends ExecuteAction {
             runnable.sleep(retryInterval);
         }
         if (rect == null || rect.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }

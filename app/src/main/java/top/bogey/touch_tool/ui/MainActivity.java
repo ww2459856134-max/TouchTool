@@ -14,6 +14,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import top.bogey.touch_tool.MainApplication;
 import top.bogey.touch_tool.R;
+import top.bogey.touch_tool.bean.save.model.ModelSaver;
 import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.save.task.TaskSaver;
 import top.bogey.touch_tool.bean.task.Task;
@@ -22,6 +23,7 @@ import top.bogey.touch_tool.ui.blueprint.BlueprintView;
 import top.bogey.touch_tool.ui.task.TaskViewDirections;
 import top.bogey.touch_tool.ui.tool.task_manager.ImportTaskDialog;
 import top.bogey.touch_tool.utils.AppUtil;
+import top.bogey.touch_tool.utils.ThreadUtil;
 
 public class MainActivity extends FloatViewActivity {
     public static final String INTENT_KEY_OPEN_TASK = "INTENT_KEY_OPEN_TASK";
@@ -40,6 +42,7 @@ public class MainActivity extends FloatViewActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ThreadUtil.execute(() -> ModelSaver.getInstance().ensureBuiltinModel(this));
         MainApplication.getInstance().setActivity(this);
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());

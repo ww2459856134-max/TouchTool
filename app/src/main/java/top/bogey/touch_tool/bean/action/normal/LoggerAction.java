@@ -44,21 +44,27 @@ public class LoggerAction extends ExecuteAction {
 
     @Override
     public void execute(TaskRunnable runnable, Pin pin) {
+        runnable.addLog(new LogInfo(new NormalLog("[诊断] 进入输出日志")), 0);
         PinObject logObject = getPinValue(runnable, logPin);
+        runnable.addLog(new LogInfo(new NormalLog("[诊断] 日志文本取值完成: " + logObject)), 0);
         PinBoolean show = getPinValue(runnable, showPin);
         PinSingleSelect anchor = getPinValue(runnable, anchorPin);
         PinSingleSelect gravity = getPinValue(runnable, gravityPin);
         PinPoint showPos = getPinValue(runnable, showPosPin);
         PinBoolean save = getPinValue(runnable, savePin);
+        runnable.addLog(new LogInfo(new NormalLog("[诊断] 针脚取值全部完成")), 0);
 
         if (show.getValue()) {
             ToastFloatView.showToast(logObject.toString(), EAnchor.values()[anchor.getIndex()], EAnchor.values()[gravity.getIndex()], showPos.getValue());
+            runnable.addLog(new LogInfo(new NormalLog("[诊断] 悬浮提示完成")), 0);
         }
 
         if (save.getValue()) {
             runnable.addLog(new LogInfo(new NormalLog(logObject.toString())), 0);
+            runnable.addLog(new LogInfo(new NormalLog("[诊断] 日志保存完成")), 0);
         }
 
+        runnable.addLog(new LogInfo(new NormalLog("[诊断] 即将结束")), 0);
         executeNext(runnable, outPin);
     }
 

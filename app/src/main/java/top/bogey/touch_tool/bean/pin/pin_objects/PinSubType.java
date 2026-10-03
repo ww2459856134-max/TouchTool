@@ -24,6 +24,10 @@ public enum PinSubType {
     // 代码：多行代码文本
     CODE_TEXT,
 
+    // 路径：文件路径选择
+    FILE_PATH,
+    DIR_PATH,
+
     // 其他：带图标，带文字
     WITH_ICON, WITH_STRING
 }

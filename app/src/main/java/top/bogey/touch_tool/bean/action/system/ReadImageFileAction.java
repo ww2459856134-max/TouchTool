@@ -13,12 +13,13 @@ import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinImage;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 从文件读取图片
 public class ReadImageFileAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.file_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.file_action_path);
     private final transient Pin imagePin = new Pin(new PinImage(), R.string.pin_image, true);
     private final transient Pin resultPin = new Pin(new PinBoolean(), R.string.file_action_success, true);
 

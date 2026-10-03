@@ -42,6 +42,7 @@ public abstract class FindExecuteAction extends ExecuteAction {
         if (found) {
             executeNext(runnable, outPin);
         } else {
+            markUnachieved();
             executeNext(runnable, elsePin);
         }
     }

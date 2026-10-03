@@ -11,6 +11,15 @@
         android:title="@string/task_running_detail_log" />
 
     <item
+        android:id="@+id/taskRunBadge"
+        android:checkable="true"
+        android:title="@string/task_run_badge" />
+
+    <item
+        android:id="@+id/taskRunStats"
+        android:title="@string/task_run_stats" />
+
+    <item
         android:id="@+id/taskCapture"
         android:title="@string/task_capture" />
 </menu>

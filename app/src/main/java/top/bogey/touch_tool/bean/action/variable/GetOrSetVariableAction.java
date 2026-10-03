@@ -15,6 +15,7 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinMap;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinObject;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_list.PinList;
+import top.bogey.touch_tool.bean.other.watcher.VariableWatcher;
 import top.bogey.touch_tool.bean.save.task.TaskSaver;
 import top.bogey.touch_tool.bean.save.variable.VariableSaver;
 import top.bogey.touch_tool.bean.task.Task;
@@ -69,7 +70,10 @@ public class GetOrSetVariableAction extends ExecuteOrCalculateAction implements 
         if (var == null) var = VariableSaver.getInstance().getVar(varId);
         if (var != null && inVarPin != null) {
             PinObject value = getPinValue(runnable, inVarPin);
+            String oldValue = var.getValue() == null ? "" : var.getValue().toString();
             var.setSaveValue(value);
+            VariableWatcher.getInstance().record(var.getTitle(), oldValue,
+                    value == null ? "" : value.toString(), getTitle());
 
             // 保存变量，需要找到原始任务来保存
             if (savePin.getValue(PinBoolean.class).getValue()) {

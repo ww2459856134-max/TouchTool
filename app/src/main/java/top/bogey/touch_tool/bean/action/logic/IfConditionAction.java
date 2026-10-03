@@ -30,6 +30,7 @@ public class IfConditionAction extends ExecuteAction {
         if (condition.getValue()) {
             executeNext(runnable, outPin);
         } else {
+            markUnachieved();
             executeNext(runnable, elsePin);
         }
     }

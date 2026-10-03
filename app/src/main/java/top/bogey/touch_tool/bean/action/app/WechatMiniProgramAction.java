@@ -56,6 +56,7 @@ public class WechatMiniProgramAction extends ExecuteAction {
         successPin.getValue(PinBoolean.class).setValue(false);
 
         if (appId.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -69,6 +70,7 @@ public class WechatMiniProgramAction extends ExecuteAction {
         // 微信未安装时走失败分支
         MainApplication application = MainApplication.getInstance();
         if (application.getPackageManager().getLaunchIntentForPackage("com.tencent.mm") == null) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }

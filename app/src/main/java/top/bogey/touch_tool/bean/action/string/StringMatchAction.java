@@ -59,6 +59,7 @@ public class StringMatchAction extends ExecuteAction {
                 return;
             }
         }
+        markUnachieved();
         executeNext(runnable, elsePin);
     }
 }

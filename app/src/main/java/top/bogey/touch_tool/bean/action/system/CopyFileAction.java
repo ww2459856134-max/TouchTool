@@ -9,13 +9,14 @@ import top.bogey.touch_tool.bean.action.ActionType;
 import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 复制文件或目录
 public class CopyFileAction extends ExecuteAction {
-    private final transient Pin sourcePin = new Pin(new PinString(), R.string.file_action_source_path);
-    private final transient Pin targetPin = new Pin(new PinString(), R.string.file_action_target_path);
+    private final transient Pin sourcePin = new Pin(new PinFilePathString(), R.string.file_action_source_path);
+    private final transient Pin targetPin = new Pin(new PinFilePathString(), R.string.file_action_target_path);
     private final transient Pin overwritePin = new Pin(new PinBoolean(), R.string.file_action_overwrite);
     private final transient Pin resultPin = new Pin(new PinBoolean(), R.string.file_action_success, true);
 

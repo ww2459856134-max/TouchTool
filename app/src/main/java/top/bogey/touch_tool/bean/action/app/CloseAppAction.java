@@ -40,6 +40,7 @@ public class CloseAppAction extends ExecuteAction {
         successPin.getValue(PinBoolean.class).setValue(false);
 
         if (packageName == null || packageName.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }

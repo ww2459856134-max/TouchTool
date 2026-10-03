@@ -38,6 +38,7 @@ public class ReadNotificationAction extends ExecuteAction {
     public void execute(TaskRunnable runnable, Pin pin) {
         if (!NotificationHelper.isServiceReady()) {
             AppUtil.runOnUiThread(() -> Toast.makeText(MainApplication.getInstance(), R.string.notification_permission_tips, Toast.LENGTH_SHORT).show());
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }

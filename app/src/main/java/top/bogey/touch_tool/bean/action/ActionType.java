@@ -161,6 +161,7 @@ public enum ActionType {
     GET_OCR_TEXT,
     FIND_OCR_TEXT,
     IS_OCR_TEXT_EXIST,
+    CLOUD_OCR_TEXT,
     PARSE_JSON,
     TO_JSON,
     STRING_ENCODE,

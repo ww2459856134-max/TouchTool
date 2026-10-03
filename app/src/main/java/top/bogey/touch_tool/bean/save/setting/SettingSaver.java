@@ -57,6 +57,9 @@ public class SettingSaver {
     public final static PermissionExactAlarm PERMISSION_EXACT_ALARM = new PermissionExactAlarm("PERMISSION_EXACT_ALARM", false);
     /// 蓝牙权限
     public final static SettingSave<Boolean> PERMISSION_BLUETOOTH = new SettingSave<>("PERMISSION_BLUETOOTH", false);
+    public final static SettingSave<Boolean> PERMISSION_STORAGE = new SettingSave<>("PERMISSION_STORAGE", false);
+    public final static SettingSave<String> BAIDU_OCR_API_KEY = new SettingSave<>("BAIDU_OCR_API_KEY", "");
+    public final static SettingSave<String> BAIDU_OCR_SECRET_KEY = new SettingSave<>("BAIDU_OCR_SECRET_KEY", "");
     /// 定位权限
     public final static SettingSave<Boolean> PERMISSION_LOCATION = new SettingSave<>("PERMISSION_LOCATION", false);
 

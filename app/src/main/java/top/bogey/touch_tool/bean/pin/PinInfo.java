@@ -50,6 +50,8 @@ import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinNodePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinNodePathTextString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinPickString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinCodeString;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinDirPathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinRingtoneString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinShortcutString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleLineString;
@@ -107,6 +109,8 @@ public class PinInfo {
     private final static PinInfo NODE_PATH_TEXT_STRING_INFO = new PinInfo(PinType.STRING, PinSubType.NODE_PATH_TEXT, PinNodePathTextString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string_node_path_text, PinWidgetString.class, true, true);
     private final static PinInfo PICK_STRING_INFO = new PinInfo(PinType.STRING, PinSubType.PICK_STRING, PinPickString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string, PinWidgetString.class, true, true);
     private final static PinInfo CODE_TEXT_STRING_INFO = new PinInfo(PinType.STRING, PinSubType.CODE_TEXT, PinCodeString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string_code, PinWidgetString.class, true, true);
+    private final static PinInfo FILE_PATH_STRING_INFO = new PinInfo(PinType.STRING, PinSubType.FILE_PATH, PinFilePathString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string_file_path, PinWidgetString.class, true, true);
+    private final static PinInfo DIR_PATH_STRING_INFO = new PinInfo(PinType.STRING, PinSubType.DIR_PATH, PinDirPathString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string_dir_path, PinWidgetString.class, true, true);
     private final static PinInfo TASK_STRING_INFO = new PinInfo(PinType.STRING, PinSubType.TASK_ID, PinTaskString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string_task, PinWidgetString.class, false, false);
     private final static PinInfo ALL_TASK_STRING_INFO = new PinInfo(PinType.STRING, PinSubType.ALL_TASK_ID, PinTaskString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string_task, PinWidgetString.class, false, false);
 
@@ -179,6 +183,8 @@ public class PinInfo {
                     case SINGLE_SELECT -> info = SELECT_STRING_INFO;
                     case PICK_STRING -> info = PICK_STRING_INFO;
                     case CODE_TEXT -> info = CODE_TEXT_STRING_INFO;
+                    case FILE_PATH -> info = FILE_PATH_STRING_INFO;
+                    case DIR_PATH -> info = DIR_PATH_STRING_INFO;
                 }
             }
             case NUMBER -> {

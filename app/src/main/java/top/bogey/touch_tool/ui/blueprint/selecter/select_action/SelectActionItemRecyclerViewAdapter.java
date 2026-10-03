@@ -219,6 +219,7 @@ public class SelectActionItemRecyclerViewAdapter extends RecyclerView.Adapter<Se
                     ActionInfo info = ActionInfo.getActionInfo(actionType);
                     if (info != null) action = info.newInstance();
                 }
+                if (action == null) return;
                 if (callback != null) callback.onResult(action);
             });
         }

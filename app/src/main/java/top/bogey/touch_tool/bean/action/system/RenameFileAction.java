@@ -10,12 +10,13 @@ import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleLineString;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 重命名文件或目录
 public class RenameFileAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.file_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.file_action_path);
     private final transient Pin namePin = new Pin(new PinSingleLineString(), R.string.rename_file_action_new_name);
     private final transient Pin resultPin = new Pin(new PinBoolean(), R.string.file_action_success, true);
 

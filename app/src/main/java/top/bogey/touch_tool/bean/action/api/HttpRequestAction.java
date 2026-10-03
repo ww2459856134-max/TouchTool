@@ -73,6 +73,7 @@ public class HttpRequestAction extends ExecuteAction {
         responsePin.setValue(new PinString(""));
 
         if (url.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -125,6 +126,7 @@ public class HttpRequestAction extends ExecuteAction {
             successPin.getValue(PinBoolean.class).setValue(success);
             executeNext(runnable, success ? outPin : elsePin);
         } catch (Exception e) {
+            markUnachieved();
             executeNext(runnable, elsePin);
         } finally {
             if (connection != null) connection.disconnect();

@@ -35,7 +35,7 @@ public class DragImageAction extends ExecuteAction {
     private final transient Pin templatePin = new Pin(new PinImage(), R.string.touch_image_action_template);
     private final transient Pin delayPin = new Pin(new PinValueArea(0, 0), R.string.touch_image_action_delay, false, false, true);
     private final transient Pin similarityPin = new Pin(new PinInteger(80), R.string.touch_image_action_similarity);
-    private final transient Pin areaPin = new Pin(new PinArea(), R.string.touch_image_action_area, false, false, true);
+    private final transient Pin areaPin = new Pin(new PinArea(), R.string.touch_image_action_area, false, false, false);
     private final transient Pin scalePin = new Pin(new PinSingleSelect(R.array.match_image_scale, 1), R.string.image_action_scale, false, false, true);
     private final transient Pin cannyPin = new Pin(new PinBoolean(false), R.string.image_action_canny, false, false, true);
     private final transient Pin targetXPin = new Pin(new PinInteger(500), R.string.drag_image_action_target_x);
@@ -75,6 +75,7 @@ public class DragImageAction extends ExecuteAction {
         }
 
         if (service == null) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -82,6 +83,7 @@ public class DragImageAction extends ExecuteAction {
         Bitmap bitmap = service.tryGetScreenShot();
         Rect rect = DisplayUtil.matchTemplate(bitmap, template.getImage(), area.getValue(), similarity.intValue(), scale.getIndex(), canny.getValue());
         if (rect == null || rect.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -97,6 +99,7 @@ public class DragImageAction extends ExecuteAction {
             PinArea targetArea = getPinValue(runnable, targetAreaPin);
             Rect target = targetArea.getValue();
             if (target == null || target.isEmpty()) {
+                markUnachieved();
                 executeNext(runnable, elsePin);
                 return;
             }

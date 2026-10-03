@@ -178,6 +178,7 @@ public class ActionMap {
                     ActionType.STRING_DECODE,
                     ActionType.STRING_ENCRYPT,
                     ActionType.GET_OCR_TEXT,
+                    ActionType.CLOUD_OCR_TEXT,
                     ActionType.FIND_OCR_TEXT,
                     ActionType.IS_OCR_TEXT_EXIST,
                     ActionType.PARSE_JSON,

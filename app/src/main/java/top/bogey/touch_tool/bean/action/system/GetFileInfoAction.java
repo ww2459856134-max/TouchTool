@@ -10,12 +10,13 @@ import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinLong;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 获取文件信息
 public class GetFileInfoAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.file_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.file_action_path);
     private final transient Pin existPin = new Pin(new PinBoolean(), R.string.get_file_info_action_exist, true);
     private final transient Pin dirPin = new Pin(new PinBoolean(), R.string.get_file_info_action_is_dir, true);
     private final transient Pin sizePin = new Pin(new PinLong(0), R.string.get_file_info_action_size, true);

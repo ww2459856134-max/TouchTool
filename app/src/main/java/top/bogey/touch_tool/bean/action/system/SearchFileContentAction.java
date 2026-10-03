@@ -14,12 +14,13 @@ import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 搜索文件内容中的关键字
 public class SearchFileContentAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.file_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.file_action_path);
     private final transient Pin keywordPin = new Pin(new PinString(), R.string.search_file_content_action_keyword);
     private final transient Pin foundPin = new Pin(new PinBoolean(), R.string.search_file_content_action_found, true);
     private final transient Pin linePin = new Pin(new PinInteger(0), R.string.search_file_content_action_line_number, true);

@@ -1035,18 +1035,40 @@ public class MainAccessibilityService extends AccessibilityService {
 
     // 截图 ----------------------------------------------------------------------------- start
 
-    private SoftReference<Bitmap> screenShot = new SoftReference<>(null);
+    // 截图缓存：强引用 + 两代延迟回收。原 SoftReference 会被 GC 随时清空、旧图立即 recycle 会导致
+    // 其他线程正在匹配时位图失效（native 崩溃/偶发识别失败），现改为：替换时保留上一帧，再下一帧才回收
+    private final Object screenShotLock = new Object();
+    private Bitmap screenShotBitmap = null;
+    private Bitmap staleScreenShot = null;
+
+    private void replaceScreenShot(Bitmap bitmap) {
+        if (bitmap == null) return;
+        Bitmap recycle = null;
+        synchronized (screenShotLock) {
+            if (bitmap == screenShotBitmap) return;
+            if (staleScreenShot != null && staleScreenShot != screenShotBitmap) recycle = staleScreenShot;
+            staleScreenShot = screenShotBitmap;
+            screenShotBitmap = bitmap;
+        }
+        // 回收两代前的位图，且在锁外执行
+        if (recycle != null && !recycle.isRecycled()) recycle.recycle();
+    }
+
+    private Bitmap getCachedScreenShot() {
+        synchronized (screenShotLock) {
+            return screenShotBitmap;
+        }
+    }
 
     public synchronized Bitmap getScreenShotByCapture() {
-        Bitmap cachedBitmap = screenShot.get();
+        Bitmap cachedBitmap = getCachedScreenShot();
         if (captureBinder == null) return cachedBitmap;
 
         Bitmap bitmap = captureBinder.getScreenShot();
         if (bitmap == null) {
             return cachedBitmap;
         } else {
-            if (cachedBitmap != null && !cachedBitmap.isRecycled()) cachedBitmap.recycle();
-            screenShot = new SoftReference<>(bitmap);
+            replaceScreenShot(bitmap);
             return bitmap;
         }
     }
@@ -1062,22 +1084,21 @@ public class MainAccessibilityService extends AccessibilityService {
                         Bitmap bitmap = Bitmap.wrapHardwareBuffer(hardwareBuffer, result.getColorSpace());
                         if (bitmap != null) {
                             Bitmap copy = bitmap.copy(Bitmap.Config.ARGB_8888, true);
-
-                            Bitmap cachedBitmap = screenShot.get();
-                            if (cachedBitmap != null && !cachedBitmap.isRecycled()) cachedBitmap.recycle();
-
-                            screenShot = new SoftReference<>(copy);
                             bitmap.recycle();
+                            replaceScreenShot(copy);
                             future.complete(copy);
+                        } else {
+                            // 位图转换失败也要完成 future，否则调用方永久阻塞
+                            future.complete(getCachedScreenShot());
                         }
                     } catch (Exception e) {
-                        future.complete(screenShot.get());
+                        future.complete(getCachedScreenShot());
                     }
                 }
 
                 @Override
                 public void onFailure(int errorCode) {
-                    future.complete(screenShot.get());
+                    future.complete(getCachedScreenShot());
                 }
             };
 
@@ -1086,7 +1107,7 @@ public class MainAccessibilityService extends AccessibilityService {
             } catch (RejectedExecutionException e) {
                 // 线程池已满，截图请求没有提交，直接退回缓存的截图
                 Log.e("TAG", "getScreenShotByAccessibility: 线程池已满，截图未能提交", e);
-                return screenShot.get();
+                return getCachedScreenShot();
             }
             return future.join();
         } else {

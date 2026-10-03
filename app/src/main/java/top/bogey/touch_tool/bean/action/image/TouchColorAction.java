@@ -74,6 +74,7 @@ public class TouchColorAction extends ExecuteAction {
                 }
             }
             if (validList.isEmpty()) {
+                markUnachieved();
                 executeNext(runnable, elsePin);
                 return;
             }
@@ -93,6 +94,7 @@ public class TouchColorAction extends ExecuteAction {
             executeNext(runnable, outPin);
             return;
         }
+        markUnachieved();
         executeNext(runnable, elsePin);
     }
 

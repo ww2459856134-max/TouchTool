@@ -16,6 +16,7 @@ import top.bogey.touch_tool.bean.action.start.StartAction;
 import top.bogey.touch_tool.bean.other.log.ActionLog;
 import top.bogey.touch_tool.bean.other.log.DateTimeLog;
 import top.bogey.touch_tool.bean.other.log.LogInfo;
+import top.bogey.touch_tool.bean.other.run.RunResultSaver;
 import top.bogey.touch_tool.bean.other.log.NormalLog;
 import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.save.log.LogSaver;
@@ -31,6 +32,14 @@ public class TaskRunnable implements Runnable {
 
 
     private int progress = 0;
+
+    // 区间调试：到达该动作后停止后续执行（目标动作本身会执行完）
+    private volatile String targetActionId;
+    private volatile boolean targetReached = false;
+
+    public void setTargetAction(String actionId) {
+        this.targetActionId = actionId;
+    }
 
     private Future<?> future;
     private volatile boolean interrupt = false;
@@ -52,6 +61,7 @@ public class TaskRunnable implements Runnable {
 
     @Override
     public void run() {
+        RunResultSaver.getInstance().beginRun(task.getId());
         if (startAction instanceof InnerStartAction) {
             cacheLog = true;
         }
@@ -131,8 +141,17 @@ public class TaskRunnable implements Runnable {
     }
 
     public void addExecuteProgress(Action action) {
+        // 区间调试：已到达目标动作，拦截后续所有动作
+        if (targetReached) {
+            stop();
+            return;
+        }
         progress++;
         listeners.stream().filter(Objects::nonNull).forEach(listener -> listener.onExecute(this, action, progress));
+
+        if (targetActionId != null && targetActionId.equals(action.getId())) {
+            targetReached = true;
+        }
 
         StartAction startAction = getStartAction();
         if (startAction == null || startAction.stop(this)) stop();

@@ -40,11 +40,13 @@ import top.bogey.touch_tool.bean.action.task.CustomEndAction;
 import top.bogey.touch_tool.bean.action.task.CustomStartAction;
 import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.save.task.TaskSaver;
+import top.bogey.touch_tool.bean.other.run.RunResultSaver;
 import top.bogey.touch_tool.bean.task.Task;
 import top.bogey.touch_tool.databinding.ViewBlueprintBinding;
 import top.bogey.touch_tool.ui.MainActivity;
 import top.bogey.touch_tool.ui.blueprint.card.ActionCard;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionDialog;
+import top.bogey.touch_tool.ui.tool.watcher.VariableWatcherFloatView;
 import top.bogey.touch_tool.ui.tool.log.LogFloatView;
 import top.bogey.touch_tool.utils.AppUtil;
 import top.bogey.touch_tool.utils.DisplayUtil;
@@ -283,6 +285,9 @@ public class BlueprintView extends Fragment {
             menuItem.setChecked(task.hasFlag(Task.FLAG_DEBUG));
             menuItem.setVisible(task.getParent() == null);
 
+            MenuItem badgeItem = popupMenu.getMenu().findItem(R.id.taskRunBadge);
+            badgeItem.setChecked(!task.hasFlag(Task.FLAG_HIDE_RUN_BADGE));
+
             popupMenu.setOnMenuItemClickListener(item -> {
                 int itemId = item.getItemId();
                 if (itemId == R.id.taskRunningLog) {
@@ -295,6 +300,44 @@ public class BlueprintView extends Fragment {
                     currTask.toggleFlag(Task.FLAG_DEBUG);
                     currTask.save();
                     item.setChecked(currTask.hasFlag(Task.FLAG_DEBUG));
+                    return true;
+                } else if (itemId == R.id.taskRunBadge) {
+                    Task currTask = taskStack.peek();
+                    currTask.toggleFlag(Task.FLAG_HIDE_RUN_BADGE);
+                    currTask.save();
+                    item.setChecked(!currTask.hasFlag(Task.FLAG_HIDE_RUN_BADGE));
+                    binding.cardLayout.refreshRunBadges();
+                    return true;
+                } else if (itemId == R.id.taskRunStats) {
+                    Task currTask = taskStack.peek();
+                    RunResultSaver.TaskStats stats = RunResultSaver.getInstance().getStats(currTask.getId());
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("运行次数：").append(stats.runCount);
+                    sb.append("\n上次运行：").append(stats.lastRunTime == null ? "无" : stats.lastRunTime);
+                    sb.append("\n\n动作执行：").append(stats.executed).append(" 次");
+                    sb.append("\n　成功：").append(stats.success);
+                    sb.append("　未达成：").append(stats.unachieved);
+                    sb.append("　异常：").append(stats.error);
+                    if (!stats.actionAgg.isEmpty()) {
+                        sb.append("\n\n耗时最长的动作：");
+                        stats.actionAgg.entrySet().stream()
+                                .sorted((a, b) -> Long.compare(b.getValue()[2], a.getValue()[2]))
+                                .limit(3)
+                                .forEach(e -> {
+                                    long[] agg = e.getValue();
+                                    String title = stats.actionTitles.getOrDefault(e.getKey(), "未知动作");
+                                    sb.append("\n　").append(title)
+                                      .append("　最慢 ").append(RunResultSaver.formatDurationText(agg[2]))
+                                      .append("（").append(agg[0]).append("次）");
+                                });
+                    } else {
+                        sb.append("\n\n本会话还没有动作执行记录");
+                    }
+                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(R.string.task_run_stats)
+                            .setMessage(sb.toString())
+                            .setPositiveButton(R.string.cancel, null)
+                            .show();
                     return true;
                 } else if (itemId == R.id.taskCapture) {
                     Bitmap bitmap = binding.cardLayout.takeTaskCapture();
@@ -330,6 +373,9 @@ public class BlueprintView extends Fragment {
             if (card == null) return;
             binding.cardLayout.initCardPos(card);
         }).show());
+
+        binding.variableWatcherButton.setOnClickListener(v ->
+                new VariableWatcherFloatView(requireContext(), taskStack.peek()).show());
 
         binding.sortButton.setOnClickListener(v -> {
             if (!binding.cardLayout.isLoaded()) return;
@@ -518,6 +564,13 @@ public class BlueprintView extends Fragment {
             task = taskStack.peek();
             setTask(task);
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 运行结束回到编辑页时兜底刷新角标（实时通知可能错过）
+        binding.cardLayout.refreshRunBadges();
     }
 
     public void setTask(Task task) {

@@ -10,12 +10,13 @@ import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinLong;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinFilePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 // 删除文件或目录
 public class DeleteFileAction extends ExecuteAction {
-    private final transient Pin pathPin = new Pin(new PinString(), R.string.file_action_path);
+    private final transient Pin pathPin = new Pin(new PinFilePathString(), R.string.file_action_path);
     private final transient Pin recursivePin = new Pin(new PinBoolean(), R.string.delete_file_action_recursive);
     private final transient Pin resultPin = new Pin(new PinBoolean(), R.string.file_action_success, true);
     private final transient Pin countPin = new Pin(new PinLong(0), R.string.delete_file_action_count, true);

@@ -39,6 +39,8 @@ import top.bogey.touch_tool.utils.callback.BooleanResultCallback;
 
 public class Task extends Identity implements IActionManager, ITaskManager, IVariableManager, ITagManager {
     public final static int FLAG_DEBUG = 1;
+    // 隐藏运行结果角标（默认显示，flag 语义保证旧任务兼容）
+    public final static int FLAG_HIDE_RUN_BADGE = 2;
 
     private final long createTime;
 

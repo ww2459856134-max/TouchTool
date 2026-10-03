@@ -60,6 +60,7 @@ public class NodeTouchAction extends ExecuteAction {
                 }
             }
         }
+        markUnachieved();
         executeNext(runnable, elsePin);
     }
 

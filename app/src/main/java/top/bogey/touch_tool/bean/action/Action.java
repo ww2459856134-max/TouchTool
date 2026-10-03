@@ -22,6 +22,7 @@ import java.util.UUID;
 
 import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.base.Identity;
+import top.bogey.touch_tool.bean.other.run.RunResultSaver;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.PinListener;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinAdd;
@@ -34,7 +35,6 @@ import top.bogey.touch_tool.bean.task.Task;
 import top.bogey.touch_tool.service.TaskRunnable;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 
-import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.utils.GsonUtil;
 
 public abstract class Action extends Identity implements PinListener {
@@ -103,6 +103,10 @@ public abstract class Action extends Identity implements PinListener {
         if (!tmpPins.isEmpty()) {
             Pin tmpPin = tmpPins.get(0);
             if (def.isSameClass(tmpPin)) {
+                tmpPins.remove(0);
+                def.sync(tmpPin);
+            } else if (def.getValue() instanceof PinString && tmpPin.getValue() instanceof PinString) {
+                // 字符串族子类型升级（如普通文本升级为文件路径/代码文本）：保留旧值与连线
                 tmpPins.remove(0);
                 def.sync(tmpPin);
             } else {
@@ -233,6 +237,21 @@ public abstract class Action extends Identity implements PinListener {
 
     public abstract void execute(TaskRunnable runnable, Pin pin);
 
+    // 未达成标记：动作执行成功但逻辑目标未达成（如找图未找到走了else分支）
+    private transient boolean unachieved = false;
+
+    public void markUnachieved() {
+        unachieved = true;
+    }
+
+    public boolean isUnachieved() {
+        return unachieved;
+    }
+
+    public void resetUnachieved() {
+        unachieved = false;
+    }
+
     public void executeNext(TaskRunnable runnable, Pin pin) {
         beforeExecuteNext(runnable, pin);
 
@@ -248,7 +267,19 @@ public abstract class Action extends Identity implements PinListener {
         runnable.addExecuteProgress(action);
         runnable.addDebugLog(action, 1);
         action.resetReturnValue(runnable, linkedPin);
-        action.execute(runnable, linkedPin);
+        action.resetUnachieved();
+        long runStartTime = System.currentTimeMillis();
+        String taskId = runnable.getStartTask().getId();
+        try {
+            action.execute(runnable, linkedPin);
+            int status = action.isUnachieved() ? 1 : 0;
+            String shot = status != 0 ? RunResultSaver.getInstance().saveFailureScreenshot(taskId) : null;
+            RunResultSaver.getInstance().record(action, status, System.currentTimeMillis() - runStartTime, taskId, shot);
+        } catch (Exception e) {
+            String shot = RunResultSaver.getInstance().saveFailureScreenshot(taskId);
+            RunResultSaver.getInstance().record(action, 2, System.currentTimeMillis() - runStartTime, taskId, shot);
+            throw e;
+        }
     }
 
     public void beforeExecuteNext(TaskRunnable runnable, Pin pin) {

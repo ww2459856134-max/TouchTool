@@ -76,6 +76,7 @@ public class JsCodeAction extends ExecuteAction {
         errorPin.setValue(new PinString(""));
 
         if (code.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -166,10 +167,12 @@ public class JsCodeAction extends ExecuteAction {
         } catch (RhinoException e) {
             logsPin.setValue(new PinString(logs.toString()));
             errorPin.setValue(new PinString("第" + e.lineNumber() + "行: " + e.getMessage()));
+            markUnachieved();
             executeNext(runnable, elsePin);
         } catch (Exception e) {
             logsPin.setValue(new PinString(logs.toString()));
             errorPin.setValue(new PinString(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+            markUnachieved();
             executeNext(runnable, elsePin);
         } finally {
             if (context != null) Context.exit();

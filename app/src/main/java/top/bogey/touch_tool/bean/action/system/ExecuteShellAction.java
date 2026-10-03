@@ -60,6 +60,7 @@ public class ExecuteShellAction extends ExecuteAction {
         outputPin.setValue(new PinString(""));
 
         if (cmd.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -95,6 +96,7 @@ public class ExecuteShellAction extends ExecuteAction {
 
             if (timeoutHappened) {
                 outputPin.setValue(new PinString("命令执行超时"));
+                markUnachieved();
                 executeNext(runnable, elsePin);
                 return;
             }
@@ -105,6 +107,7 @@ public class ExecuteShellAction extends ExecuteAction {
                 executeNext(runnable, cmdResult.getResult() ? outPin : elsePin);
                 return;
             }
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -114,6 +117,7 @@ public class ExecuteShellAction extends ExecuteAction {
             if (superUser instanceof SuperUser) {
                 // 内置空实现（未配置通道）无法初始化，直接引导配置
                 showChannelGuide();
+                markUnachieved();
                 executeNext(runnable, elsePin);
                 return;
             }
@@ -124,11 +128,13 @@ public class ExecuteShellAction extends ExecuteAction {
                 return;
             }
             showChannelGuide();
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
 
         showChannelGuide();
+        markUnachieved();
         executeNext(runnable, elsePin);
     }
 

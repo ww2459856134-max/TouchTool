@@ -53,6 +53,7 @@ import top.bogey.touch_tool.bean.save.task.TaskSaveListener;
 import top.bogey.touch_tool.bean.save.task.TaskSaver;
 import top.bogey.touch_tool.bean.save.variable.VariableSaveListener;
 import top.bogey.touch_tool.bean.save.variable.VariableSaver;
+import top.bogey.touch_tool.bean.other.run.RunResultSaver;
 import top.bogey.touch_tool.bean.task.Task;
 import top.bogey.touch_tool.bean.task.Variable;
 import top.bogey.touch_tool.ui.blueprint.card.ActionCard;
@@ -63,7 +64,7 @@ import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionByPi
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionDialog;
 import top.bogey.touch_tool.utils.DisplayUtil;
 
-public class CardLayoutView extends FrameLayout implements TaskSaveListener, VariableSaveListener {
+public class CardLayoutView extends FrameLayout implements TaskSaveListener, VariableSaveListener, RunResultSaver.OnRunResultListener {
     public static final int GRID_DP_SIZE = 12;
 
     public enum TouchState {
@@ -125,6 +126,7 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
 
     public CardLayoutView(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+        RunResultSaver.getInstance().addListener(this);
 
         setSaveEnabled(false);
         setSaveFromParentEnabled(false);
@@ -182,7 +184,18 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
     }
 
     @Override
+    public void onRunResultRecorded() {
+        refreshRunBadges();
+    }
+
+    // 刷新全部卡片运行角标（编辑页 onResume 时也调用一次兜底）
+    public void refreshRunBadges() {
+        cards.values().forEach(ActionCard::refreshRunBadge);
+    }
+
+    @Override
     protected void onDetachedFromWindow() {
+        RunResultSaver.getInstance().removeListener(this);
         super.onDetachedFromWindow();
         TaskSaver.getInstance().removeListener(this);
         VariableSaver.getInstance().removeListener(this);
@@ -251,6 +264,7 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
 
     // 添加卡片
     public ActionCard addCard(Action action) {
+        if (action == null) return null;
         // 单个任务内只能有一个
         if (action.hasFlag(Action.SINGLE_IN_TASK)) {
             List<Action> actions = task.getActions(action.getClass());
@@ -517,6 +531,12 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
                     } else {
                         ActionCard card = getActionCard(realX, realY, true);
                         if (card != null) {
+                            // 画布层兜底：点在运行结果角标上直接弹详情，不走选中/拖动
+                            if (card.isRunBadgeHit(x - card.getX(), y - card.getY())) {
+                                card.showRunResultDialog();
+                                return true;
+                            }
+
                             touchState = TouchState.TOUCH_CARD;
                             touchedCard = card;
 

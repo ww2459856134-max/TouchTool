@@ -352,6 +352,8 @@
 
     <string name="permission_setting_bluetooth">蓝牙监听</string>
     <string name="permission_setting_bluetooth_desc">启用蓝牙监听能使用“蓝牙变动时执行”、“获取蓝牙设备”的能力</string>
+    <string name="permission_setting_storage">所有文件访问</string>
+    <string name="permission_setting_storage_desc">授权后文件选择器与文件/Excel/SQL 动作可访问手机全部目录</string>
 
     <string name="permission_setting_location">精确定位</string>
     <string name="permission_setting_location_desc">启用精确定位能使用“获取WiFi信息”的能力</string>

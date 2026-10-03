@@ -45,6 +45,7 @@ public class RestartAppAction extends ExecuteAction {
         successPin.getValue(PinBoolean.class).setValue(false);
 
         if (packageName == null || packageName.isEmpty()) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }
@@ -71,6 +72,7 @@ public class RestartAppAction extends ExecuteAction {
         Context context = MainApplication.getInstance().getService();
         Intent intent = context.getPackageManager().getLaunchIntentForPackage(packageName);
         if (intent == null) {
+            markUnachieved();
             executeNext(runnable, elsePin);
             return;
         }

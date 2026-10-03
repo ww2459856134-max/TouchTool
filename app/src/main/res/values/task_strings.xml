@@ -1132,12 +1132,51 @@
     <string name="drag_image_action_target_x">目标坐标 X</string>
     <string name="drag_image_action_target_y">目标坐标 Y</string>
     <string name="drag_image_action_target_area">目标区域(已连接时优先)</string>
+    <string name="find_image_action_search_area">输入位置（留空为全屏）</string>
+    <string name="find_image_action_point">图片位置</string>
+
+    <string name="cloud_ocr_text_action">云端OCR识别文本</string>
+    <string name="cloud_ocr_text_action_desc">调用百度智能云识别屏幕或图片中的文字（需在设置中配置密钥）</string>
+    <string name="cloud_ocr_text">全部文本</string>
+    <string name="cloud_ocr_texts">文本列表</string>
+    <string name="cloud_ocr_areas">区域列表</string>
+    <string name="cloud_ocr_platform">识别平台</string>
+    <string name="cloud_ocr_error">错误信息</string>
+    <string name="cloud_ocr_error_no_key">未配置云端OCR密钥，请在设置中填写</string>
+    <string name="setting_cloud_ocr_key">百度OCR API Key</string>
+    <string name="setting_cloud_ocr_key_desc">点击输入，用于云端OCR识别动作</string>
+    <string name="setting_cloud_ocr_secret">百度OCR Secret Key</string>
+    <string name="setting_cloud_ocr_secret_desc">点击输入，与API Key配对使用</string>
+    <string name="debug_run_from">▶ 从此动作开始执行</string>
+    <string name="debug_run_no_link">该动作未连接上游动作，无法从此开始</string>
+    <string name="debug_run_need_service">请先开启无障碍服务</string>
+    <string name="variable_watcher_global">全局变量</string>
+    <string name="variable_watcher_copy">复制值</string>
+    <string name="variable_watcher_reset">重置为初始值</string>
+    <string name="variable_watcher_copied">已复制到剪贴板</string>
+    <string name="variable_watcher_manual_reset">手动重置</string>
+    <string name="task_run_badge">显示运行角标</string>
+    <string name="task_run_stats">运行统计</string>
+    <string name="run_result_screenshot">失败时屏幕截图：</string>
+    <string name="run_result_none">该动作本次会话还没有运行记录</string>
+    <string name="run_result_stale">本次运行未执行该动作，以下为上一次的记录：</string>
+    <string name="run_result_success">执行成功</string>
+    <string name="run_result_unachieved">未达成（走了失败分支）</string>
+    <string name="run_result_failed">执行异常</string>
+    <string name="run_result_duration">耗时</string>
+    <string name="run_result_no_output">无输出数据</string>
 
     <string name="sql_action">SQL 执行</string>
     <string name="sql_action_desc">对 SQLite 数据库执行 SQL：SELECT 返回查询结果，其他语句自动建库执行，支持分号分隔多条</string>
     <string name="sql_action_path">数据库文件路径</string>
     <string name="sql_action_sql">SQL 语句</string>
     <string name="sql_action_count">行数</string>
+
+    <string name="pin_string_file_path">文件路径</string>
+    <string name="pin_string_dir_path">目录路径</string>
+    <string name="select_file_dialog_title">选择文件</string>
+    <string name="select_file_dialog_select_dir">选择此目录</string>
+    <string name="select_file_storage_permission">需要"所有文件访问"权限才能显示文件，请在接下来的页面中允许</string>
 
     <string name="execute_shell_action_timeout">超时（毫秒）</string>
     <string name="execute_shell_action_channel_tips">请先在应用设置中配置 Shizuku 或 Root 通道</string>
