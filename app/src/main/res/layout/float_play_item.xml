@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="?attr/materialCardViewFilledStyle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="?attr/defaultOffset">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardLayout"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="?attr/iconButtonSize"
+        android:layout_height="?attr/iconButtonSize"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+        app:strokeColor="?attr/colorOutline" />
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/lineProgress"
+        android:layout_width="?attr/iconButtonSize"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:indeterminate="false"
+        android:visibility="gone"
+        app:indicatorInset="0dp"
+        app:indicatorSize="?attr/iconButtonSize"
+        app:trackCornerRadius="1dp"
+        app:trackThickness="3dp" />
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/circleProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminate="false"
+        app:indeterminateAnimationTypeCircular="advance"
+        app:indicatorInset="0dp"
+        app:indicatorSize="?attr/iconButtonSize"
+        app:trackCornerRadius="1dp"
+        app:trackThickness="3dp" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/icon"
+        android:layout_width="?attr/halfIconButtonSize"
+        android:layout_height="?attr/halfIconButtonSize"
+        android:layout_gravity="end|bottom"
+        android:tint="?attr/colorPrimary" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+        android:textColor="?attr/colorPrimary" />
+
+</FrameLayout>

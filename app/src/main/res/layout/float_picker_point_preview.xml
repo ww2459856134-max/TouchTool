@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="?attr/materialCardViewFilledStyle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="?attr/defaultPadding">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/picker_point_title"
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/playButton"
+                style="?attr/iconButtonFilled"
+                app:icon="@drawable/icon_play_arrow" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="?attr/defaultOffset"
+            android:baselineAligned="false">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_weight="1"
+                android:clipChildren="false"
+                android:hint="@string/point_x"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/xEdit"
+                    android:layout_width="match_parent"
+                    android:layout_height="?attr/iconButtonSize"
+                    android:gravity="center"
+                    android:inputType="numberSigned"
+                    android:paddingHorizontal="?attr/defaultPadding"
+                    android:paddingVertical="0dp"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_weight="1"
+                android:clipChildren="false"
+                android:hint="@string/point_y"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/yEdit"
+                    android:layout_width="match_parent"
+                    android:layout_height="?attr/iconButtonSize"
+                    android:gravity="center"
+                    android:inputType="numberSigned"
+                    android:paddingHorizontal="?attr/defaultPadding"
+                    android:paddingVertical="0dp"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButtonGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:spacing="?attr/defaultOffset">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/backButton"
+                style="?attr/iconButtonFilled"
+                app:icon="@drawable/icon_arrow_back" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveButton"
+                style="?attr/iconButtonFilled"
+                app:icon="@drawable/icon_save" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pickerButton"
+                style="?attr/iconButtonFilled"
+                app:icon="@drawable/icon_my_location" />
+
+        </com.google.android.material.button.MaterialButtonGroup>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

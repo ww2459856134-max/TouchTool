@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="?attr/halfIconButtonSize"
+    android:layout_height="?attr/halfIconButtonSize">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/keySlot"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="7dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:cardCornerRadius="2dp"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/valueSlot"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="11dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        app:cardCornerRadius="2dp"
+        app:strokeWidth="1dp" />
+
+</FrameLayout>

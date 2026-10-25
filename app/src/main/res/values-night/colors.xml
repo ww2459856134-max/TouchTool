@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="AppPinColor">#CCCCCC</color>
+
+    <!-- 桌面小组件深色配色 -->
+    <color name="widget_bg_color">#FF2C2C2E</color>
+    <color name="widget_stroke_color">#14FFFFFF</color>
+    <color name="widget_text_color">#FFE8E8ED</color>
+    <color name="widget_text_secondary_color">#FF98989F</color>
+</resources>

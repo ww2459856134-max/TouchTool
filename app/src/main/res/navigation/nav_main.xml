@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_main"
+    app:startDestination="@id/task">
+
+    <fragment
+        android:id="@+id/task"
+        android:name="top.bogey.touch_tool.ui.task.TaskView"
+        android:label="@string/task"
+        tools:layout="@layout/view_task">
+        <action
+            android:id="@+id/action_task_to_blueprint"
+            app:destination="@id/blueprint" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/tool"
+        android:name="top.bogey.touch_tool.ui.tool.ToolView"
+        android:label="@string/tool"
+        tools:layout="@layout/view_tool" >
+        <action
+            android:id="@+id/action_tool_to_modelManagerView"
+            app:destination="@id/modelManagerView" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/setting"
+        android:name="top.bogey.touch_tool.ui.setting.SettingView"
+        android:label="@string/setting"
+        tools:layout="@layout/view_setting">
+        <action
+            android:id="@+id/action_setting_to_settingPlayView"
+            app:destination="@id/setting_play_view" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/blueprint"
+        android:name="top.bogey.touch_tool.ui.blueprint.BlueprintView"
+        tools:layout="@layout/view_blueprint">
+
+        <argument
+            android:name="taskId"
+            app:argType="string" />
+    </fragment>
+    <fragment
+        android:id="@+id/setting_play_view"
+        android:name="top.bogey.touch_tool.ui.setting.SettingPlayView"
+        android:label="view_setting_play_view"
+        tools:layout="@layout/view_setting_play_view" />
+    <fragment
+        android:id="@+id/modelManagerView"
+        android:name="top.bogey.touch_tool.ui.tool.model_manager.ModelManagerView"
+        android:label="ModelManagerView" />
+</navigation>

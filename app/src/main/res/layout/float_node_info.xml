@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="?attr/materialCardViewFilledStyle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/expandButton"
+        style="?attr/iconButton"
+        android:layout_marginStart="?attr/defaultPadding"
+        app:icon="@drawable/icon_zoom_in_map" />
+
+    <LinearLayout
+        android:id="@+id/contentBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="128dp"
+        android:orientation="vertical"
+        android:paddingHorizontal="?attr/defaultPadding">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="?attr/iconButtonSize">
+
+            <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+                android:paddingBottom="0dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/closeButton"
+                style="?attr/iconButton"
+                android:layout_gravity="end|center"
+                app:icon="@drawable/icon_close" />
+
+        </FrameLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            app:cardBackgroundColor="?attr/colorSurface">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/float_node_info_item" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButtonGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:spacing="0dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/parentButton"
+                style="?attr/iconButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:textScaleX="0"
+                app:icon="@drawable/icon_keyboard_arrow_up"
+                app:iconGravity="textStart"
+                app:tint="?attr/colorPrimary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/preButton"
+                style="?attr/iconButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:textScaleX="0"
+                app:icon="@drawable/icon_keyboard_arrow_left"
+                app:iconGravity="textStart"
+                app:tint="?attr/colorPrimary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/nextButton"
+                style="?attr/iconButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:textScaleX="0"
+                app:icon="@drawable/icon_keyboard_arrow_right"
+                app:iconGravity="textStart"
+                app:tint="?attr/colorPrimary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/childButton"
+                style="?attr/iconButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:padding="0dp"
+                android:textScaleX="0"
+                app:icon="@drawable/icon_keyboard_arrow_down"
+                app:iconGravity="textStart"
+                app:tint="?attr/colorPrimary" />
+
+        </com.google.android.material.button.MaterialButtonGroup>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

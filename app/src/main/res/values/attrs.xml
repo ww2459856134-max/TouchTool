@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="colorPrimaryLight" format="color" />
+
+    <attr name="iconButtonSize" format="dimension" />
+    <attr name="iconButtonPadding" format="dimension" />
+    <attr name="defaultPadding" format="dimension" />
+    <attr name="defaultOffset" format="dimension" />
+    <attr name="smallIconButtonSize" format="dimension" />
+    <attr name="halfIconButtonSize" format="dimension" />
+
+    <attr name="defaultIconButton" format="reference" />
+    <attr name="defaultIconButtonFilled" format="reference" />
+    <attr name="defaultIconButtonOutlined" format="reference" />
+
+    <attr name="iconButton" format="reference" />
+    <attr name="iconButtonOutlined" format="reference" />
+    <attr name="iconButtonFilled" format="reference" />
+    <attr name="iconButtonTonal" format="reference" />
+
+    <attr name="icon" format="reference" />
+    <attr name="title" format="string" />
+    <attr name="description" format="string" />
+
+    <declare-styleable name="SettingWidgetNormal">
+        <attr name="icon" />
+        <attr name="title" />
+        <attr name="description" />
+    </declare-styleable>
+
+    <declare-styleable name="SettingWidgetSwitch">
+        <attr name="icon" />
+        <attr name="title" />
+        <attr name="description" />
+    </declare-styleable>
+
+    <declare-styleable name="SettingWidgetSelect">
+        <attr name="icon" />
+        <attr name="title" />
+        <attr name="description" />
+        <attr name="options" format="reference" />
+    </declare-styleable>
+
+    <declare-styleable name="SettingWidgetSlider">
+        <attr name="icon" />
+        <attr name="title" />
+        <attr name="description" />
+        <attr name="min" format="integer" />
+        <attr name="max" format="integer" />
+        <attr name="step" format="integer" />
+        <attr name="value" format="integer" />
+    </declare-styleable>
+
+    <declare-styleable name="ToolWidgetButton">
+        <attr name="icon" />
+        <attr name="title" />
+        <attr name="link" format="string" />
+    </declare-styleable>
+
+</resources>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/icon"
+        android:layout_width="?attr/smallIconButtonSize"
+        android:layout_height="?attr/smallIconButtonSize"
+        android:background="?attr/colorSurface"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/exclude"
+        android:layout_width="?attr/smallIconButtonSize"
+        android:layout_height="?attr/smallIconButtonSize"
+        android:background="#40000000"
+        android:visibility="gone"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+        app:srcCompat="@drawable/icon_close"
+        app:tint="?attr/colorError" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/numberBox"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="?attr/halfIconButtonSize"
+        android:layout_height="?attr/halfIconButtonSize"
+        android:layout_gravity="top|end"
+        app:cardBackgroundColor="?attr/colorTertiary">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/numberText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+            android:textColor="?attr/colorOnTertiary" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+</FrameLayout>

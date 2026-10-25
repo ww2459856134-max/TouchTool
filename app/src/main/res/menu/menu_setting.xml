@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:icon="@drawable/menu_help"
+        android:title=""
+        app:showAsAction="always">
+        <menu>
+            <item
+                android:id="@+id/helpDoc"
+                android:title="@string/setting_help_doc" />
+
+            <item
+                android:id="@+id/helpVideo"
+                android:title="@string/setting_help_video" />
+        </menu>
+
+    </item>
+
+    <item
+        android:id="@+id/autoGiveCapturePermission"
+        android:title="@string/setting_auto_give_capture_permission" />
+
+</menu>

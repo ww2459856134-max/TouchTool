@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/HalfAlpha">
+
+    <FrameLayout
+        android:id="@+id/markBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/shape_border" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/idTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+        android:textColor="?attr/colorTertiary"
+        app:layout_anchor="@id/markBox"
+        app:layout_anchorGravity="top|center_horizontal" />
+
+    <LinearLayout
+        android:id="@+id/buttonBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.button.MaterialButtonGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:spacing="?attr/defaultOffset">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/backButton"
+                style="?attr/defaultIconButtonFilled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:icon="@drawable/icon_arrow_back" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveButton"
+                style="?attr/defaultIconButtonFilled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:icon="@drawable/icon_check" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/detailButton"
+                style="?attr/defaultIconButtonFilled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:icon="@drawable/icon_more_horiz" />
+
+        </com.google.android.material.button.MaterialButtonGroup>
+
+        <com.google.android.material.button.MaterialButtonGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:spacing="?attr/defaultOffset">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/upButton"
+                style="?attr/iconButtonFilled"
+                android:layout_width="?attr/smallIconButtonSize"
+                android:layout_height="?attr/smallIconButtonSize"
+                android:insetLeft="1dp"
+                android:insetTop="1dp"
+                android:insetRight="1dp"
+                android:insetBottom="1dp"
+                android:padding="1dp"
+                app:icon="@drawable/icon_keyboard_arrow_up" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/downButton"
+                style="?attr/iconButtonFilled"
+                android:layout_width="?attr/smallIconButtonSize"
+                android:layout_height="?attr/smallIconButtonSize"
+                android:insetLeft="1dp"
+                android:insetTop="1dp"
+                android:insetRight="1dp"
+                android:insetBottom="1dp"
+                android:padding="1dp"
+                app:icon="@drawable/icon_keyboard_arrow_down" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/leftButton"
+                style="?attr/iconButtonFilled"
+                android:layout_width="?attr/smallIconButtonSize"
+                android:layout_height="?attr/smallIconButtonSize"
+                android:insetLeft="1dp"
+                android:insetTop="1dp"
+                android:insetRight="1dp"
+                android:insetBottom="1dp"
+                android:padding="1dp"
+                app:icon="@drawable/icon_keyboard_arrow_left" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/rightButton"
+                style="?attr/iconButtonFilled"
+                android:layout_width="?attr/smallIconButtonSize"
+                android:layout_height="?attr/smallIconButtonSize"
+                android:insetLeft="1dp"
+                android:insetTop="1dp"
+                android:insetRight="1dp"
+                android:insetBottom="1dp"
+                android:padding="1dp"
+                app:icon="@drawable/icon_keyboard_arrow_right" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/infoButton"
+                style="?attr/iconButtonFilled"
+                android:layout_width="?attr/smallIconButtonSize"
+                android:layout_height="?attr/smallIconButtonSize"
+                android:insetLeft="1dp"
+                android:insetTop="1dp"
+                android:insetRight="1dp"
+                android:insetBottom="1dp"
+                android:padding="1dp"
+                app:icon="@drawable/icon_visibility" />
+
+        </com.google.android.material.button.MaterialButtonGroup>
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:id="@+id/bottomSheet"
+        style="@style/Widget.Material3.BottomSheet"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="?attr/defaultOffset"
+        app:behavior_peekHeight="128dp"
+        app:layout_behavior="@string/bottom_sheet_behavior">
+
+        <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/searchBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/picker_node_search_hint"
+                android:translationY="-2dp"
+                app:endIconMode="clear_text"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                app:startIconDrawable="@drawable/icon_search">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/searchEdit"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:paddingHorizontal="?attr/minTouchTargetSize"
+                    android:paddingVertical="0dp"
+                    android:singleLine="true" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButtonGroup
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:spacing="0dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/exportButton"
+                    style="?attr/defaultIconButtonOutlined"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:icon="@drawable/icon_upload" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/importButton"
+                    style="?attr/defaultIconButtonOutlined"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:icon="@drawable/icon_download" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/typeButton"
+                    style="?attr/defaultIconButtonOutlined"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    app:icon="@drawable/icon_keyboard_arrow_down"
+                    app:iconGravity="textEnd" />
+            </com.google.android.material.button.MaterialButtonGroup>
+
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/widgetRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/float_picker_node_item" />
+
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

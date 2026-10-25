@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="?attr/materialCardViewFilledStyle"
+    android:layout_width="?attr/halfIconButtonSize"
+    android:layout_height="?attr/halfIconButtonSize"
+    app:cardCornerRadius="4dp"
+    app:strokeWidth="1dp" />

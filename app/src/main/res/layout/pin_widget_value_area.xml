@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="?attr/iconButtonSize">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:hint="@string/pin_value_area_min"
+            android:translationY="-2dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/lowEdit"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:inputType="numberSigned"
+                android:paddingHorizontal="?attr/defaultPadding"
+                android:paddingVertical="0dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Space
+            android:id="@+id/space"
+            android:layout_width="?attr/defaultPadding"
+            android:layout_height="wrap_content" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/highLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:hint="@string/pin_value_area_max"
+            android:translationY="-2dp"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/highEdit"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:inputType="numberSigned"
+                android:paddingHorizontal="?attr/defaultPadding"
+                android:paddingVertical="0dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/lockButton"
+        style="?attr/iconButton"
+        android:layout_gravity="center"
+        android:backgroundTint="@color/fill_button_background_check"
+        android:checkable="true"
+        app:icon="@drawable/icon_lock_open"
+        app:iconTint="@color/button_container_check"
+        app:layout_anchor="@id/space"
+        app:layout_anchorGravity="center" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

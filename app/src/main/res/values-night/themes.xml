@@ -1,0 +1,8 @@
+<resources>
+
+    <style name="Theme.TouchTool.DayNight" parent="Theme.TouchTool">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="colorPrimaryLight">?attr/colorPrimary</item>
+    </style>
+
+</resources>
