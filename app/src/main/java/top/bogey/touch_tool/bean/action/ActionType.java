@@ -205,12 +205,6 @@ public enum ActionType {
     EDITTEXT_PASTE,
     PICK_NODE,
 
-    NODE_SCROLL,
-    SCROLL_UNTIL_NODE,
-    WAIT_NODE,
-    NODE_EXPAND,
-    NODE_TOUCH_ALL,
-    NODE_SET_PROGRESS,
 
     // 图片
     GET_IMAGE,
