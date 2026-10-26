@@ -21,11 +21,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: 安装 Android SDK 组件
+      - name: 接受 SDK 许可（组件由 Gradle 自动下载）
         run: |
           export PATH=$PATH:/usr/local/lib/android/sdk/cmdline-tools/latest/bin
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-37" "build-tools;37.0.0" "ndk;30.0.15729638" "cmake;4.1.2" "platform-tools"
+          ls $ANDROID_HOME/licenses
 
       - name: 构建 Release APK
         run: ./gradlew assembleRelease -x lint --no-daemon --stacktrace
