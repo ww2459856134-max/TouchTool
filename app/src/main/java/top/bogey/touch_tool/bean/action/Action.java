@@ -254,21 +254,6 @@ public abstract class Action extends Identity implements PinListener {
         unachieved = false;
     }
 
-    // 是否为控件类动作（决定是否显示前置延时针脚）
-    public static boolean isNodeCategory(ActionType type) {
-        return switch (type) {
-            case FIND_NODE, IS_NODE_EXIST, GET_NODES_IN_AREA, GET_NODE_INFO, GET_NODE_CHILDREN,
-                    GET_NODE_PARENT, GET_WINDOWS, CHECK_NODE_VALID, NODE_TOUCH, EDITTEXT_INPUT,
-                    EDITTEXT_PASTE, PICK_NODE -> true;
-            default -> false;
-        };
-    }
-
-    // 前置延时（ms），控件类动作由子类覆盖；区间随机：min~max
-    public long getPreDelay() {
-        return 0;
-    }
-
     public void executeNext(TaskRunnable runnable, Pin pin) {
         beforeExecuteNext(runnable, pin);
 
@@ -285,9 +270,6 @@ public abstract class Action extends Identity implements PinListener {
         runnable.addDebugLog(action, 1);
         action.resetReturnValue(runnable, linkedPin);
         action.resetUnachieved();
-        // 控件类卡片的前置延时（固定或区间随机），可被任务停止打断
-        long preDelay = action.getPreDelay();
-        if (preDelay > 0) runnable.sleep(preDelay);
         long runStartTime = System.currentTimeMillis();
         String taskId = runnable.getStartTask().getId();
         try {
