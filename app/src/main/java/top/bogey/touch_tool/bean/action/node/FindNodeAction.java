@@ -21,6 +21,7 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinObject;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_list.PinList;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinArea;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinConditionsString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinNodePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinNodePathTextString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleSelect;
@@ -44,6 +45,7 @@ public class FindNodeAction extends FindExecuteAction {
     private final transient Pin pathTextPin = new PathTextShowablePin(new PinNodePathTextString(), R.string.find_node_action_regex_path);
     private final transient Pin matchModePin = new FilterShowablePin(new PinSingleSelect(R.array.node_match_mode), R.string.find_node_action_match_mode);
     private final transient Pin logicPin = new LogicShowablePin(new PinSingleSelect(R.array.node_logic_mode), R.string.find_node_action_logic);
+    private final transient Pin conditionsPin = new FilterShowablePin(new PinConditionsString(), R.string.find_node_action_conditions);
     private final transient Pin visiblePin = new FilterShowablePin(new PinBoolean(true), R.string.find_node_action_only_visible);
     private final transient Pin clickablePin = new FilterShowablePin(new PinBoolean(), R.string.find_node_action_only_clickable);
     private final transient Pin indexPin = new NotLinkAblePin(new PinInteger(0), R.string.find_node_action_index);
@@ -53,12 +55,12 @@ public class FindNodeAction extends FindExecuteAction {
 
     public FindNodeAction() {
         super(ActionType.FIND_NODE);
-        addPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, matchModePin, logicPin, visiblePin, clickablePin, indexPin, nodePin, nodesPin);
+        addPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, matchModePin, logicPin, conditionsPin, visiblePin, clickablePin, indexPin, nodePin, nodesPin);
     }
 
     public FindNodeAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, matchModePin, logicPin, visiblePin, clickablePin, indexPin, nodePin, nodesPin);
+        reAddPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, matchModePin, logicPin, conditionsPin, visiblePin, clickablePin, indexPin, nodePin, nodesPin);
     }
 
     @Override
@@ -96,6 +98,7 @@ public class FindNodeAction extends FindExecuteAction {
                 }
 
                 children = applyFilters(runnable, children);
+                children = applyExtraConditions(runnable, children);
                 if (children == null || children.isEmpty()) return false;
                 fillNodes(runnable, nodes, children);
                 return true;
@@ -105,6 +108,7 @@ public class FindNodeAction extends FindExecuteAction {
                 PinNodePathTextString path = new PinNodePathTextString(pathString.toString());
                 List<NodeInfo> findNodes = path.findNodes(NodeInfo.getWindows());
                 findNodes = applyFilters(runnable, findNodes);
+                findNodes = applyExtraConditions(runnable, findNodes);
                 if (findNodes == null || findNodes.isEmpty()) return false;
                 fillNodes(runnable, nodes, findNodes);
                 return true;
@@ -124,6 +128,7 @@ public class FindNodeAction extends FindExecuteAction {
                 }
 
                 children = applyFilters(runnable, children);
+                children = applyExtraConditions(runnable, children);
                 if (children == null || children.isEmpty()) return false;
                 fillNodes(runnable, nodes, children);
                 return true;
@@ -135,55 +140,49 @@ public class FindNodeAction extends FindExecuteAction {
         return false;
     }
 
-    // 组合查找：文本、ID、类名、描述条件按匹配逻辑（AND/OR）组合（未填的条件不参与匹配）
+    // 组合查找：基础条件 + 附加条件列表按匹配逻辑（AND/OR）组合（未填的条件不参与匹配）
     private boolean findCombined(TaskRunnable runnable, PinList nodes) {
         NodeInfo root = NodeInfo.getActiveWindow();
         if (root == null) return false;
 
-        String[] conditions = {
-                getPinValue(runnable, textPin).toString(),
-                getPinValue(runnable, idPin).toString(),
-                getPinValue(runnable, classPin).toString(),
-                getPinValue(runnable, descPin).toString()
-        };
-        // 至少要填一个条件
-        boolean any = false;
-        for (String condition : conditions) if (!condition.isEmpty()) any = true;
-        if (!any) return false;
-
         int mode = getMatchMode();
+        List<NodeCondition> conditions = new ArrayList<>();
+        addBaseCondition(conditions, NodeCondition.FIELD_TEXT, mode, getPinValue(runnable, textPin).toString());
+        addBaseCondition(conditions, NodeCondition.FIELD_ID, mode, getPinValue(runnable, idPin).toString());
+        addBaseCondition(conditions, NodeCondition.FIELD_CLASS, mode, getPinValue(runnable, classPin).toString());
+        addBaseCondition(conditions, NodeCondition.FIELD_DESC, mode, getPinValue(runnable, descPin).toString());
+        conditions.addAll(getExtraConditions(runnable));
+        if (conditions.isEmpty()) return false;
+
         int logic = getLogicMode();
         boolean onlyVisible = getBooleanValue(runnable, visiblePin);
         boolean onlyClickable = getBooleanValue(runnable, clickablePin);
         PinArea area = getPinValue(runnable, areaPin);
 
         List<NodeInfo> result = new ArrayList<>();
-        collectNodes(root, logic, conditions, mode, onlyVisible, onlyClickable, area.getValue(), result);
+        collectNodes(root, logic, conditions, onlyVisible, onlyClickable, area.getValue(), result);
 
         if (result.isEmpty()) return false;
         fillNodes(runnable, nodes, result);
         return true;
     }
 
+    // 基础条件转为附加条件同构的形式（未填的不参与匹配）
+    private void addBaseCondition(List<NodeCondition> conditions, int field, int mode, String value) {
+        if (value == null || value.isEmpty()) return;
+        conditions.add(new NodeCondition(field, mode, value));
+    }
+
     // 深度优先收集满足条件的控件，logic: 0=全部满足(AND) 1=任一满足(OR)
-    // conditions 顺序：0文本 1ID 2类名 3描述
-    private void collectNodes(NodeInfo parent, int logic, String[] conditions, int mode,
+    private void collectNodes(NodeInfo parent, int logic, List<NodeCondition> conditions,
                               boolean onlyVisible, boolean onlyClickable, Rect area, List<NodeInfo> result) {
         if (parent == null) return;
 
         boolean areaOk = area == null || area.isEmpty() || area.contains(parent.area) || Rect.intersects(area, parent.area);
         if (areaOk && (!onlyVisible || parent.visible) && (!onlyClickable || (parent.node != null && parent.node.isClickable()))) {
             boolean ok = logic == 0;
-            for (int i = 0; i < conditions.length; i++) {
-                String condition = conditions[i];
-                if (condition.isEmpty()) continue;
-                String value = switch (i) {
-                    case 0 -> parent.text;
-                    case 1 -> parent.id;
-                    case 2 -> parent.clazz;
-                    default -> parent.desc;
-                };
-                boolean matched = matchByMode(value, condition, mode);
+            for (NodeCondition condition : conditions) {
+                boolean matched = matchCondition(parent, condition);
                 if (logic == 0) {
                     if (!matched) {
                         ok = false;
@@ -198,8 +197,83 @@ public class FindNodeAction extends FindExecuteAction {
         }
 
         for (NodeInfo child : parent.getChildren()) {
-            collectNodes(child, logic, conditions, mode, onlyVisible, onlyClickable, area, result);
+            collectNodes(child, logic, conditions, onlyVisible, onlyClickable, area, result);
         }
+    }
+
+    // 附加条件针脚里存的条件列表
+    private List<NodeCondition> getExtraConditions(TaskRunnable runnable) {
+        if (getPinValue(runnable, conditionsPin) instanceof PinConditionsString pin) {
+            return NodeCondition.fromJson(pin.toString());
+        }
+        return new ArrayList<>();
+    }
+
+    // 单条条件求值：文本类字段用条件自带的运算符（与匹配方式一致），数值/状态字段用各自的运算符
+    private boolean matchCondition(NodeInfo node, NodeCondition condition) {
+        String value = condition.value == null ? "" : condition.value.trim();
+        switch (condition.field) {
+            case NodeCondition.FIELD_TEXT -> {
+                return matchByMode(node.text, value, condition.op);
+            }
+            case NodeCondition.FIELD_DESC -> {
+                return matchByMode(node.desc, value, condition.op);
+            }
+            case NodeCondition.FIELD_ID -> {
+                return matchByMode(node.id, value, condition.op);
+            }
+            case NodeCondition.FIELD_CLASS -> {
+                return matchByMode(node.clazz, value, condition.op);
+            }
+            case NodeCondition.FIELD_LENGTH -> {
+                int len = node.text == null ? 0 : node.text.length();
+                int target;
+                try {
+                    target = Integer.parseInt(value);
+                } catch (Exception e) {
+                    return false;
+                }
+                return switch (condition.op) {
+                    case 0 -> len > target;
+                    case 1 -> len < target;
+                    default -> len == target;
+                };
+            }
+            case NodeCondition.FIELD_STATUS -> {
+                boolean status = switch (value) {
+                    case "clickable" -> node.node != null && node.node.isClickable();
+                    case "selected" -> node.node != null && node.node.isSelected();
+                    case "scrollable" -> node.node != null && node.node.isScrollable();
+                    case "enabled" -> node.node == null || node.node.isEnabled();
+                    default -> node.visible;
+                };
+                return condition.op == 0 == status;
+            }
+            default -> {
+                return false;
+            }
+        }
+    }
+
+    // 对查找结果应用附加条件（非组合模式下也生效）
+    private List<NodeInfo> applyExtraConditions(TaskRunnable runnable, List<NodeInfo> children) {
+        if (children == null || children.isEmpty()) return children;
+        List<NodeCondition> extra = getExtraConditions(runnable);
+        if (extra.isEmpty()) return children;
+
+        int logic = getLogicMode();
+        List<NodeInfo> filtered = new ArrayList<>();
+        for (NodeInfo node : children) {
+            boolean ok = logic == 0;
+            for (NodeCondition condition : extra) {
+                boolean matched = matchCondition(node, condition);
+                ok = logic == 0 ? ok && matched : ok || matched;
+                if (logic == 0 && !ok) break;
+                if (logic == 1 && ok) break;
+            }
+            if (ok) filtered.add(node);
+        }
+        return filtered;
     }
 
     // 按匹配方式比较两个字符串
