@@ -112,6 +112,11 @@
         <item>结尾匹配</item>
     </string-array>
 
+    <string-array name="node_logic_mode">
+        <item>全部满足（AND）</item>
+        <item>任一满足（OR）</item>
+    </string-array>
+
     <string-array name="string_encode_type">
         <item>URL</item>
         <item>Base64</item>
