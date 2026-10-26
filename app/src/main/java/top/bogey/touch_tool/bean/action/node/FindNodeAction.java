@@ -46,7 +46,8 @@ public class FindNodeAction extends FindExecuteAction {
     private final transient Pin matchModePin = new FilterShowablePin(new PinSingleSelect(R.array.node_match_mode), R.string.find_node_action_match_mode);
     private final transient Pin logicPin = new LogicShowablePin(new PinSingleSelect(R.array.node_logic_mode), R.string.find_node_action_logic);
     private final transient Pin conditionsPin = new FilterShowablePin(new PinConditionsString(), R.string.find_node_action_conditions);
-    private final transient Pin visiblePin = new FilterShowablePin(new PinBoolean(true), R.string.find_node_action_only_visible);
+    // 默认关闭：与原版行为对齐（原版无可见性过滤），避免 isVisibleToUser()=false 的控件被误滤掉；用户可按需开启
+    private final transient Pin visiblePin = new FilterShowablePin(new PinBoolean(false), R.string.find_node_action_only_visible);
     private final transient Pin clickablePin = new FilterShowablePin(new PinBoolean(), R.string.find_node_action_only_clickable);
     private final transient Pin indexPin = new NotLinkAblePin(new PinInteger(0), R.string.find_node_action_index);
     private final transient Pin nodePin = new Pin(new PinNode(), R.string.pin_node, true);
