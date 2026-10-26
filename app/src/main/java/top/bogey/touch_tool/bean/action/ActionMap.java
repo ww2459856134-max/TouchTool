@@ -108,6 +108,8 @@ public class ActionMap {
                     ActionType.READ_FROM_CLIPBOARD,
 
                     ActionType.SWITCH_SCREEN,
+                    ActionType.UNLOCK_SCREEN,
+                    ActionType.KEYGUARD_CHECK,
                     ActionType.GET_SCREEN_STATUS,
 
                     ActionType.SWITCH_CAPTURE,
