@@ -95,6 +95,25 @@ public class NodeInfo extends SimpleNodeInfo implements ITreeNodeData {
         return children;
     }
 
+    // 控件指纹稳定度评分（0~100）：文本 > 描述 > ID > 类名，分数越高越抗 App 改版
+    // 纯路径定位（四项全空）得分最低，布局一变就失效
+    public int getStabilityScore() {
+        int score = 0;
+        if (text != null && !text.isEmpty()) score += 40;
+        if (desc != null && !desc.isEmpty() && !desc.equals(text)) score += 30;
+        if (id != null && !id.isEmpty()) score += 25;
+        if (clazz != null && !clazz.isEmpty()) score += 5;
+        return Math.min(score, 100);
+    }
+
+    // 稳定度级别：2 高 / 1 中 / 0 低，对应 picker_stability_level 数组
+    public int getStabilityLevel() {
+        int score = getStabilityScore();
+        if (score >= 70) return 2;
+        if (score >= 40) return 1;
+        return 0;
+    }
+
     public NodeInfo getChild(int index) {
         if (children.isEmpty()) return null;
         NodeInfo nodeInfo = children.get(index);
