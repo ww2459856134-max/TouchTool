@@ -10,6 +10,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 import android.widget.LinearLayout;
 
 import androidx.activity.OnBackPressedCallback;
@@ -36,6 +37,7 @@ import top.bogey.touch_tool.bean.save.SearchHistorySaver;
 import top.bogey.touch_tool.bean.save.task.TaskSaveListener;
 import top.bogey.touch_tool.bean.save.task.TaskSaver;
 import top.bogey.touch_tool.bean.task.Task;
+import top.bogey.touch_tool.bean.task.Variable;
 import top.bogey.touch_tool.databinding.ViewTagListItemBinding;
 import top.bogey.touch_tool.databinding.ViewTaskBinding;
 import top.bogey.touch_tool.ui.MainActivity;
@@ -43,6 +45,8 @@ import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionItem
 import top.bogey.touch_tool.ui.custom.dialog.EditTaskDialog;
 import top.bogey.touch_tool.ui.tool.task_manager.ExportTaskDialog;
 import top.bogey.touch_tool.ui.tool.task_manager.ImportTaskDialog;
+import top.bogey.touch_tool.ui.tool.task_manager.TaskRecord;
+import top.bogey.touch_tool.ui.tool.task_manager.TaskShareCode;
 import top.bogey.touch_tool.utils.AppUtil;
 import top.bogey.touch_tool.utils.DisplayUtil;
 import top.bogey.touch_tool.utils.listener.TextChangedListener;
@@ -150,6 +154,51 @@ public class TaskView extends Fragment implements TaskSaveListener {
                 ImportTaskDialog.showDialog(activity, intent.getData());
             }
         }, "*/*"));
+
+        // 分享码导入：粘贴分享码直接导入任务
+        binding.shareImportButton.setOnClickListener(v -> AppUtil.showEditDialog(requireContext(), R.string.task_share_code_import, "", code -> {
+            if (code == null || code.trim().isEmpty()) return;
+            TaskRecord record = TaskShareCode.decode(code);
+            if (record == null) {
+                Toast.makeText(requireContext(), R.string.task_share_code_invalid, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            ImportTaskDialog.showDialog(requireContext(), record);
+        }));
+
+        // 分享码生成：把选中任务（含引用的子任务和变量）打包成一段分享码，复制即可发给别人
+        binding.shareCodeButton.setOnClickListener(v -> {
+            Set<Task> taskSet = new HashSet<>();
+            for (String id : selected) {
+                Task task = TaskSaver.getInstance().getTask(id);
+                if (task == null) continue;
+                TaskRecord temp = new TaskRecord(new HashSet<>(Set.of(task)), new HashSet<>());
+                taskSet.add(task);
+                taskSet.addAll(temp.getTaskReferences(task));
+            }
+
+            TaskRecord tempRecord = new TaskRecord(taskSet, new HashSet<>());
+            Set<Variable> variableSet = new HashSet<>();
+            for (Task task : taskSet) {
+                variableSet.addAll(task.getVariableReferences());
+            }
+
+            TaskRecord record = new TaskRecord(taskSet, variableSet);
+            String shareCode = TaskShareCode.encode(record);
+            if (shareCode == null) {
+                Toast.makeText(requireContext(), R.string.task_share_code_invalid, Toast.LENGTH_SHORT).show();
+            } else {
+                AppUtil.showEditDialog(requireContext(), R.string.task_share_code, shareCode, result -> {
+                    if (result != null && !result.isEmpty()) {
+                        AppUtil.copyToClipboard(requireContext(), shareCode);
+                        Toast.makeText(requireContext(), R.string.task_share_code_copied, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            unselectAll();
+            hideBottomBar();
+        });
 
         adapter = new TaskPageViewAdapter(this);
         binding.tasksBox.setAdapter(adapter);
