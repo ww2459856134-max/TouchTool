@@ -1240,4 +1240,5 @@
     <string name="node_touch_action_interval">连点间隔（毫秒）</string>
     <string name="node_touch_action_repeat">点击次数</string>
 
+    <string name="node_pre_delay">前置延时(ms)</string>
 </resources>
