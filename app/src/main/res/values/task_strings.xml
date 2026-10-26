@@ -655,10 +655,6 @@
     <string name="node_touch_action_desc">点击传入的控件(非精确点击会自动查找上层可点击控件)</string>
     <string name="node_touch_action_long">长按</string>
     <string name="node_touch_action_precise">精确点击</string>
-    <string name="node_touch_action_pos">点击位置（控件内九宫格）</string>
-    <string name="node_touch_action_hold">按住时长（毫秒，0 为自动）</string>
-    <string name="node_touch_action_repeat">点击次数</string>
-    <string name="node_touch_action_interval">连点间隔（毫秒）</string>
     <string name="node_touch_action_else">未达成</string>
 
     <string name="edit_text_input_action">输入框输入文本</string>
@@ -1041,48 +1037,13 @@
     <string name="string_cut_action_keep_start">保留前标记</string>
     <string name="string_cut_action_keep_end">保留后标记</string>
 
-    <string name="node_scroll_action">控件滚动</string>
-    <string name="node_scroll_action_desc">对可滚动控件执行原生滚动操作</string>
-    <string name="node_scroll_action_direction">滚动方向</string>
 
-    <string name="node_scroll_until_action">滚动直到出现</string>
-    <string name="node_scroll_until_action_desc">反复滚动直到界面出现包含指定文本的控件，超时后失败，支持手势兜底</string>
-    <string name="node_scroll_until_action_container">滚动容器（可留空自动查找）</string>
 
-    <string name="node_wait_action">等待控件</string>
-    <string name="node_wait_action_desc">在超时时间内等待包含指定文本的控件出现或消失</string>
-    <string name="node_wait_action_type">等待类型</string>
-    <string name="node_wait_action_timeout">超时（毫秒）</string>
 
-    <string name="node_expand_action">控件展开收起</string>
-    <string name="node_expand_action_desc">对支持展开操作的控件执行展开或收起</string>
-    <string name="node_expand_action_type">操作类型</string>
 
-    <string name="node_touch_all_action">遍历点击</string>
-    <string name="node_touch_all_action_desc">按顺序点击列表中的所有控件</string>
-    <string name="node_touch_all_action_nodes">控件列表</string>
-    <string name="node_touch_all_action_interval">点击间隔（毫秒）</string>
-    <string name="node_touch_all_action_count">点击数量</string>
 
-    <string name="node_set_progress_action">进度条设置</string>
-    <string name="node_set_progress_action_desc">设置 SeekBar 等控件的进度值（0-100）</string>
-    <string name="node_set_progress_action_progress">进度（百分比）</string>
 
-    <string name="find_node_action_match_mode">匹配方式</string>
-    <string name="find_node_action_logic">匹配逻辑</string>
-    <string name="find_node_action_conditions">附加条件</string>
-    <string name="pin_conditions">查找条件</string>
-    <string name="node_condition_title">编辑查找条件</string>
-    <string name="node_condition_add">＋ 添加条件</string>
-    <string name="node_condition_save">保存</string>
-    <string name="node_condition_count">已添加 %1$d 条条件</string>
-    <string name="node_condition_empty">（未添加，点此配置）</string>
-    <string name="node_condition_value_hint">支持变量 {xxx}</string>
-    <string name="node_condition_length_hint">字符数</string>
     <string name="node_pre_delay">前置延时(ms)</string>
-    <string name="find_node_action_only_visible">仅匹配可见控件</string>
-    <string name="find_node_action_only_clickable">仅匹配可点击控件</string>
-    <string name="find_node_action_index">输出序号（-1 为最后一个）</string>
 
     <string name="image_preprocess_action">图像预处理</string>
     <string name="image_preprocess_action_desc">对图像做灰度化、二值化或反色处理，找图前对模板图和屏幕图应用相同处理可大幅提升匹配稳定性</string>
