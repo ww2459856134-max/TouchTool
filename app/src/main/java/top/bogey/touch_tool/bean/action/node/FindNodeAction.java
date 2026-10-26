@@ -43,6 +43,7 @@ public class FindNodeAction extends FindExecuteAction {
     private final transient Pin areaPin = new NotAllPathShowablePin(new PinArea(), R.string.pin_area);
     private final transient Pin pathTextPin = new PathTextShowablePin(new PinNodePathTextString(), R.string.find_node_action_regex_path);
     private final transient Pin matchModePin = new FilterShowablePin(new PinSingleSelect(R.array.node_match_mode), R.string.find_node_action_match_mode);
+    private final transient Pin logicPin = new LogicShowablePin(new PinSingleSelect(R.array.node_logic_mode), R.string.find_node_action_logic);
     private final transient Pin visiblePin = new FilterShowablePin(new PinBoolean(true), R.string.find_node_action_only_visible);
     private final transient Pin clickablePin = new FilterShowablePin(new PinBoolean(), R.string.find_node_action_only_clickable);
     private final transient Pin indexPin = new NotLinkAblePin(new PinInteger(0), R.string.find_node_action_index);
@@ -52,12 +53,12 @@ public class FindNodeAction extends FindExecuteAction {
 
     public FindNodeAction() {
         super(ActionType.FIND_NODE);
-        addPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, matchModePin, visiblePin, clickablePin, indexPin, nodePin, nodesPin);
+        addPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, matchModePin, logicPin, visiblePin, clickablePin, indexPin, nodePin, nodesPin);
     }
 
     public FindNodeAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, matchModePin, visiblePin, clickablePin, indexPin, nodePin, nodesPin);
+        reAddPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, matchModePin, logicPin, visiblePin, clickablePin, indexPin, nodePin, nodesPin);
     }
 
     @Override
@@ -134,48 +135,70 @@ public class FindNodeAction extends FindExecuteAction {
         return false;
     }
 
-    // 组合查找：文本、ID、类名、描述条件同时满足（未填的条件不参与匹配）
+    // 组合查找：文本、ID、类名、描述条件按匹配逻辑（AND/OR）组合（未填的条件不参与匹配）
     private boolean findCombined(TaskRunnable runnable, PinList nodes) {
         NodeInfo root = NodeInfo.getActiveWindow();
         if (root == null) return false;
 
-        String text = getPinValue(runnable, textPin).toString();
-        String id = getPinValue(runnable, idPin).toString();
-        String clazz = getPinValue(runnable, classPin).toString();
-        String desc = getPinValue(runnable, descPin).toString();
+        String[] conditions = {
+                getPinValue(runnable, textPin).toString(),
+                getPinValue(runnable, idPin).toString(),
+                getPinValue(runnable, classPin).toString(),
+                getPinValue(runnable, descPin).toString()
+        };
         // 至少要填一个条件
-        if (text.isEmpty() && id.isEmpty() && clazz.isEmpty() && desc.isEmpty()) return false;
+        boolean any = false;
+        for (String condition : conditions) if (!condition.isEmpty()) any = true;
+        if (!any) return false;
 
         int mode = getMatchMode();
+        int logic = getLogicMode();
         boolean onlyVisible = getBooleanValue(runnable, visiblePin);
         boolean onlyClickable = getBooleanValue(runnable, clickablePin);
         PinArea area = getPinValue(runnable, areaPin);
 
         List<NodeInfo> result = new ArrayList<>();
-        collectNodes(root, mode, text, id, clazz, desc, onlyVisible, onlyClickable, area.getValue(), result);
+        collectNodes(root, logic, conditions, mode, onlyVisible, onlyClickable, area.getValue(), result);
 
         if (result.isEmpty()) return false;
         fillNodes(runnable, nodes, result);
         return true;
     }
 
-    // 深度优先收集满足全部条件的控件
-    private void collectNodes(NodeInfo parent, int mode, String text, String id, String clazz, String desc,
+    // 深度优先收集满足条件的控件，logic: 0=全部满足(AND) 1=任一满足(OR)
+    // conditions 顺序：0文本 1ID 2类名 3描述
+    private void collectNodes(NodeInfo parent, int logic, String[] conditions, int mode,
                               boolean onlyVisible, boolean onlyClickable, Rect area, List<NodeInfo> result) {
         if (parent == null) return;
 
         boolean areaOk = area == null || area.isEmpty() || area.contains(parent.area) || Rect.intersects(area, parent.area);
         if (areaOk && (!onlyVisible || parent.visible) && (!onlyClickable || (parent.node != null && parent.node.isClickable()))) {
-            boolean ok = true;
-            if (!text.isEmpty()) ok = matchByMode(parent.text, text, mode);
-            if (ok && !id.isEmpty()) ok = matchByMode(parent.id, id, mode);
-            if (ok && !clazz.isEmpty()) ok = matchByMode(parent.clazz, clazz, mode);
-            if (ok && !desc.isEmpty()) ok = matchByMode(parent.desc, desc, mode);
+            boolean ok = logic == 0;
+            for (int i = 0; i < conditions.length; i++) {
+                String condition = conditions[i];
+                if (condition.isEmpty()) continue;
+                String value = switch (i) {
+                    case 0 -> parent.text;
+                    case 1 -> parent.id;
+                    case 2 -> parent.clazz;
+                    default -> parent.desc;
+                };
+                boolean matched = matchByMode(value, condition, mode);
+                if (logic == 0) {
+                    if (!matched) {
+                        ok = false;
+                        break;
+                    }
+                } else if (matched) {
+                    ok = true;
+                    break;
+                }
+            }
             if (ok) result.add(parent);
         }
 
         for (NodeInfo child : parent.getChildren()) {
-            collectNodes(child, mode, text, id, clazz, desc, onlyVisible, onlyClickable, area, result);
+            collectNodes(child, logic, conditions, mode, onlyVisible, onlyClickable, area, result);
         }
     }
 
@@ -223,6 +246,12 @@ public class FindNodeAction extends FindExecuteAction {
     private int getMatchMode() {
         PinSingleSelect mode = matchModePin.getValue();
         return mode == null ? 1 : mode.getIndex();
+    }
+
+    // 匹配逻辑：0=全部满足(AND) 1=任一满足(OR)
+    private int getLogicMode() {
+        PinSingleSelect logic = logicPin.getValue();
+        return logic == null ? 0 : logic.getIndex();
     }
 
     private boolean getBooleanValue(TaskRunnable runnable, Pin conditionPin) {
@@ -328,6 +357,19 @@ public class FindNodeAction extends FindExecuteAction {
             FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
             int type = action.getTypeValue();
             return type == 1 || type == 2 || type == 4 || type == 5 || type == 6;
+        }
+    }
+
+    // 匹配逻辑（AND/OR）：仅在组合查找模式下显示
+    private static class LogicShowablePin extends ShowAblePin {
+        public LogicShowablePin(PinBase value, int titleId) {
+            super(value, titleId);
+        }
+
+        @Override
+        public boolean showAble(Task context) {
+            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
+            return action.getTypeValue() == 6;
         }
     }
 
