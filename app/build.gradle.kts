@@ -21,7 +21,7 @@ configure<ApplicationExtension> {
         applicationId = "top.bogey.touch_tool"
         minSdk = common.versions.minSdk.get().toInt()
         targetSdk = common.versions.targetSdk.get().toInt()
-        versionCode = 57
+        versionCode = 58
         versionName = now
 
         @Suppress("UnstableApiUsage")
