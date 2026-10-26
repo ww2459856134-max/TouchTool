@@ -21,6 +21,9 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: 初始化 Android SDK 命令行工具
+        uses: android-actions/setup-android@v3
+
       - name: 安装 Android SDK 组件
         run: |
           yes | sdkmanager --licenses > /dev/null || true
