@@ -1070,6 +1070,15 @@
 
     <string name="find_node_action_match_mode">匹配方式</string>
     <string name="find_node_action_logic">匹配逻辑</string>
+    <string name="find_node_action_conditions">附加条件</string>
+    <string name="pin_conditions">查找条件</string>
+    <string name="node_condition_title">编辑查找条件</string>
+    <string name="node_condition_add">＋ 添加条件</string>
+    <string name="node_condition_save">保存</string>
+    <string name="node_condition_count">已添加 %1$d 条条件</string>
+    <string name="node_condition_empty">（未添加，点此配置）</string>
+    <string name="node_condition_value_hint">支持变量 {xxx}</string>
+    <string name="node_condition_length_hint">字符数</string>
     <string name="find_node_action_only_visible">仅匹配可见控件</string>
     <string name="find_node_action_only_clickable">仅匹配可点击控件</string>
     <string name="find_node_action_index">输出序号（-1 为最后一个）</string>
