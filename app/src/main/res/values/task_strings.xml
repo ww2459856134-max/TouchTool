@@ -1238,8 +1238,6 @@
     <string name="node_touch_action_pos">点击位置（控件内九宫格）</string>
     <string name="node_touch_action_hold">按住时长（毫秒，0 为自动）</string>
     <string name="node_touch_action_interval">连点间隔（毫秒）</string>
-    <string name="node_touch_diag">运行诊断</string>
-    <string name="node_find_diag">运行诊断</string>
     <string name="node_touch_action_repeat">点击次数</string>
 
 </resources>
