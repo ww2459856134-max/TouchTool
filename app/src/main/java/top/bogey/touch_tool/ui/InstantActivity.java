@@ -113,6 +113,11 @@ public class InstantActivity extends BaseActivity {
         if (action == null || (action instanceof StartAction startAction && !startAction.isEnable())) return;
 
         if (action instanceof TimeStartAction timeStartAction) {
+            // 倒计时模式是一次性的：触发后清零再保存，避免下次重排时又从现在起倒计时
+            if (timeStartAction.getCountdownMinutes() > 0) {
+                timeStartAction.resetCountdown();
+                copy.save();
+            }
             service.addAlarm(copy, timeStartAction);
         }
 
