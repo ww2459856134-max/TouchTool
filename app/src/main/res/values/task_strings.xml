@@ -1080,7 +1080,6 @@
     <string name="node_condition_value_hint">支持变量 {xxx}</string>
     <string name="node_condition_length_hint">字符数</string>
     <string name="node_pre_delay">前置延时(ms)</string>
-    <string name="node_pre_delay_max">延时上限(ms)，0 为固定</string>
     <string name="find_node_action_only_visible">仅匹配可见控件</string>
     <string name="find_node_action_only_clickable">仅匹配可点击控件</string>
     <string name="find_node_action_index">输出序号（-1 为最后一个）</string>
