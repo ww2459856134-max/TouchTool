@@ -109,7 +109,6 @@ import top.bogey.touch_tool.bean.action.node.GetNodeParentAction;
 import top.bogey.touch_tool.bean.action.node.GetNodesInAreaAction;
 import top.bogey.touch_tool.bean.action.node.GetWindowsAction;
 import top.bogey.touch_tool.bean.action.node.IsNodeExistAction;
-import top.bogey.touch_tool.bean.action.node.EditTextPasteAction;
 import top.bogey.touch_tool.bean.action.node.NodeTouchAction;
 import top.bogey.touch_tool.bean.action.node.PickNodeAction;
 import top.bogey.touch_tool.bean.action.point.ContinuousTapAction;
@@ -447,7 +446,7 @@ public class ActionInfo {
 
     private final static ActionInfo NODE_TOUCH_INFO = new ActionInfo(ActionType.NODE_TOUCH, NodeTouchAction.class, R.drawable.icon_touch_app, R.string.node_touch_action, R.string.node_touch_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo EDITTEXT_INPUT_INFO = new ActionInfo(ActionType.EDITTEXT_INPUT, EditTextInputAction.class, R.drawable.icon_edit, R.string.edit_text_input_action, R.string.edit_text_input_action_desc, 0, NormalActionCard.class);
-    private final static ActionInfo EDITTEXT_PASTE_INFO = new ActionInfo(ActionType.EDITTEXT_PASTE, EditTextPasteAction.class, R.drawable.icon_content_paste, R.string.edit_text_paste_action, R.string.edit_text_paste_action_desc, 0, NormalActionCard.class);
+    private final static ActionInfo EDITTEXT_PASTE_INFO = new ActionInfo(ActionType.EDITTEXT_PASTE, EditTextInputAction.class, R.drawable.icon_content_paste, R.string.edit_text_paste_action, R.string.edit_text_paste_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo PICK_NODE_INFO = new ActionInfo(ActionType.PICK_NODE, PickNodeAction.class, R.drawable.icon_widgets, R.string.pick_node_action, R.string.pick_node_action_desc, 0, NormalActionCard.class);
 
 
