@@ -4,6 +4,7 @@ import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.google.gson.JsonObject;
 
+import top.bogey.touch_tool.MainApplication;
 import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.action.ActionType;
 import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
@@ -15,6 +16,8 @@ import top.bogey.touch_tool.bean.pin.pin_objects.pin_execute.PinExecute;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinNumber;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleSelect;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
+import top.bogey.touch_tool.bean.pin.special_pin.NotLinkAblePin;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 public class NodeTouchAction extends ExecuteAction {
@@ -31,15 +34,29 @@ public class NodeTouchAction extends ExecuteAction {
     private final transient Pin repeatCountPin = new Pin(new PinInteger(1), R.string.node_touch_action_repeat);
     // 连点间隔（毫秒）
     private final transient Pin repeatIntervalPin = new Pin(new PinInteger(100), R.string.node_touch_action_interval);
+    // 运行诊断：显示失败具体原因与针脚恢复情况（排查用）
+    private final transient Pin diagPin = new NotLinkAblePin(new PinString(), R.string.node_touch_diag);
 
     public NodeTouchAction() {
         super(ActionType.NODE_TOUCH);
         addPins(nodePin, ltPin, elsePin, precisePin, posTypePin, holdTimePin, repeatCountPin, repeatIntervalPin);
+        addPin(diagPin);
     }
 
     public NodeTouchAction(JsonObject jsonObject) {
         super(jsonObject);
         reAddPins(nodePin, ltPin, elsePin, precisePin, posTypePin, holdTimePin, repeatCountPin, repeatIntervalPin);
+        reAddPins(diagPin);
+        // 恢复诊断：针脚队列仍有滞留 = 恢复错位的铁证，直接写进诊断针脚供弹窗查看
+        StringBuilder leftover = new StringBuilder();
+        String diagTitle = MainApplication.getInstance().getString(R.string.node_touch_diag);
+        for (Pin tmpPin : tmpPins) {
+            if (diagTitle.equals(tmpPin.getTitle())) continue;
+            leftover.append(tmpPin.getTitle()).append("(").append(tmpPin.getValue().getClass().getSimpleName()).append(") ");
+        }
+        if (leftover.length() > 0) {
+            diagPin.setValue(new PinString("加载错位! 滞留针脚: " + leftover));
+        }
     }
 
     @Override
@@ -75,6 +92,7 @@ public class NodeTouchAction extends ExecuteAction {
                         executeNext(runnable, outPin);
                         return;
                     }
+                    setDiag("手势点击失败(位置=" + posIndex + ",时长=" + duration + ",次数=" + count + ")");
                 } else {
                     AccessibilityNodeInfo targetNode;
                     if (precise.getValue()) {
@@ -89,18 +107,30 @@ public class NodeTouchAction extends ExecuteAction {
                                 executeNext(runnable, outPin);
                                 return;
                             }
+                            setDiag("系统长按被拒绝(performAction=false)");
                         } else {
                             if (targetNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
                                 executeNext(runnable, outPin);
                                 return;
                             }
+                            setDiag("系统点击被拒绝(performAction=false)");
                         }
+                    } else {
+                        setDiag("找不到可点击目标(控件及其父控件均不可点击)");
                     }
                 }
+            } else {
+                setDiag("控件引用已失效(nodeInfo=null)");
             }
+        } else {
+            setDiag("控件输入为空(连线断开或上游无输出)");
         }
         markUnachieved();
         executeNext(runnable, elsePin);
+    }
+
+    private void setDiag(String reason) {
+        diagPin.setValue(new PinString(reason));
     }
 
     public Pin getNodePin() {
