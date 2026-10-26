@@ -28,7 +28,9 @@ jobs:
           ls $ANDROID_HOME/licenses
 
       - name: 构建 Release APK
-        run: ./gradlew assembleRelease -x lint --no-daemon --stacktrace
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -x lint --no-daemon --stacktrace
 
       - name: 签名（需配置 Secrets，未配置则跳过）
         id: sign
