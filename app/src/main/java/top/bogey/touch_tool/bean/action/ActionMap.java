@@ -216,14 +216,7 @@ public class ActionMap {
 
                     ActionType.NODE_TOUCH,
                     ActionType.EDITTEXT_INPUT,
-                    ActionType.PICK_NODE,
-
-                    ActionType.NODE_SCROLL,
-                    ActionType.SCROLL_UNTIL_NODE,
-                    ActionType.WAIT_NODE,
-                    ActionType.NODE_EXPAND,
-                    ActionType.NODE_TOUCH_ALL,
-                    ActionType.NODE_SET_PROGRESS
+                    ActionType.PICK_NODE
             ));
 
             case IMAGE -> list.addAll(Arrays.asList(
