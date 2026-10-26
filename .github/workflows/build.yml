@@ -21,11 +21,9 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: 初始化 Android SDK 命令行工具
-        uses: android-actions/setup-android@v3
-
       - name: 安装 Android SDK 组件
         run: |
+          export PATH=$PATH:/usr/local/lib/android/sdk/cmdline-tools/latest/bin
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platforms;android-37" "build-tools;37.0.0" "ndk;30.0.15729638" "cmake;4.1.2" "platform-tools"
 
