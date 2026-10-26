@@ -101,49 +101,13 @@
         <item>正则路径</item>
         <item>类名</item>
         <item>描述</item>
-        <item>组合查找</item>
     </string-array>
 
-    <string-array name="node_match_mode">
-        <item>完全相等</item>
-        <item>包含</item>
-        <item>正则</item>
-        <item>开头匹配</item>
-        <item>结尾匹配</item>
-    </string-array>
 
-    <string-array name="node_logic_mode">
-        <item>全部满足（AND）</item>
-        <item>任一满足（OR）</item>
-    </string-array>
 
-    <string-array name="condition_field">
-        <item>文本</item>
-        <item>描述</item>
-        <item>ID</item>
-        <item>类名</item>
-        <item>文本长度</item>
-        <item>状态</item>
-    </string-array>
 
-    <string-array name="condition_num_op">
-        <item>大于</item>
-        <item>小于</item>
-        <item>等于</item>
-    </string-array>
 
-    <string-array name="condition_status_op">
-        <item>是</item>
-        <item>否</item>
-    </string-array>
 
-    <string-array name="condition_status">
-        <item>可见</item>
-        <item>可点击</item>
-        <item>已选中</item>
-        <item>可滚动</item>
-        <item>已启用</item>
-    </string-array>
 
     <string-array name="string_encode_type">
         <item>URL</item>
@@ -531,18 +495,7 @@
         <item>等用户解锁（有密码）</item>
         <item>图案解锁（画九宫格）</item>
     </string-array>
-    <string-array name="edit_text_locate_mode">
-        <item>按序号查找</item>
-        <item>自动：已聚焦输入框</item>
-        <item>自动：文本匹配</item>
-        <item>自动：描述匹配</item>
-        <item>自动：ID 匹配</item>
-    </string-array>
 
-    <string-array name="edit_text_fallback">
-        <item>不做兜底</item>
-        <item>手势点击输入框后重试</item>
-    </string-array>
 
     <string-array name="zip_action_mode">
         <item>解压到目录</item>
@@ -587,32 +540,9 @@
         <item>设置·无障碍</item>
     </string-array>
 
-    <string-array name="touch_pos_type">
-        <item>中心</item>
-        <item>左上</item>
-        <item>上中</item>
-        <item>右上</item>
-        <item>左中</item>
-        <item>右中</item>
-        <item>左下</item>
-        <item>下中</item>
-        <item>右下</item>
-    </string-array>
 
-    <string-array name="node_scroll_direction">
-        <item>向下（看更多内容）</item>
-        <item>向上（看之前内容）</item>
-    </string-array>
 
-    <string-array name="node_wait_type">
-        <item>等待出现</item>
-        <item>等待消失</item>
-    </string-array>
 
-    <string-array name="node_expand_type">
-        <item>展开</item>
-        <item>收起</item>
-    </string-array>
 
     <string-array name="tile_slot">
         <item>任务磁贴1</item>
