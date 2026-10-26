@@ -11,9 +11,11 @@ import com.google.android.material.button.MaterialButton;
 import java.util.Arrays;
 import java.util.List;
 
+import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.action.Action;
 import top.bogey.touch_tool.bean.action.ActionCheckResult;
 import top.bogey.touch_tool.bean.action.app.OpenUriSchemeAction;
+import top.bogey.touch_tool.bean.action.start.TimeStartAction;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.task.Task;
 import top.bogey.touch_tool.databinding.CardNormalBinding;
@@ -22,6 +24,7 @@ import top.bogey.touch_tool.ui.blueprint.pin.PinLeftView;
 import top.bogey.touch_tool.ui.blueprint.pin.PinRightView;
 import top.bogey.touch_tool.ui.blueprint.pin.PinTopView;
 import top.bogey.touch_tool.ui.blueprint.pin.PinView;
+import top.bogey.touch_tool.utils.AppUtil;
 import top.bogey.touch_tool.utils.DisplayUtil;
 
 @SuppressLint("ViewConstructor")
@@ -43,7 +46,19 @@ public class NormalActionCard extends ActionCard {
         initLock(binding.lockButton);
         initExpand(binding.expandButton);
         initTest();
+        initNextTime();
         initPosView(binding.position);
+    }
+
+    // 「定时执行」卡片专属：显示下次执行时间，排期一目了然
+    private void initNextTime() {
+        if (action instanceof TimeStartAction timeStartAction && timeStartAction.isEnable()) {
+            long next = timeStartAction.getNextStartTime(System.currentTimeMillis());
+            if (next > 0) {
+                binding.nextTimeText.setText(getContext().getString(R.string.time_start_action_next, AppUtil.formatDateTime(getContext(), next, false, true)));
+                binding.nextTimeText.setVisibility(VISIBLE);
+            }
+        }
     }
 
     // 「打开链接」卡片专属：试打开按钮，按当前配置直接打开链接，不用跑整个任务
