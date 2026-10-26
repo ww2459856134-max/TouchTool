@@ -223,6 +223,8 @@ import top.bogey.touch_tool.bean.action.system.ShareToAction;
 import top.bogey.touch_tool.bean.action.system.StopRingtoneAction;
 import top.bogey.touch_tool.bean.action.system.SwitchCaptureAction;
 import top.bogey.touch_tool.bean.action.system.SwitchScreenAction;
+import top.bogey.touch_tool.bean.action.system.UnlockScreenAction;
+import top.bogey.touch_tool.bean.action.system.KeyguardCheckAction;
 import top.bogey.touch_tool.bean.action.system.SystemKeyAction;
 import top.bogey.touch_tool.bean.action.system.TextToSpeechAction;
 import top.bogey.touch_tool.bean.action.system.VibrateAction;
@@ -347,6 +349,8 @@ public class ActionInfo {
     private final static ActionInfo READ_FROM_CLIPBOARD_INFO = new ActionInfo(ActionType.READ_FROM_CLIPBOARD, ReadFromClipboardAction.class, R.drawable.icon_content_paste, R.string.read_from_clipboard_action, R.string.read_from_clipboard_action_desc, 0, NormalActionCard.class);
 
     private final static ActionInfo SWITCH_SCREEN_INFO = new ActionInfo(ActionType.SWITCH_SCREEN, SwitchScreenAction.class, R.drawable.icon_mobile, R.string.switch_screen_action, R.string.switch_screen_action_desc, 0, NormalActionCard.class);
+    private final static ActionInfo UNLOCK_SCREEN_INFO = new ActionInfo(ActionType.UNLOCK_SCREEN, UnlockScreenAction.class, R.drawable.icon_lock_open, R.string.unlock_screen_action, R.string.unlock_screen_action_desc, 0, NormalActionCard.class);
+    private final static ActionInfo KEYGUARD_CHECK_INFO = new ActionInfo(ActionType.KEYGUARD_CHECK, KeyguardCheckAction.class, R.drawable.icon_lock, R.string.keyguard_check_action, R.string.keyguard_check_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo GET_SCREEN_STATUS_INFO = new ActionInfo(ActionType.GET_SCREEN_STATUS, GetScreenStatusAction.class, R.drawable.icon_mobile, R.string.get_screen_status_action, R.string.get_screen_status_action_desc, 0, NormalActionCard.class);
 
     private final static ActionInfo SWITCH_CAPTURE_INFO = new ActionInfo(ActionType.SWITCH_CAPTURE, SwitchCaptureAction.class, R.drawable.icon_screen_record, R.string.capture_switch_action, R.string.capture_switch_action_desc, 0, NormalActionCard.class);
@@ -633,6 +637,8 @@ public class ActionInfo {
             case READ_FROM_CLIPBOARD -> READ_FROM_CLIPBOARD_INFO;
 
             case SWITCH_SCREEN -> SWITCH_SCREEN_INFO;
+            case UNLOCK_SCREEN -> UNLOCK_SCREEN_INFO;
+            case KEYGUARD_CHECK -> KEYGUARD_CHECK_INFO;
             case GET_SCREEN_STATUS -> GET_SCREEN_STATUS_INFO;
 
             case SWITCH_CAPTURE -> SWITCH_CAPTURE_INFO;
