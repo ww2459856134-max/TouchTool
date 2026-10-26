@@ -109,14 +109,9 @@ import top.bogey.touch_tool.bean.action.node.GetNodeParentAction;
 import top.bogey.touch_tool.bean.action.node.GetNodesInAreaAction;
 import top.bogey.touch_tool.bean.action.node.GetWindowsAction;
 import top.bogey.touch_tool.bean.action.node.IsNodeExistAction;
-import top.bogey.touch_tool.bean.action.node.NodeExpandAction;
-import top.bogey.touch_tool.bean.action.node.NodeScrollAction;
-import top.bogey.touch_tool.bean.action.node.NodeSetProgressAction;
+import top.bogey.touch_tool.bean.action.node.EditTextPasteAction;
 import top.bogey.touch_tool.bean.action.node.NodeTouchAction;
-import top.bogey.touch_tool.bean.action.node.NodeTouchAllAction;
 import top.bogey.touch_tool.bean.action.node.PickNodeAction;
-import top.bogey.touch_tool.bean.action.node.ScrollUntilNodeAction;
-import top.bogey.touch_tool.bean.action.node.WaitNodeAction;
 import top.bogey.touch_tool.bean.action.point.ContinuousTapAction;
 import top.bogey.touch_tool.bean.action.point.MultiFingerSwipeAction;
 import top.bogey.touch_tool.bean.action.normal.DelayAction;
@@ -452,14 +447,8 @@ public class ActionInfo {
 
     private final static ActionInfo NODE_TOUCH_INFO = new ActionInfo(ActionType.NODE_TOUCH, NodeTouchAction.class, R.drawable.icon_touch_app, R.string.node_touch_action, R.string.node_touch_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo EDITTEXT_INPUT_INFO = new ActionInfo(ActionType.EDITTEXT_INPUT, EditTextInputAction.class, R.drawable.icon_edit, R.string.edit_text_input_action, R.string.edit_text_input_action_desc, 0, NormalActionCard.class);
-    private final static ActionInfo EDITTEXT_PASTE_INFO = new ActionInfo(ActionType.EDITTEXT_PASTE, EditTextInputAction.class, R.drawable.icon_content_paste, R.string.edit_text_paste_action, R.string.edit_text_paste_action_desc, 0, NormalActionCard.class);
+    private final static ActionInfo EDITTEXT_PASTE_INFO = new ActionInfo(ActionType.EDITTEXT_PASTE, EditTextPasteAction.class, R.drawable.icon_content_paste, R.string.edit_text_paste_action, R.string.edit_text_paste_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo PICK_NODE_INFO = new ActionInfo(ActionType.PICK_NODE, PickNodeAction.class, R.drawable.icon_widgets, R.string.pick_node_action, R.string.pick_node_action_desc, 0, NormalActionCard.class);
-    private final static ActionInfo NODE_SCROLL_INFO = new ActionInfo(ActionType.NODE_SCROLL, NodeScrollAction.class, R.drawable.icon_autoplay, R.string.node_scroll_action, R.string.node_scroll_action_desc, 0, NormalActionCard.class);
-    private final static ActionInfo SCROLL_UNTIL_NODE_INFO = new ActionInfo(ActionType.SCROLL_UNTIL_NODE, ScrollUntilNodeAction.class, R.drawable.icon_repeat, R.string.node_scroll_until_action, R.string.node_scroll_until_action_desc, 0, NormalActionCard.class);
-    private final static ActionInfo WAIT_NODE_INFO = new ActionInfo(ActionType.WAIT_NODE, WaitNodeAction.class, R.drawable.icon_hourglass_bottom, R.string.node_wait_action, R.string.node_wait_action_desc, 0, NormalActionCard.class);
-    private final static ActionInfo NODE_EXPAND_INFO = new ActionInfo(ActionType.NODE_EXPAND, NodeExpandAction.class, R.drawable.icon_widgets, R.string.node_expand_action, R.string.node_expand_action_desc, 0, NormalActionCard.class);
-    private final static ActionInfo NODE_TOUCH_ALL_INFO = new ActionInfo(ActionType.NODE_TOUCH_ALL, NodeTouchAllAction.class, R.drawable.icon_data_array, R.string.node_touch_all_action, R.string.node_touch_all_action_desc, 0, NormalActionCard.class);
-    private final static ActionInfo NODE_SET_PROGRESS_INFO = new ActionInfo(ActionType.NODE_SET_PROGRESS, NodeSetProgressAction.class, R.drawable.icon_edit, R.string.node_set_progress_action, R.string.node_set_progress_action_desc, 0, NormalActionCard.class);
 
 
     // 图片与颜色操作
@@ -739,12 +728,6 @@ public class ActionInfo {
             case EDITTEXT_INPUT -> EDITTEXT_INPUT_INFO;
             case EDITTEXT_PASTE -> EDITTEXT_PASTE_INFO;
             case PICK_NODE -> PICK_NODE_INFO;
-            case NODE_SCROLL -> NODE_SCROLL_INFO;
-            case SCROLL_UNTIL_NODE -> SCROLL_UNTIL_NODE_INFO;
-            case WAIT_NODE -> WAIT_NODE_INFO;
-            case NODE_EXPAND -> NODE_EXPAND_INFO;
-            case NODE_TOUCH_ALL -> NODE_TOUCH_ALL_INFO;
-            case NODE_SET_PROGRESS -> NODE_SET_PROGRESS_INFO;
 
 
             case GET_IMAGE -> GET_IMAGE_INFO;
