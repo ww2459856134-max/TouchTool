@@ -269,6 +269,12 @@
         <item>深度优先</item>
     </string-array>
 
+    <string-array name="picker_stability_level">
+        <item>低</item>
+        <item>中</item>
+        <item>高</item>
+    </string-array>
+
     <string-array name="float_pos_type">
         <item>记忆位置</item>
         <item>手动选择</item>
@@ -487,6 +493,11 @@
         <item>粘贴剪贴板</item>
     </string-array>
 
+    <string-array name="unlock_screen_mode">
+        <item>上滑解锁（无密码）</item>
+        <item>等用户解锁（有密码）</item>
+        <item>图案解锁（画九宫格）</item>
+    </string-array>
     <string-array name="edit_text_locate_mode">
         <item>按序号查找</item>
         <item>自动：已聚焦输入框</item>
