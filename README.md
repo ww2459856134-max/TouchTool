@@ -32,7 +32,9 @@ TouchTool 采用直观的**蓝图式任务编辑器**，通过可视化节点连
 
 前往 [Releases](https://github.com/ww2459856134-max/TouchTool/releases) 下载最新签名 APK（正式证书，可直接覆盖升级）。推送代码后 GitHub Actions 会自动构建，产物见 [Actions](https://github.com/ww2459856134-max/TouchTool/actions)。更新日志见 [CHANGELOG.md](CHANGELOG.md)。
 
-### 控件识别增强（v42~v46）
+### 控件识别增强（v42~v47）
+
+- **前置延时**：控件类卡片统一支持执行前延时（固定或区间随机，v47）
 
 - **附加条件可视化编辑器**：查找控件支持任意条条件行（文本/描述/ID/类名/文本长度/控件状态），字段、运算符、值自由组合，支持增删与排序（v45/v46）
 - **匹配逻辑 AND/OR 切换**：组合查找的多个条件可选「全部满足」或「任一满足」（v44）
