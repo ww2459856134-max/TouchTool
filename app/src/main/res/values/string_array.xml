@@ -117,6 +117,34 @@
         <item>任一满足（OR）</item>
     </string-array>
 
+    <string-array name="condition_field">
+        <item>文本</item>
+        <item>描述</item>
+        <item>ID</item>
+        <item>类名</item>
+        <item>文本长度</item>
+        <item>状态</item>
+    </string-array>
+
+    <string-array name="condition_num_op">
+        <item>大于</item>
+        <item>小于</item>
+        <item>等于</item>
+    </string-array>
+
+    <string-array name="condition_status_op">
+        <item>是</item>
+        <item>否</item>
+    </string-array>
+
+    <string-array name="condition_status">
+        <item>可见</item>
+        <item>可点击</item>
+        <item>已选中</item>
+        <item>可滚动</item>
+        <item>已启用</item>
+    </string-array>
+
     <string-array name="string_encode_type">
         <item>URL</item>
         <item>Base64</item>
