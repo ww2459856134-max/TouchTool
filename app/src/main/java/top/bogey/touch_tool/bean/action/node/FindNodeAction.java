@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 
 import java.util.List;
 
+import top.bogey.touch_tool.MainApplication;
 import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.action.ActionType;
 import top.bogey.touch_tool.bean.action.parent.FindExecuteAction;
@@ -18,6 +19,8 @@ import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinArea;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinNodePathString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinNodePathTextString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleSelect;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
+import top.bogey.touch_tool.bean.pin.special_pin.NotLinkAblePin;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 import top.bogey.touch_tool.bean.pin.special_pin.NotLinkAblePin;
 import top.bogey.touch_tool.bean.pin.special_pin.ShowAblePin;
@@ -37,15 +40,33 @@ public class FindNodeAction extends FindExecuteAction {
     private final transient Pin pathTextPin = new PathTextShowablePin(new PinNodePathTextString(), R.string.find_node_action_regex_path);
     private final transient Pin nodePin = new Pin(new PinNode(), R.string.pin_node, true);
     private final transient Pin nodesPin = new NotPathShowablePin(new PinList(new PinNode()), true);
+    // 运行诊断：显示查找失败的具体输入与窗口情况（排查用）
+    private final transient Pin diagPin = new NotLinkAblePin(new PinString(), R.string.node_find_diag);
 
     public FindNodeAction() {
         super(ActionType.FIND_NODE);
         reAddPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, nodePin, nodesPin);
+        addPin(diagPin);
     }
 
     public FindNodeAction(JsonObject jsonObject) {
         super(jsonObject);
         reAddPins(typePin, pathPin, fullPathPin, textPin, idPin, classPin, descPin, areaPin, pathTextPin, nodePin, nodesPin);
+        reAddPins(diagPin);
+        // 恢复诊断：针脚队列仍有滞留 = 恢复错位的铁证
+        StringBuilder leftover = new StringBuilder();
+        String diagTitle = MainApplication.getInstance().getString(R.string.node_find_diag);
+        for (Pin tmpPin : tmpPins) {
+            if (diagTitle.equals(tmpPin.getTitle())) continue;
+            leftover.append(tmpPin.getTitle()).append("(").append(tmpPin.getValue().getClass().getSimpleName()).append(") ");
+        }
+        if (leftover.length() > 0) {
+            diagPin.setValue(new PinString("加载错位! 滞留针脚: " + leftover));
+        }
+    }
+
+    private void setDiag(String reason) {
+        diagPin.setValue(new PinString(reason));
     }
 
     @Override
@@ -59,7 +80,10 @@ public class FindNodeAction extends FindExecuteAction {
                 PinNodePathString path = new PinNodePathString(pathString.toString());
                 PinBoolean fullPath = getPinValue(runnable, fullPathPin);
                 NodeInfo nodeInfo = path.findNode(NodeInfo.getWindows(), fullPath.getValue());
-                if (nodeInfo == null) return false;
+                if (nodeInfo == null) {
+                    setDiag("身份查找未命中: 值=" + pathString + " 精确=" + fullPath.getValue() + " 窗口数=" + NodeInfo.getWindows().size());
+                    return false;
+                }
                 nodePin.getValue(PinNode.class).setNodeInfo(nodeInfo);
                 MarkTargetFloatView.showTargetArea(nodeInfo.area);
                 return true;
@@ -73,16 +97,25 @@ public class FindNodeAction extends FindExecuteAction {
                 if (type.getIndex() == 1) {
                     PinObject text = getPinValue(runnable, textPin);
                     String value = text.toString();
-                    if (value.isEmpty()) return false;
+                    if (value.isEmpty()) {
+                        setDiag("文本查找: 输入为空");
+                        return false;
+                    }
                     children = nodeInfo.findChildrenByText(value, area.getValue());
                 } else {
                     PinObject id = getPinValue(runnable, idPin);
                     String value = id.toString();
-                    if (value.isEmpty()) return false;
+                    if (value.isEmpty()) {
+                        setDiag("ID查找: 输入为空");
+                        return false;
+                    }
                     children = nodeInfo.findChildrenById(value, area.getValue());
                 }
 
-                if (children == null || children.isEmpty()) return false;
+                if (children == null || children.isEmpty()) {
+                    setDiag("文本/ID查找未命中: 窗口=" + nodeInfo + " 值见上方针脚");
+                    return false;
+                }
                 // 修复：重试时先清空上次结果，避免列表累积重复
                 nodes.clear();
                 for (NodeInfo child : children) {
@@ -96,7 +129,10 @@ public class FindNodeAction extends FindExecuteAction {
                 PinObject pathString = getPinValue(runnable, pathTextPin);
                 PinNodePathTextString path = new PinNodePathTextString(pathString.toString());
                 List<NodeInfo> findNodes = path.findNodes(NodeInfo.getWindows());
-                if (findNodes == null || findNodes.isEmpty()) return false;
+                if (findNodes == null || findNodes.isEmpty()) {
+                    setDiag("正则路径未命中: 值=" + pathString);
+                    return false;
+                }
                 // 修复：重试时先清空上次结果，避免列表累积重复
                 nodes.clear();
                 for (NodeInfo nodeInfo : findNodes) {
@@ -112,7 +148,10 @@ public class FindNodeAction extends FindExecuteAction {
                 NodeInfo nodeInfo = NodeInfo.getActiveWindow();
                 if (nodeInfo == null) return false;
                 List<NodeInfo> children = nodeInfo.findChildrenByClass(className.toString(), area.getValue());
-                if (children == null || children.isEmpty()) return false;
+                if (children == null || children.isEmpty()) {
+                    setDiag("类名查找未命中: 值=" + className + " 窗口=" + nodeInfo);
+                    return false;
+                }
                 // 修复：重试时先清空上次结果，避免列表累积重复
                 nodes.clear();
                 for (NodeInfo child : children) {
@@ -128,7 +167,10 @@ public class FindNodeAction extends FindExecuteAction {
                 NodeInfo nodeInfo = NodeInfo.getActiveWindow();
                 if (nodeInfo == null) return false;
                 List<NodeInfo> children = nodeInfo.findChildrenByDesc(desc.toString(), area.getValue());
-                if (children == null || children.isEmpty()) return false;
+                if (children == null || children.isEmpty()) {
+                    setDiag("描述查找未命中: 值=" + desc + " 窗口=" + nodeInfo);
+                    return false;
+                }
                 // 修复：重试时先清空上次结果，避免列表累积重复
                 nodes.clear();
                 for (NodeInfo child : children) {
