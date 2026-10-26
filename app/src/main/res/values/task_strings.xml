@@ -1235,4 +1235,9 @@
     <string name="favorite_add">加入常用</string>
     <string name="favorite_remove">移出常用</string>
 
+    <string name="node_touch_action_pos">点击位置（控件内九宫格）</string>
+    <string name="node_touch_action_hold">按住时长（毫秒，0 为自动）</string>
+    <string name="node_touch_action_interval">连点间隔（毫秒）</string>
+    <string name="node_touch_action_repeat">点击次数</string>
+
 </resources>
