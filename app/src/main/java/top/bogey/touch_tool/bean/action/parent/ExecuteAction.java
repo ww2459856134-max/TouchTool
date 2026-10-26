@@ -7,7 +7,7 @@ import top.bogey.touch_tool.bean.action.Action;
 import top.bogey.touch_tool.bean.action.ActionType;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinObject;
-import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
+import top.bogey.touch_tool.bean.pin.pin_objects.PinValueArea;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_execute.PinExecute;
 import top.bogey.touch_tool.bean.pin.special_pin.NotLinkAblePin;
 import top.bogey.touch_tool.service.TaskRunnable;
@@ -16,35 +16,28 @@ public abstract class ExecuteAction extends Action {
     protected final transient Pin inPin = new Pin(new PinExecute(), R.string.pin_execute);
     protected final transient Pin outPin = new Pin(new PinExecute(), R.string.pin_execute, true);
 
-    protected final transient Pin preDelayPin = new NotLinkAblePin(new PinInteger(0), R.string.node_pre_delay);
-    protected final transient Pin preDelayMaxPin = new NotLinkAblePin(new PinInteger(0), R.string.node_pre_delay_max);
+    // 前置延时（ms），沿用延时动作卡片的数值区间：下限=固定延时，上限=区间上界，锁定后为固定值
+    protected final transient Pin preDelayPin = new NotLinkAblePin(new PinValueArea(0, 0), R.string.node_pre_delay);
     private final transient boolean hasDelayPins;
 
     public ExecuteAction(ActionType type) {
         super(type);
         addPins(inPin, outPin);
         hasDelayPins = Action.isNodeCategory(type);
-        if (hasDelayPins) addPins(preDelayPin, preDelayMaxPin);
+        if (hasDelayPins) addPins(preDelayPin);
     }
 
     public ExecuteAction(JsonObject jsonObject) {
         super(jsonObject);
         reAddPins(inPin, outPin);
         hasDelayPins = Action.isNodeCategory(getType());
-        if (hasDelayPins) addPins(preDelayPin, preDelayMaxPin);
+        if (hasDelayPins) addPins(preDelayPin);
     }
 
     @Override
     public long getPreDelay() {
         if (!hasDelayPins) return 0;
-        long min = getDelayValue(preDelayPin);
-        long max = getDelayValue(preDelayMaxPin);
-        if (max > min && min >= 0) return min + (long) (Math.random() * (max - min));
-        return Math.max(min, 0);
-    }
-
-    private long getDelayValue(Pin pin) {
-        if (pin.getValue() instanceof PinInteger pinInteger) return pinInteger.getValue();
+        if (preDelayPin.getValue() instanceof PinValueArea pinValueArea) return pinValueArea.getRandomValue();
         return 0;
     }
 
