@@ -265,7 +265,16 @@ public class NodePicker extends FullScreenPicker<NodeInfo> implements NodePicker
             binding.markBox.setVisibility(VISIBLE);
             binding.idTitle.setVisibility(VISIBLE);
 
-            binding.idTitle.setText(nodeInfo.id);
+            // 显示控件指纹稳定度评分，提示用户该定位方式抗改版能力（文本>描述>ID>类名>路径）
+            int level = nodeInfo.getStabilityLevel();
+            String levelText = getResources().getStringArray(R.array.picker_stability_level)[level];
+            binding.idTitle.setText(getContext().getString(R.string.picker_stability, levelText, nodeInfo.getStabilityScore())
+                    + (nodeInfo.id == null || nodeInfo.id.isEmpty() ? "" : "  |  " + nodeInfo.id));
+            int stabilityColor;
+            if (level == 2) stabilityColor = 0xFF2E7D32;       // 高：绿
+            else if (level == 1) stabilityColor = 0xFFEF6C00;  // 中：橙
+            else stabilityColor = 0xFFC62828;                  // 低：红
+            binding.idTitle.setTextColor(stabilityColor);
 
             Rect area = new Rect(nodeInfo.area);
             area.offset(-location[0], -location[1]);
