@@ -4,6 +4,9 @@ import com.google.gson.JsonObject;
 
 import top.bogey.touch_tool.bean.action.Action;
 import top.bogey.touch_tool.bean.action.ActionType;
+import java.util.ArrayList;
+
+import top.bogey.touch_tool.MainApplication;
 import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinObject;
@@ -25,8 +28,20 @@ public abstract class CalculateAction extends Action {
     public CalculateAction(JsonObject jsonObject) {
         super(jsonObject);
         hasDelayPins = Action.isNodeCategory(getType());
-        // 必须用 reAddPins：按位置消费保存的针脚，否则子类针脚全部错位重置（v47 事故根因）
-        if (hasDelayPins) reAddPins(preDelayPin);
+        // 按值类从队列任意位置提取，与保存顺序完全解耦（详见 ExecuteAction 同名注释）
+        if (hasDelayPins) recoverPreDelayPin();
+    }
+
+    private void recoverPreDelayPin() {
+        String title = MainApplication.getInstance().getString(R.string.node_pre_delay);
+        for (Pin tmpPin : new ArrayList<>(tmpPins)) {
+            if (tmpPin.getValue() instanceof PinValueArea
+                    && (title.isEmpty() || title.equals(tmpPin.getTitle()))) {
+                tmpPins.remove(tmpPin);
+                preDelayPin.sync(tmpPin);
+                break;
+            }
+        }
     }
 
     @Override
