@@ -48,6 +48,12 @@ public class ImportTaskDialog extends FrameLayout {
         } catch (Exception ignored) {
         }
         if (taskRecord == null) return;
+        showDialog(context, taskRecord);
+    }
+
+    // 从任务记录直接打开导入对话框（分享码导入走这里）
+    public static void showDialog(Context context, TaskRecord taskRecord) {
+        if (taskRecord == null || taskRecord.tasks() == null || taskRecord.tasks().isEmpty()) return;
         ImportTaskDialog view = new ImportTaskDialog(context, taskRecord);
         showDialog(context, view);
     }
