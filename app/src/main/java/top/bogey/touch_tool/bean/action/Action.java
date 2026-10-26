@@ -259,8 +259,7 @@ public abstract class Action extends Identity implements PinListener {
         return switch (type) {
             case FIND_NODE, IS_NODE_EXIST, GET_NODES_IN_AREA, GET_NODE_INFO, GET_NODE_CHILDREN,
                     GET_NODE_PARENT, GET_WINDOWS, CHECK_NODE_VALID, NODE_TOUCH, EDITTEXT_INPUT,
-                    EDITTEXT_PASTE, PICK_NODE, NODE_SCROLL, SCROLL_UNTIL_NODE, WAIT_NODE,
-                    NODE_EXPAND, NODE_TOUCH_ALL, NODE_SET_PROGRESS -> true;
+                    EDITTEXT_PASTE, PICK_NODE -> true;
             default -> false;
         };
     }
