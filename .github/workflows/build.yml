@@ -1,0 +1,62 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout（含子模块）
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 安装 Android SDK 组件
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-37" "build-tools;37.0.0" "ndk;30.0.15729638" "cmake;4.1.2" "platform-tools"
+
+      - name: 构建 Release APK
+        run: ./gradlew assembleRelease -x lint --no-daemon --stacktrace
+
+      - name: 签名（需配置 Secrets，未配置则跳过）
+        id: sign
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        if: env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "${KEYSTORE_BASE64}" | base64 -d > touchtool.jks
+          BT=$(ls $ANDROID_HOME/build-tools/ | sort -V | tail -1)
+          UNSIGNED=$(ls app/build/outputs/apk/release/*-release-unsigned.apk app/build/outputs/apk/release/app-release-unsigned.apk 2>/dev/null | head -1)
+          [ -z "$UNSIGNED" ] && UNSIGNED=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          $ANDROID_HOME/build-tools/$BT/zipalign -p -f 4 "$UNSIGNED" app-release-aligned.apk
+          $ANDROID_HOME/build-tools/$BT/apksigner sign \
+            --ks touchtool.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            app-release-aligned.apk
+          cp app-release-aligned.apk TouchTool-signed.apk
+          echo "signed=true" >> $GITHUB_OUTPUT
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: TouchTool-APK
+          path: |
+            TouchTool-signed.apk
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
