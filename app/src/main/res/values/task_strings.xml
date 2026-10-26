@@ -1043,7 +1043,6 @@
 
 
 
-    <string name="node_pre_delay">前置延时(ms)</string>
 
     <string name="image_preprocess_action">图像预处理</string>
     <string name="image_preprocess_action_desc">对图像做灰度化、二值化或反色处理，找图前对模板图和屏幕图应用相同处理可大幅提升匹配稳定性</string>
