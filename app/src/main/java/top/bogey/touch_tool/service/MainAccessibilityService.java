@@ -541,24 +541,12 @@ public class MainAccessibilityService extends AccessibilityService {
         AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 
         long timeMillis = System.currentTimeMillis();
-        long startTime = timeStartAction.getStartTime();
-        long periodic = timeStartAction.getPeriodic();
-
-        long nextStartTime = startTime;
-        if (periodic > 0) {
-            long l = timeMillis - startTime;
-            // 当前时间没达到定时时间，下次执行时间就是开始时间
-            if (l > 0) {
-                // 当前时间大于开始时间，需要计算下次开始的时间，防止定时任务刚设定就执行了
-                int loop = (int) Math.ceil(l * 1f / periodic);
-                nextStartTime = startTime + loop * periodic;
-                // 如果算出的下个开始时间没有大于现在时间30s，应该是算错了，下个开始时间再加个间隔
-                if (nextStartTime - timeMillis < 30 * 1000) {
-                    nextStartTime += periodic;
-                }
-            }
-        }
-        if (nextStartTime < timeMillis) return;
+        // 统一调度：倒计时 / 多时间点 / 固定时间+间隔 都由 TimeStartAction 计算下一次触发时间
+        long nextStartTime = timeStartAction.getNextStartTime(timeMillis);
+        if (nextStartTime < 0) return;
+        // 随机延迟：到点后随机等 0~N 分钟再执行
+        long randomDelay = timeStartAction.getRandomDelay();
+        if (randomDelay > 0) nextStartTime += (long) (Math.random() * randomDelay * 60 * 1000L);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (manager.canScheduleExactAlarms()) {
