@@ -79,6 +79,11 @@
 
     <string name="task_export">导出任务</string>
     <string name="task_export_desc">选择需要导出的任务配置和通用自定义卡片到你选择的文件夹中</string>
+    <string name="task_share_code">分享码</string>
+    <string name="task_share_code_import">粘贴分享码导入</string>
+    <string name="task_share_code_tips">粘贴任务分享码（TT1. 开头），点击导入</string>
+    <string name="task_share_code_invalid">分享码无效或已损坏</string>
+    <string name="task_share_code_copied">分享码已复制，发给朋友粘贴导入即可</string>
     <string name="task_export_task_reference">引用任务：</string>
     <string name="task_export_var_reference">引用变量：</string>
 
@@ -224,6 +229,7 @@
     <string name="picker_node_type_1">仅可用</string>
     <string name="picker_node_type_2">顶部优先</string>
     <string name="picker_node_type_3">深度优先</string>
+    <string name="picker_stability">稳定度：%1$s（%2$d分）</string>
     <string name="picker_area_pos_change">位置微调区</string>
     <string name="picker_area_size_change">大小微调区</string>
 
