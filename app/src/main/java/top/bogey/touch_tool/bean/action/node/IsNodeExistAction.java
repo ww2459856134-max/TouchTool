@@ -8,7 +8,6 @@ import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.action.ActionType;
 import top.bogey.touch_tool.bean.action.parent.CalculateAction;
 import top.bogey.touch_tool.bean.other.NodeInfo;
-import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBase;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBoolean;
@@ -35,7 +34,6 @@ public class IsNodeExistAction extends CalculateAction {
     private final transient Pin areaPin = new NotAllPathShowablePin(new PinArea(), R.string.pin_area);
     private final transient Pin pathTextPin = new PathTextShowablePin(new PinNodePathTextString(), R.string.find_node_action_regex_path);
     private final transient Pin resultPin = new Pin(new PinBoolean(), R.string.pin_boolean_result, true);
-    // 虚拟屏ID：填了只在指定屏幕里找控件（0 = 全部屏幕）
 
     public IsNodeExistAction() {
         super(ActionType.IS_NODE_EXIST);
