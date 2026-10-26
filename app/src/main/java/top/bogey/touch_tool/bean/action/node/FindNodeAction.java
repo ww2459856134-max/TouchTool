@@ -231,6 +231,8 @@ public class FindNodeAction extends FindExecuteAction {
 
     // 把结果列表填入输出针脚，并按输出序号选择单个节点
     private void fillNodes(TaskRunnable runnable, PinList nodes, List<NodeInfo> list) {
+        // 先清空上次重试的残留结果，避免 FindExecuteAction 反复重试时列表累积重复
+        nodes.clear();
         for (NodeInfo nodeInfo : list) {
             nodes.add(new PinNode(nodeInfo));
             MarkTargetFloatView.showTargetArea(nodeInfo.area);
