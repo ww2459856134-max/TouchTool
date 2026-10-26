@@ -575,4 +575,27 @@
         <item>全部分支完成再汇合</item>
     </string-array>
 
+    <string-array name="edit_text_locate_mode">
+        <item>按序号查找</item>
+        <item>自动：已聚焦输入框</item>
+        <item>自动：文本匹配</item>
+        <item>自动：描述匹配</item>
+        <item>自动：ID 匹配</item>
+    </string-array>
+    <string-array name="touch_pos_type">
+        <item>中心</item>
+        <item>左上</item>
+        <item>上中</item>
+        <item>右上</item>
+        <item>左中</item>
+        <item>右中</item>
+        <item>左下</item>
+        <item>下中</item>
+        <item>右下</item>
+    </string-array>
+    <string-array name="edit_text_fallback">
+        <item>不做兜底</item>
+        <item>手势点击输入框后重试</item>
+    </string-array>
+
 </resources>
