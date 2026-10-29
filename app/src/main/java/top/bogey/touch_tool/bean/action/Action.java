@@ -36,9 +36,11 @@ import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.task.Task;
 import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.service.TaskRunnable;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinCodeString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 
 import top.bogey.touch_tool.utils.GsonUtil;
+import top.bogey.touch_tool.utils.VariableInterpolation;
 
 public abstract class Action extends Identity implements PinListener {
     // 任务中只能存在一个
@@ -330,7 +332,14 @@ public abstract class Action extends Identity implements PinListener {
                 }
             }
         }
-        return returnValue(pin.getValue());
+        // 变量插值：针脚自身值（未连线）中的 {变量名} 在运行时替换为变量值；返回拷贝，不污染针脚原配置
+        // 代码文本（JS/SQL）除外，避免误伤代码中的大括号
+        T value = returnValue(pin.getValue());
+        if (value instanceof PinString pinString && !(value instanceof PinCodeString)
+                && pinString.getValue() != null && pinString.getValue().contains("{")) {
+            pinString.setValue(VariableInterpolation.interpolate(runnable.getTask(), pinString.getValue()));
+        }
+        return value;
     }
 
     // 控件、列表和集合类型返回引用，其他类型返回拷贝
