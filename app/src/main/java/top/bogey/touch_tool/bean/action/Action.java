@@ -379,8 +379,13 @@ public abstract class Action extends Identity implements PinListener {
                     runnable.addLog(new LogInfo(new NormalLog("[插值] 未替换 " + original + "；" + diag)), 0);
                 }
             } catch (Throwable t) {
+                interpolationDiag = "插值出错:" + t;
                 runnable.addLog(new LogInfo(new NormalLog("[插值] 出错: " + t)), 0);
             }
+        } else if (live != null && !(live instanceof PinCodeString)
+                && live.toString() != null && live.toString().contains("{")) {
+            // 值不是文本类型但内容含大括号：记录实际类型，弹窗可见
+            interpolationDiag = "值类型异常:" + live.getClass().getSimpleName();
         }
         return value;
     }
