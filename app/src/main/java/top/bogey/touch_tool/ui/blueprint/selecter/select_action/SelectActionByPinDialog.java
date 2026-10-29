@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.action.Action;
 import top.bogey.touch_tool.bean.action.ActionInfo;
 import top.bogey.touch_tool.bean.action.ActionMap;
@@ -26,8 +27,13 @@ import top.bogey.touch_tool.utils.callback.ResultCallback;
 
 public class SelectActionByPinDialog extends SelectActionDialog {
     private final Pin touchedPin;
+    private final Action sourceAction;
 
     public SelectActionByPinDialog(@NonNull Context context, Task task, Pin touchedPin, ResultCallback<Action> callback) {
+        this(context, task, null, touchedPin, callback);
+    }
+
+    public SelectActionByPinDialog(@NonNull Context context, Task task, Action sourceAction, Pin touchedPin, ResultCallback<Action> callback) {
         super(context, task, result -> {
             if (result instanceof GetOrSetVariableAction getOrSet) {
                 getOrSet.setRealtimeMode(!touchedPin.isOut());
@@ -35,6 +41,7 @@ public class SelectActionByPinDialog extends SelectActionDialog {
             callback.onResult(result);
         });
         this.touchedPin = touchedPin;
+        this.sourceAction = sourceAction;
         dataMap = getGroupData(groupType);
         refreshSubGroup(dataMap);
     }
@@ -48,6 +55,23 @@ public class SelectActionByPinDialog extends SelectActionDialog {
         if (touchedPin == null) return map;
         switch (groupType) {
             case PRESET -> {
+                // 智能推荐：执行针脚按来源动作推荐前后继；数据针脚按值类型推荐相关动作
+                List<Object> recommends = new ArrayList<>();
+                List<ActionType> recommendTypes = ActionRecommend.recommendForPin(
+                        sourceAction == null ? null : sourceAction.getType(), touchedPin.getValue(), touchedPin.isOut());
+                for (ActionType type : recommendTypes) {
+                    ActionInfo info = ActionInfo.getActionInfo(type);
+                    if (info == null) continue;
+                    Action action = info.getAction();
+                    if (action == null) continue;
+                    if (action.findConnectToAblePin(touchedPin) == null) continue;
+                    recommends.add(type);
+                }
+                if (!recommends.isEmpty()) {
+                    String name = getContext().getString(R.string.action_recommend_group);
+                    map.put(name, recommends);
+                    subGroupMap.put(name, name);
+                }
                 for (ActionMap.ActionGroupType actionGroupType : ActionMap.ActionGroupType.values()) {
                     List<Object> types = new ArrayList<>();
                     for (ActionType actionType : new ArrayList<>(ActionMap.getTypes(actionGroupType))) {

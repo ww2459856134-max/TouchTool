@@ -220,6 +220,7 @@
     <string name="picker_image_title">选择图片</string>
     <string name="picker_image_offset">相似度：%d</string>
     <string name="picker_point_title">选择位置</string>
+
     <string name="picker_touch_title">采集手势</string>
     <string name="picker_node_title">选择控件</string>
     <string name="picker_node_id">控件ID:</string>
@@ -394,6 +395,8 @@
 
     <string name="blueprint_setting_arrange_card_offset">卡片间距</string>
     <string name="blueprint_setting_arrange_card_offset_desc">整理卡片时，卡片之间的间距</string>
+    <string name="blueprint_setting_chain_add">连环添加动作</string>
+    <string name="blueprint_setting_chain_add_desc">从执行针脚拖出添加动作后，弹窗不关闭，推荐自动切到新动作并可连续添加、自动串接；关闭弹窗即结束</string>
 
     <!-- 设置-偏好设置 -->
     <string name="preference_setting">偏好设置</string>
@@ -470,4 +473,12 @@
     <string name="widget_status_stopped">⏹ 已停止 · %1$s</string>
     <string name="widget_refresh">刷新</string>
 
+    <string name="find_node_pro_text_mode">文本匹配方式</string>
+    <string name="find_node_pro_id_mode">ID匹配方式</string>
+    <string name="find_node_pro_class_mode">类名匹配方式</string>
+    <string name="find_node_pro_desc_mode">描述匹配方式</string>
+    <string name="find_node_pro_relation">条件关系</string>
+    <string name="find_node_pro_sort">结果排序</string>
+    <string name="find_node_pro_index">取第N个(负数取末尾)</string>
+    <string name="find_node_pro_count">命中数量</string>
 </resources>

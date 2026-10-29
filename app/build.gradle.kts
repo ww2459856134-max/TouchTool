@@ -37,6 +37,18 @@ configure<ApplicationExtension> {
         }
     }
 
+    signingConfigs {
+        create("localRelease") {
+            val ks = rootProject.file("tt-release.keystore")
+            if (ks.exists()) {
+                storeFile = ks
+                storePassword = "touchtool123"
+                keyAlias = "ttkey"
+                keyPassword = "touchtool123"
+            }
+        }
+    }
+
     buildTypes {
 
         debug {
@@ -49,6 +61,9 @@ configure<ApplicationExtension> {
             isMinifyEnabled = false
             resValue("string", "app_name", "点击助手")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (rootProject.file("tt-release.keystore").exists()) {
+                signingConfig = signingConfigs.getByName("localRelease")
+            }
         }
     }
 
@@ -56,6 +71,7 @@ configure<ApplicationExtension> {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+
 
     externalNativeBuild {
         cmake {

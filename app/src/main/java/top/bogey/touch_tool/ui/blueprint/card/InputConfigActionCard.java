@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.view.LayoutInflater;
+import android.view.View;
 
 import androidx.recyclerview.widget.ItemTouchHelper;
 
@@ -55,6 +56,7 @@ public class InputConfigActionCard extends ActionCard implements IDynamicPinCard
 
         initCardInfo(binding.icon, binding.title, binding.des);
         initEditDesc(binding.editButton, binding.des);
+        initHelp(binding.helpButton);
         initDelete(binding.removeButton);
         initLock(binding.lockButton);
         initPosView(binding.position);
@@ -175,8 +177,8 @@ public class InputConfigActionCard extends ActionCard implements IDynamicPinCard
     public boolean isEmptyPosition(float x, float y) {
         float scale = getScaleX();
 
-        List<MaterialButton> buttons = List.of(binding.expandButton, binding.addButton, binding.lockButton, binding.copyButton, binding.removeButton, binding.editButton);
-        for (MaterialButton button : buttons) {
+        List<View> buttons = List.of(binding.helpButton, binding.expandButton, binding.addButton, binding.lockButton, binding.copyButton, binding.removeButton, binding.editButton);
+        for (View button : buttons) {
             PointF pointF = DisplayUtil.getLocationRelativeToView(button, this);
             float px = pointF.x * scale;
             float py = pointF.y * scale;

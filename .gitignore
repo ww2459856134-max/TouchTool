@@ -13,3 +13,7 @@ build/sdk/
 *.idsig
 *.apk
 AGENTS.md
+
+# 本地大文件与签名密钥不入库
+gradle/wrapper/gradle-9.7.1-bin.zip
+tt-release.keystore

@@ -468,6 +468,10 @@ public class SettingView extends Fragment {
         binding.arrangeCardOffset.setSliderOnChangeListener((slider, value, fromUser) -> SettingSaver.BLUEPRINT_CARD_ARRANGE_PADDING.set((int) value));
         binding.arrangeCardOffset.setValue(SettingSaver.BLUEPRINT_CARD_ARRANGE_PADDING.get());
 
+        // 连环添加动作
+        binding.chainAddSwitch.setOnSwitchClickListener(v -> SettingSaver.BLUEPRINT_CHAIN_ADD.set(binding.chainAddSwitch.isChecked()));
+        binding.chainAddSwitch.setChecked(SettingSaver.BLUEPRINT_CHAIN_ADD.get());
+
 
         // 手动执行悬浮窗
         binding.manualPlaySetting.setOnClickListener(v -> {

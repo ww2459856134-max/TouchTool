@@ -337,6 +337,27 @@ public abstract class ActionCard extends MaterialCardView implements ActionListe
                 .show();
     }
 
+    // 使用说明按钮：所有动作卡片通用，说明文案按动作类型/分类解析；内容较长，放入可滚动视图
+    protected void initHelp(View button) {
+        button.setOnClickListener(v -> {
+            android.widget.ScrollView scrollView = new android.widget.ScrollView(getContext());
+            android.widget.TextView textView = new android.widget.TextView(getContext());
+            textView.setText(ActionHelp.getHelpRes(action));
+            textView.setTextIsSelectable(true);
+            textView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+            textView.setLineSpacing(DisplayUtil.dp2px(getContext(), 2), 1.1f);
+            int padding = (int) DisplayUtil.dp2px(getContext(), 20);
+            textView.setPadding(padding, padding, padding, padding);
+            textView.setTextColor(DisplayUtil.getAttrColor(getContext(), com.google.android.material.R.attr.colorOnSurface));
+            scrollView.addView(textView);
+            new MaterialAlertDialogBuilder(getContext())
+                    .setTitle(action.getTitle())
+                    .setView(scrollView)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+        });
+    }
+
     protected void initEditDesc(MaterialButton button, MaterialTextView des) {
         button.setOnClickListener(v -> AppUtil.showEditDialog(getContext(), R.string.action_add_des, action.getDescription(), result -> {
             action.setDescription(result);

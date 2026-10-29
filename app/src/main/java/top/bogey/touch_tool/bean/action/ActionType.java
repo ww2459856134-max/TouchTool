@@ -291,5 +291,6 @@ public enum ActionType {
     VAR_SET,
     VAR_GET,
 
+    // 硬件
 
 }

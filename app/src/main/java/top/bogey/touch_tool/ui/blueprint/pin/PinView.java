@@ -253,6 +253,23 @@ public abstract class PinView extends FrameLayout implements PinListener {
         return Color.GRAY;
     }
 
+    private boolean linkHint = false;
+
+    // 连线提示：拖动针脚时高亮可连接的针脚（底色 + 描边用针脚自身颜色，一眼区分类型）
+    public void setLinkHint(boolean hint) {
+        if (linkHint == hint) return;
+        linkHint = hint;
+        if (hint) {
+            android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+            drawable.setColor(DisplayUtil.getAttrColor(getContext(), com.google.android.material.R.attr.colorSecondaryContainer));
+            drawable.setCornerRadius(DisplayUtil.dp2px(getContext(), 6));
+            drawable.setStroke((int) DisplayUtil.dp2px(getContext(), 1.5f), getPinColor());
+            setBackground(drawable);
+        } else {
+            setBackground(null);
+        }
+    }
+
     @Override
     public void onLinkedTo(Task task, Pin origin, Pin to) {
         post(this::refreshPin);

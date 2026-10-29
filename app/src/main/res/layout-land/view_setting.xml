@@ -378,6 +378,14 @@
                             app:min="1"
                             app:title="@string/blueprint_setting_arrange_card_offset"
                             app:value="1" />
+
+                        <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSwitch
+                            android:id="@+id/chainAddSwitch"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            app:description="@string/blueprint_setting_chain_add_desc"
+                            app:icon="@drawable/icon_link"
+                            app:title="@string/blueprint_setting_chain_add" />
                     </LinearLayout>
 
                 </com.google.android.material.card.MaterialCardView>

@@ -55,6 +55,15 @@
                 android:lines="1"
                 android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
 
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/helpButton"
+                android:layout_width="?attr/minTouchTargetSize"
+                android:layout_height="?attr/minTouchTargetSize"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="12dp"
+                android:src="@drawable/icon_help"
+                app:tint="?attr/colorSecondary" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/editButton"
                 style="?attr/iconButton"

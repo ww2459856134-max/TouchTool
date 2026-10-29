@@ -34,6 +34,7 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinObject;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_list.PinList;
 import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.task.Task;
+import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.service.TaskRunnable;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 
@@ -270,6 +271,12 @@ public abstract class Action extends Identity implements PinListener {
         runnable.addDebugLog(action, 1);
         action.resetReturnValue(runnable, linkedPin);
         action.resetUnachieved();
+        // 执行前延迟：所有可执行动作通用，等待不计入动作耗时统计
+        if (action instanceof ExecuteAction executeAction) {
+            long preDelay = executeAction.getPreDelay(runnable);
+            if (preDelay > 0) runnable.sleep(preDelay);
+            if (runnable.isCurrentInterrupt()) return;
+        }
         long runStartTime = System.currentTimeMillis();
         String taskId = runnable.getStartTask().getId();
         try {

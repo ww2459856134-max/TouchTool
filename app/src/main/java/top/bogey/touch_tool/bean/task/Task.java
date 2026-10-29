@@ -467,6 +467,10 @@ public class Task extends Identity implements IActionManager, ITaskManager, IVar
         this.flag |= flag;
     }
 
+    public void removeFlag(int flag) {
+        this.flag &= ~flag;
+    }
+
     public void toggleFlag(int flag) {
         this.flag ^= flag;
     }

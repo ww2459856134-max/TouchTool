@@ -85,6 +85,8 @@ public class SettingSaver {
     public final static SettingSave<Boolean> BLUEPRINT_EDITABLE = new SettingSave<>("BLUEPRINT_EDITABLE", true);
     /// 蓝图最后打开的分组
     public final static SettingSave<String> BLUEPRINT_LAST_GROUP = new SettingSave<>("BLUEPRINT_LAST_GROUP", "");
+    /// 蓝图连环添加：在动作选择器中连续添加动作并自动连线
+    public final static SettingSave<Boolean> BLUEPRINT_CHAIN_ADD = new SettingSave<>("BLUEPRINT_CHAIN_ADD", false);
     /// 常用动作收藏：ActionType.name() 用逗号拼接
     public final static SettingSave<String> ACTION_FAVORITES = new SettingSave<>("ACTION_FAVORITES", "");
     /// 蓝图最后打开的子分组

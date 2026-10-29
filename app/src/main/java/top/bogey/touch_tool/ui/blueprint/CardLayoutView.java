@@ -49,6 +49,8 @@ import top.bogey.touch_tool.bean.action.Action;
 import top.bogey.touch_tool.bean.action.ActionInfo;
 import top.bogey.touch_tool.bean.action.parent.SyncAction;
 import top.bogey.touch_tool.bean.pin.Pin;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_execute.PinExecute;
+import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.save.task.TaskSaveListener;
 import top.bogey.touch_tool.bean.save.task.TaskSaver;
 import top.bogey.touch_tool.bean.save.variable.VariableSaveListener;
@@ -61,6 +63,7 @@ import top.bogey.touch_tool.ui.blueprint.card.ShowTextActionCard;
 import top.bogey.touch_tool.ui.blueprint.pin.PinCachedView;
 import top.bogey.touch_tool.ui.blueprint.pin.PinView;
 import top.bogey.touch_tool.ui.blueprint.pin.PinValuePopup;
+import top.bogey.touch_tool.ui.blueprint.selecter.select_action.ActionRecommend;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionByPinDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionDialog;
 import top.bogey.touch_tool.utils.DisplayUtil;
@@ -586,6 +589,7 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
                             performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
                             selectedLinks.putAll(pin.getLinks());
                             pin.clearLinks(task);
+                            updateLinkHints();
                         }
 
                         Pin linkedPin = pin.getLinkedPin(task);
@@ -616,6 +620,7 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
                         case TOUCH_PIN -> {
                             touchState = TouchState.TOUCH_DRAG_PIN;
                             cleanSelectedCards();
+                            updateLinkHints();
                         }
                         case TOUCH_VALUE_PIN -> {
                             touchState = TouchState.TOUCH_DRAG_CARD;
@@ -689,6 +694,7 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
 
             case MotionEvent.ACTION_UP -> {
                 longTouchHandler.removeCallbacksAndMessages(null);
+                clearLinkHints();
 
                 switch (touchState) {
                     case TOUCH_BACKGROUND -> cleanSelectedCards();
@@ -836,19 +842,48 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
         }
     }
 
+    // 连线提示：拖动针脚/连线时高亮画布上所有可连接的针脚，不能连的不亮
+    private void updateLinkHints() {
+        boolean dragging = touchState == TouchState.TOUCH_DRAG_PIN || touchState == TouchState.TOUCH_DRAG_LINK;
+        if (!dragging) return;
+        cards.values().forEach(card -> card.getPinViews().forEach((id, pinView) -> {
+            Pin pin = pinView.getPin();
+            boolean hint = pinView.getVisibility() == VISIBLE && isTouchLinkablePin(touchState, pin);
+            pinView.setLinkHint(hint);
+        }));
+    }
+
+    private void clearLinkHints() {
+        cards.values().forEach(card -> card.getPinViews().forEach((id, pinView) -> pinView.setLinkHint(false)));
+    }
+
     private void showActionSelector() {
         TouchState touchState = this.touchState;
         float lastX = this.lastX;
         float lastY = this.lastY;
 
         Pin pin = touchedPin.getPin();
+        // 来源动作：推荐“下一步动作”时需要知道用户是从哪个动作的针脚拖出来的
+        Action sourceAction = task.getAction(pin.getOwnerId());
         if (touchState == TouchState.TOUCH_DRAG_PIN) {
             pin = new Pin(pin.getValue(), 0, pin.isOut());
         } else {
             pin = new Pin(pin.getValue(), 0, !pin.isOut());
         }
 
-        actionDialog = new SelectActionByPinDialog(getContext(), task, pin, action -> {
+        // 连环添加：从执行针脚拖出时可连续添加动作并自动串接
+        boolean chainMode = SettingSaver.BLUEPRINT_CHAIN_ADD.get()
+                && touchState == TouchState.TOUCH_DRAG_PIN
+                && pin.isOut()
+                && pin.getValue() instanceof PinExecute;
+
+        actionDialog = new SelectActionByPinDialog(getContext(), task, sourceAction, pin, action -> {
+            // 统计学习：记录用户真实的连线组合，供后续推荐排序
+            ActionRecommend.recordLink(sourceAction == null ? null : sourceAction.getType(), action.getType());
+            if (chainMode) {
+                chainAdd(sourceAction, action, lastX, lastY, 0);
+                return;
+            }
             ActionCard card = addCard(action);
             if (card != null) {
                 tryLinkTouchPin(touchState, action);
@@ -858,6 +893,43 @@ public class CardLayoutView extends FrameLayout implements TaskSaveListener, Var
             if (actionDialog != null) actionDialog.dismiss();
         });
         actionDialog.show();
+    }
+
+    /**
+     * 连环添加：新卡片自动接到上一环的输出执行针脚上，然后刷新弹窗继续推荐下一环。
+     * 关闭弹窗即结束连环。
+     */
+    private void chainAdd(Action prevAction, Action action, float x, float y, int level) {
+        ActionCard card = addCard(action);
+        if (card == null) {
+            if (actionDialog != null) actionDialog.dismiss();
+            return;
+        }
+        // 与上一环连线：上一动作的第一个输出执行针脚 → 新动作的第一个输入执行针脚
+        // 注意必须用任务里的真实针脚连线（存的是针脚 id），不能用副本
+        if (prevAction != null) {
+            Pin outExec = findExecutePin(prevAction, true);
+            Pin inExec = findExecutePin(action, false);
+            if (outExec != null && inExec != null) inExec.mutualAddLink(task, outExec);
+        }
+        float step = level * 2.5f * getScaleGridSize();
+        action.setPos((int) ((x - offsetX) / getScaleGridSize()), (int) ((y + step - offsetY) / getScaleGridSize()));
+        updateCardPos(card);
+
+        // 刷新弹窗：推荐改为基于新动作，继续选下一环
+        if (actionDialog != null) actionDialog.dismiss();
+        actionDialog = new SelectActionByPinDialog(getContext(), task, action, new Pin(new PinExecute(), 0, true), nextAction -> {
+            ActionRecommend.recordLink(action.getType(), nextAction.getType());
+            chainAdd(action, nextAction, x, y, level + 1);
+        });
+        actionDialog.show();
+    }
+
+    private Pin findExecutePin(Action action, boolean out) {
+        for (Pin pin : action.getPins()) {
+            if (pin.isOut() == out && pin.getValue() instanceof PinExecute) return pin;
+        }
+        return null;
     }
 
     @Override

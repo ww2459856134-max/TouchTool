@@ -101,6 +101,12 @@
         <item>正则路径</item>
         <item>类名</item>
         <item>描述</item>
+        <item>多条件</item>
+    </string-array>
+
+    <string-array name="find_node_relation">
+        <item>全部满足（且）</item>
+        <item>满足任一（或）</item>
     </string-array>
 
 
@@ -573,6 +579,7 @@
     <string-array name="parallel_action_mode">
         <item>任一分支完成即停其他（赛马）</item>
         <item>全部分支完成再汇合</item>
+        <item>任一分支失败即整体失败（快速失败）</item>
     </string-array>
 
     <string-array name="edit_text_locate_mode">
@@ -596,6 +603,20 @@
     <string-array name="edit_text_fallback">
         <item>不做兜底</item>
         <item>手势点击输入框后重试</item>
+    </string-array>
+
+    <string-array name="find_node_match_mode">
+        <item>包含</item>
+        <item>正则</item>
+        <item>精确</item>
+    </string-array>
+
+    <string-array name="find_node_sort">
+        <item>不排序</item>
+        <item>上→下</item>
+        <item>左→右</item>
+        <item>面积大→小</item>
+        <item>面积小→大</item>
     </string-array>
 
 </resources>

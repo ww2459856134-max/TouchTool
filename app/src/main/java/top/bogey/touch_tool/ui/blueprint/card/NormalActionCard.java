@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.view.LayoutInflater;
+import android.view.View;
 
 import com.google.android.material.button.MaterialButton;
 
@@ -41,6 +42,7 @@ public class NormalActionCard extends ActionCard {
 
         initCardInfo(binding.icon, binding.title, binding.des);
         initEditDesc(binding.editButton, binding.des);
+        initHelp(binding.helpButton);
         initDelete(binding.removeButton);
         initCopy(binding.copyButton);
         initLock(binding.lockButton);
@@ -123,8 +125,8 @@ public class NormalActionCard extends ActionCard {
     public boolean isEmptyPosition(float x, float y) {
         float scale = getScaleX();
 
-        List<MaterialButton> buttons = Arrays.asList(binding.editButton, binding.testButton, binding.lockButton, binding.expandButton, binding.copyButton, binding.removeButton);
-        for (MaterialButton button : buttons) {
+        List<View> buttons = Arrays.asList(binding.helpButton, binding.editButton, binding.testButton, binding.lockButton, binding.expandButton, binding.copyButton, binding.removeButton);
+        for (View button : buttons) {
             PointF pointF = DisplayUtil.getLocationRelativeToView(button, this);
             float px = pointF.x * scale;
             float py = pointF.y * scale;
