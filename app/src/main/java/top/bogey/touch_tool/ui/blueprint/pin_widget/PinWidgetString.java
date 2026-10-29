@@ -62,6 +62,7 @@ import top.bogey.touch_tool.ui.blueprint.pin.PinView;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionByAllActionDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionByCustomActionDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.SelectFileDialog;
+import top.bogey.touch_tool.ui.blueprint.selecter.SelectVariableDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_edit_text.SelectEditTextDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_icon.SelectIconDialog;
 import top.bogey.touch_tool.utils.AppUtil;
@@ -417,6 +418,20 @@ public class PinWidgetString extends PinWidget<PinString> {
                     }
                 });
                 binding.pickButton.setVisibility(GONE);
+                // 快速插值：纯文本参数旁显示变量按钮，点选变量名插入 {变量名} 到光标处
+                binding.varButton.setVisibility(VISIBLE);
+                binding.varButton.setOnClickListener(v -> new SelectVariableDialog(getContext(), card.getTask(), name -> {
+                    if (name == null || name.isEmpty()) return;
+                    String old = pinBase.getValue() == null ? "" : pinBase.getValue();
+                    int start = binding.editText.getSelectionEnd();
+                    if (start < 0 || start > old.length()) start = old.length();
+                    String insert = "{" + name + "}";
+                    String newText = old.substring(0, start) + insert + old.substring(start);
+                    pinBase.setValue(newText);
+                    pinView.getPin().notifyValueUpdated(card.getTask());
+                    binding.editText.setText(newText);
+                    binding.editText.setSelection(start + insert.length());
+                }).show());
             }
         }
     }

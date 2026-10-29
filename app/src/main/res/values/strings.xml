@@ -219,6 +219,9 @@
     <string name="picker_color_offset">相似度：%d</string>
     <string name="picker_image_title">选择图片</string>
     <string name="picker_image_offset">相似度：%d</string>
+    <string name="select_variable_title">插入变量</string>
+    <string name="select_variable_empty">暂无变量，可先在任务的变量卡片中创建</string>
+    <string name="select_variable_value_empty">（空）</string>
     <string name="picker_point_title">选择位置</string>
 
     <string name="picker_touch_title">采集手势</string>

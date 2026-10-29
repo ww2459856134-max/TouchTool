@@ -37,6 +37,12 @@
         android:visibility="gone" />
 
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/varButton"
+        style="?attr/iconButtonOutlined"
+        android:visibility="gone"
+        app:icon="@drawable/icon_data_array" />
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/spinner"
         style="?attr/iconButtonOutlined"
         android:visibility="gone" />
