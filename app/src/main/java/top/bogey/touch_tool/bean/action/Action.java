@@ -379,8 +379,18 @@ public abstract class Action extends Identity implements PinListener {
                     runnable.addLog(new LogInfo(new NormalLog("[插值] 未替换 " + original + "；" + diag)), 0);
                 }
             } catch (Throwable t) {
-                interpolationDiag = "插值出错:" + t;
-                runnable.addLog(new LogInfo(new NormalLog("[插值] 出错: " + t)), 0);
+                // 根因（ExceptionInInitializerError 等包装异常的 cause）+ 出错位置，弹窗直接可见
+                Throwable cause = t.getCause() != null ? t.getCause() : t;
+                StackTraceElement[] stack = cause.getStackTrace();
+                String where = stack.length > 0
+                        ? " @" + stack[0].getClassName().replace("top.bogey.touch_tool.", "") + "." + stack[0].getMethodName() + ":" + stack[0].getLineNumber()
+                        : "";
+                interpolationDiag = "插值出错:" + cause + where;
+                StringBuilder stackLog = new StringBuilder("[插值] 异常堆栈:\n");
+                for (int i = 0; i < Math.min(stack.length, 8); i++) {
+                    stackLog.append("  ").append(stack[i]).append("\n");
+                }
+                runnable.addLog(new LogInfo(new NormalLog(stackLog.toString())), 0);
             }
         } else if (live != null && !(live instanceof PinCodeString)
                 && live.toString() != null && live.toString().contains("{")) {
