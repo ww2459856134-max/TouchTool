@@ -619,4 +619,8 @@
         <item>面积小→大</item>
     </string-array>
 
+    <string-array name="hid_relay_type">
+        <item>单击</item>
+        <item>滑动</item>
+    </string-array>
 </resources>

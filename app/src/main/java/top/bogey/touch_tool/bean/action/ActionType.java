@@ -47,6 +47,7 @@ public enum ActionType {
     // 通用任务
     DELAY,
     LOG,
+    HID_RELAY,
     STICK,
     CLOSE_STICK,
     CLOSE_ALL_STICK,

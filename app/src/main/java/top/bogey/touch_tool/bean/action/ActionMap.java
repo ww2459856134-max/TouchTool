@@ -53,6 +53,7 @@ public class ActionMap {
                     ActionType.DELAY,
 
                     ActionType.LOG,
+                    ActionType.HID_RELAY,
                     ActionType.STICK,
                     ActionType.CLOSE_STICK,
                     ActionType.CLOSE_ALL_STICK,

@@ -310,6 +310,14 @@
     <string name="delay_action_time">时长(ms)</string>
     <string name="execute_before_delay">执行前延迟（毫秒）</string>
 
+    <string name="hid_relay_action">HID中继</string>
+    <string name="hid_relay_action_desc">通过局域网控制 ESP32 蓝牙 HID 设备点击/滑动本机屏幕（AutoJS HID 固件）</string>
+    <string name="hid_relay_ip">设备IP</string>
+    <string name="hid_relay_port">端口</string>
+    <string name="hid_relay_type">动作类型</string>
+    <string name="hid_relay_start">起点坐标</string>
+    <string name="hid_relay_end">终点坐标</string>
+    <string name="hid_relay_duration">时长(ms)</string>
     <string name="log_action">输出日志</string>
     <string name="log_action_desc">输出日志到日志界面</string>
     <string name="log_action_text">日志</string>
