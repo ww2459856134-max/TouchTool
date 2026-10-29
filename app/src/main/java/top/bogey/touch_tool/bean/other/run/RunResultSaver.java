@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBase;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_execute.PinExecute;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_list.PinList;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinImage;
 
@@ -130,8 +131,8 @@ public class RunResultSaver {
             for (Pin pin : action.getPins()) {
                 if (!pin.isOut() || pin.isHide()) continue;
                 PinBase value = pin.getValue();
-                // 二进制与列表数据太大，不进快照
-                if (value instanceof PinImage || value instanceof PinList) continue;
+                // 二进制与列表数据太大，不进快照；纯执行线无展示意义
+                if (value instanceof PinImage || value instanceof PinList || value instanceof PinExecute) continue;
                 String text = value.toString();
                 if (text == null || text.isEmpty() || "null".equals(text)) continue;
                 if (text.length() > 120) text = text.substring(0, 120) + "…";

@@ -22,6 +22,8 @@ import java.util.UUID;
 
 import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.base.Identity;
+import top.bogey.touch_tool.bean.other.log.LogInfo;
+import top.bogey.touch_tool.bean.other.log.NormalLog;
 import top.bogey.touch_tool.bean.other.run.RunResultSaver;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.PinDescribe;
@@ -333,11 +335,20 @@ public abstract class Action extends Identity implements PinListener {
             }
         }
         // 变量插值：针脚自身值（未连线）中的 {变量名} 在运行时替换为变量值；返回拷贝，不污染针脚原配置
-        // 代码文本（JS/SQL）除外，避免误伤代码中的大括号
+        // 代码文本（JS/SQL）除外，避免误伤代码中的大括号；任何异常都不影响任务继续执行
         T value = returnValue(pin.getValue());
         if (value instanceof PinString pinString && !(value instanceof PinCodeString)
                 && pinString.getValue() != null && pinString.getValue().contains("{")) {
-            pinString.setValue(VariableInterpolation.interpolate(runnable.getTask(), pinString.getValue()));
+            try {
+                String original = pinString.getValue();
+                String replaced = VariableInterpolation.interpolate(runnable.getTask(), original);
+                pinString.setValue(replaced);
+                if (replaced.equals(original)) {
+                    runnable.addLog(new LogInfo(new NormalLog("[插值] 未找到变量，原文保留: " + original)), 0);
+                }
+            } catch (Throwable t) {
+                runnable.addLog(new LogInfo(new NormalLog("[插值] 出错: " + t)), 0);
+            }
         }
         return value;
     }

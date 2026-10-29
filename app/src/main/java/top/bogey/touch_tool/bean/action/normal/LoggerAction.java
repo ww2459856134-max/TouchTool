@@ -24,6 +24,8 @@ import top.bogey.touch_tool.utils.EAnchor;
 
 public class LoggerAction extends ExecuteAction {
     private final transient Pin logPin = new Pin(new PinString(), R.string.log_action_text);
+    // 输出最终显示的文本（含变量插值结果），供运行详情弹窗展示与下游动作连线取用
+    private final transient Pin logOutPin = new Pin(new PinString(), R.string.log_action_content, true);
     private final transient Pin showPin = new Pin(new PinBoolean(true), R.string.log_action_show, false, false, true);
     private final transient Pin anchorPin = new Pin(new PinSingleSelect(R.array.anchor, 7), R.string.window_anchor, false, false, true);
     private final transient Pin gravityPin = new Pin(new PinSingleSelect(R.array.anchor, 7), R.string.screen_anchor, false, false, true);
@@ -34,37 +36,33 @@ public class LoggerAction extends ExecuteAction {
         super(ActionType.LOG);
         Size size = DisplayUtil.getScreenSize(MainApplication.getInstance());
         showPosPin.getValue(PinPoint.class).setValue(new Point(0, -size.getHeight() / 5));
-        addPins(logPin, showPin, anchorPin, gravityPin, showPosPin, savePin);
+        addPins(logPin, logOutPin, showPin, anchorPin, gravityPin, showPosPin, savePin);
     }
 
     public LoggerAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(logPin, showPin, anchorPin, gravityPin, showPosPin, savePin);
+        reAddPins(logPin, logOutPin, showPin, anchorPin, gravityPin, showPosPin, savePin);
     }
 
     @Override
     public void execute(TaskRunnable runnable, Pin pin) {
-        runnable.addLog(new LogInfo(new NormalLog("[诊断] 进入输出日志")), 0);
         PinObject logObject = getPinValue(runnable, logPin);
-        runnable.addLog(new LogInfo(new NormalLog("[诊断] 日志文本取值完成: " + logObject)), 0);
+        // 记录最终文本（变量插值后），运行详情弹窗与下游连线都用它
+        logOutPin.setValue(new PinString(logObject == null ? "" : logObject.toString()));
         PinBoolean show = getPinValue(runnable, showPin);
         PinSingleSelect anchor = getPinValue(runnable, anchorPin);
         PinSingleSelect gravity = getPinValue(runnable, gravityPin);
         PinPoint showPos = getPinValue(runnable, showPosPin);
         PinBoolean save = getPinValue(runnable, savePin);
-        runnable.addLog(new LogInfo(new NormalLog("[诊断] 针脚取值全部完成")), 0);
 
         if (show.getValue()) {
             ToastFloatView.showToast(logObject.toString(), EAnchor.values()[anchor.getIndex()], EAnchor.values()[gravity.getIndex()], showPos.getValue());
-            runnable.addLog(new LogInfo(new NormalLog("[诊断] 悬浮提示完成")), 0);
         }
 
         if (save.getValue()) {
             runnable.addLog(new LogInfo(new NormalLog(logObject.toString())), 0);
-            runnable.addLog(new LogInfo(new NormalLog("[诊断] 日志保存完成")), 0);
         }
 
-        runnable.addLog(new LogInfo(new NormalLog("[诊断] 即将结束")), 0);
         executeNext(runnable, outPin);
     }
 
