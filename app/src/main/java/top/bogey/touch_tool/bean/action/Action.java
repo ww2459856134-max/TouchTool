@@ -35,7 +35,9 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinMap;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinObject;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_list.PinList;
 import top.bogey.touch_tool.bean.save.setting.SettingSaver;
+import top.bogey.touch_tool.bean.save.variable.VariableSaver;
 import top.bogey.touch_tool.bean.task.Task;
+import top.bogey.touch_tool.bean.task.Variable;
 import top.bogey.touch_tool.bean.action.parent.ExecuteAction;
 import top.bogey.touch_tool.service.TaskRunnable;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinCodeString;
@@ -344,7 +346,22 @@ public abstract class Action extends Identity implements PinListener {
                 String replaced = VariableInterpolation.interpolate(runnable.getTask(), original);
                 pinString.setValue(replaced);
                 if (replaced.equals(original)) {
-                    runnable.addLog(new LogInfo(new NormalLog("[插值] 未找到变量，原文保留: " + original)), 0);
+                    // 诊断：列出任务内与全局变量的实际值，方便定位变量找不到的原因
+                    StringBuilder diag = new StringBuilder("[插值] 未替换 ").append(original).append("；任务变量:");
+                    java.util.List<Variable> vars = runnable.getTask().getVariables();
+                    if (vars.isEmpty()) diag.append(" 无");
+                    for (Variable v : vars) {
+                        diag.append(" ").append(v.getTitle()).append("=")
+                                .append(v.getSaveValue() == null ? "空" : v.getSaveValue().toString());
+                    }
+                    diag.append("；全局变量:");
+                    java.util.List<Variable> globals = VariableSaver.getInstance().getVars();
+                    if (globals.isEmpty()) diag.append(" 无");
+                    for (Variable v : globals) {
+                        diag.append(" ").append(v.getTitle()).append("=")
+                                .append(v.getSaveValue() == null ? "空" : v.getSaveValue().toString());
+                    }
+                    runnable.addLog(new LogInfo(new NormalLog(diag.toString())), 0);
                 }
             } catch (Throwable t) {
                 runnable.addLog(new LogInfo(new NormalLog("[插值] 出错: " + t)), 0);

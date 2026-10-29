@@ -39,7 +39,7 @@ public final class VariableInterpolation {
     }
 
     @Nullable
-    private static String findValue(@Nullable Task task, String name) {
+    public static String findValue(@Nullable Task task, String name) {
         if (name == null || name.isEmpty()) return null;
         Variable variable = upFindByTitle(task, name);
         if (variable == null) {
@@ -51,10 +51,18 @@ public final class VariableInterpolation {
             }
         }
         if (variable == null) return null;
+        // 优先运行时保存值；为空或反序列化成了无值基类时，回退用变量配置值（卡片上显示的值）
         PinObject value = variable.getSaveValue();
-        if (value == null) return null;
+        if (isEmptyValue(value)) value = variable.getValue();
+        if (isEmptyValue(value)) return null;
         String result = value.toString();
         return result.isEmpty() ? null : result;
+    }
+
+    private static boolean isEmptyValue(@Nullable PinObject value) {
+        if (value == null) return true;
+        if (value.getClass().equals(PinObject.class)) return true;
+        return value.toString().isEmpty();
     }
 
     @Nullable
