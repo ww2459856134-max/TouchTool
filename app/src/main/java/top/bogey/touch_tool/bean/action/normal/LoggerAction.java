@@ -47,8 +47,10 @@ public class LoggerAction extends ExecuteAction {
     @Override
     public void execute(TaskRunnable runnable, Pin pin) {
         PinObject logObject = getPinValue(runnable, logPin);
-        // 记录最终文本（变量插值后），运行详情弹窗与下游连线都用它
-        logOutPin.setValue(new PinString(logObject == null ? "" : logObject.toString()));
+        String text = logObject == null ? "" : logObject.toString();
+        // 变量插值失败时（诊断非空），把诊断信息附加到输出，弹窗直接可见
+        if (interpolationDiag != null) text = text + "【插值诊断:" + interpolationDiag + "】";
+        logOutPin.setValue(new PinString(text));
         PinBoolean show = getPinValue(runnable, showPin);
         PinSingleSelect anchor = getPinValue(runnable, anchorPin);
         PinSingleSelect gravity = getPinValue(runnable, gravityPin);
@@ -56,11 +58,11 @@ public class LoggerAction extends ExecuteAction {
         PinBoolean save = getPinValue(runnable, savePin);
 
         if (show.getValue()) {
-            ToastFloatView.showToast(logObject.toString(), EAnchor.values()[anchor.getIndex()], EAnchor.values()[gravity.getIndex()], showPos.getValue());
+            ToastFloatView.showToast(text, EAnchor.values()[anchor.getIndex()], EAnchor.values()[gravity.getIndex()], showPos.getValue());
         }
 
         if (save.getValue()) {
-            runnable.addLog(new LogInfo(new NormalLog(logObject.toString())), 0);
+            runnable.addLog(new LogInfo(new NormalLog(text)), 0);
         }
 
         executeNext(runnable, outPin);

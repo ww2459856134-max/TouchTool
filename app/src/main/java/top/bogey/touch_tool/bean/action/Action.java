@@ -58,6 +58,9 @@ public abstract class Action extends Identity implements PinListener {
 
     private ExpandType expandType;
     private boolean locked = false;
+
+    // 最近一次变量插值的诊断信息（null=全部替换成功），供输出日志等动作展示
+    public transient String interpolationDiag;
     private Point pos = new Point();
 
     protected transient List<Pin> tmpPins = new ArrayList<>();
@@ -339,6 +342,7 @@ public abstract class Action extends Identity implements PinListener {
         // 变量插值：针脚自身值（未连线）中的 {变量名} 在运行时替换为变量值；返回拷贝，不污染针脚原配置
         // 代码文本（JS/SQL）除外，避免误伤代码中的大括号；任何异常都不影响任务继续执行
         T value = returnValue(pin.getValue());
+        interpolationDiag = null;
         if (value instanceof PinString pinString && !(value instanceof PinCodeString)
                 && pinString.getValue() != null && pinString.getValue().contains("{")) {
             try {
@@ -347,7 +351,7 @@ public abstract class Action extends Identity implements PinListener {
                 pinString.setValue(replaced);
                 if (replaced.equals(original)) {
                     // 诊断：列出任务内与全局变量的实际值，方便定位变量找不到的原因
-                    StringBuilder diag = new StringBuilder("[插值] 未替换 ").append(original).append("；任务变量:");
+                    StringBuilder diag = new StringBuilder("任务变量:");
                     java.util.List<Variable> vars = runnable.getTask().getVariables();
                     if (vars.isEmpty()) diag.append(" 无");
                     for (Variable v : vars) {
@@ -361,7 +365,8 @@ public abstract class Action extends Identity implements PinListener {
                         diag.append(" ").append(v.getTitle()).append("=")
                                 .append(v.getSaveValue() == null ? "空" : v.getSaveValue().toString());
                     }
-                    runnable.addLog(new LogInfo(new NormalLog(diag.toString())), 0);
+                    interpolationDiag = diag.toString();
+                    runnable.addLog(new LogInfo(new NormalLog("[插值] 未替换 " + original + "；" + diag)), 0);
                 }
             } catch (Throwable t) {
                 runnable.addLog(new LogInfo(new NormalLog("[插值] 出错: " + t)), 0);
