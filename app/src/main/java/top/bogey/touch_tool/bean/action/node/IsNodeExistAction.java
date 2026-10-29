@@ -3,6 +3,7 @@ package top.bogey.touch_tool.bean.action.node;
 import com.google.gson.JsonObject;
 
 import java.util.List;
+import java.util.function.IntPredicate;
 
 import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.action.ActionType;
@@ -25,14 +26,14 @@ import top.bogey.touch_tool.ui.custom.float_view.MarkTargetFloatView;
 
 public class IsNodeExistAction extends CalculateAction {
     private final transient Pin typePin = new NotLinkAblePin(new PinSingleSelect(R.array.find_node_type), R.string.is_node_exist_action_type);
-    private final transient Pin pathPin = new PathShowablePin(new PinNodePathString(), R.string.is_node_exist_action_path);
-    private final transient Pin fullPathPin = new PathShowablePin(new PinBoolean(true), R.string.is_node_exist_action_full_path);
-    private final transient Pin textPin = new TextShowablePin(new PinString(), R.string.pin_string);
-    private final transient Pin idPin = new IdShowablePin(new PinString(), R.string.is_node_exist_action_id);
-    private final transient Pin classPin = new ClassShowablePin(new PinString(), R.string.is_node_exist_action_class);
-    private final transient Pin descPin = new DescShowablePin(new PinString(), R.string.is_node_exist_action_node_desc);
-    private final transient Pin areaPin = new NotAllPathShowablePin(new PinArea(), R.string.pin_area);
-    private final transient Pin pathTextPin = new PathTextShowablePin(new PinNodePathTextString(), R.string.find_node_action_regex_path);
+    private final transient Pin pathPin = new TypeShowablePin(new PinNodePathString(), R.string.is_node_exist_action_path, t -> t == 0);
+    private final transient Pin fullPathPin = new TypeShowablePin(new PinBoolean(true), R.string.is_node_exist_action_full_path, t -> t == 0);
+    private final transient Pin textPin = new TypeShowablePin(new PinString(), R.string.pin_string, t -> t == 1);
+    private final transient Pin idPin = new TypeShowablePin(new PinString(), R.string.is_node_exist_action_id, t -> t == 2);
+    private final transient Pin classPin = new TypeShowablePin(new PinString(), R.string.is_node_exist_action_class, t -> t == 4);
+    private final transient Pin descPin = new TypeShowablePin(new PinString(), R.string.is_node_exist_action_node_desc, t -> t == 5);
+    private final transient Pin areaPin = new TypeShowablePin(new PinArea(), R.string.pin_area, t -> t != 0 && t != 3);
+    private final transient Pin pathTextPin = new TypeShowablePin(new PinNodePathTextString(), R.string.find_node_action_regex_path, t -> t == 3);
     private final transient Pin resultPin = new Pin(new PinBoolean(), R.string.pin_boolean_result, true);
 
     public IsNodeExistAction() {
@@ -126,99 +127,19 @@ public class IsNodeExistAction extends CalculateAction {
         return type.getIndex();
     }
 
-    private static class PathShowablePin extends ShowAblePin {
-        public PathShowablePin(PinBase value, int titleId) {
+    // ---------------- ShowAblePin 子类（按类型显隐，统一实现） ----------------
+    private static class TypeShowablePin extends ShowAblePin {
+        private final IntPredicate match;
+
+        public TypeShowablePin(PinBase value, int titleId, IntPredicate match) {
             super(value, titleId);
+            this.match = match;
         }
 
         @Override
         public boolean showAble(Task context) {
             IsNodeExistAction action = (IsNodeExistAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 0;
-        }
-    }
-
-    private static class PathTextShowablePin extends ShowAblePin {
-        public PathTextShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            IsNodeExistAction action = (IsNodeExistAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 3;
-        }
-    }
-
-    private static class NotAllPathShowablePin extends ShowAblePin {
-        public NotAllPathShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            IsNodeExistAction action = (IsNodeExistAction) context.getAction(getOwnerId());
-            return action.getTypeValue() != 0 && action.getTypeValue() != 3;
-        }
-    }
-
-    private static class NotPathShowablePin extends ShowAblePin {
-        public NotPathShowablePin(PinBase value, int titleId, boolean out) {
-            super(value, titleId, out);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            IsNodeExistAction action = (IsNodeExistAction) context.getAction(getOwnerId());
-            return action.getTypeValue() != 0;
-        }
-    }
-
-    private static class TextShowablePin extends ShowAblePin {
-        public TextShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            IsNodeExistAction action = (IsNodeExistAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 1;
-        }
-    }
-
-    private static class IdShowablePin extends ShowAblePin {
-        public IdShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            IsNodeExistAction action = (IsNodeExistAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 2;
-        }
-    }
-
-    private static class ClassShowablePin extends ShowAblePin {
-        public ClassShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            IsNodeExistAction action = (IsNodeExistAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 4;
-        }
-    }
-
-    private static class DescShowablePin extends ShowAblePin {
-        public DescShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            IsNodeExistAction action = (IsNodeExistAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 5;
+            return match.test(action.getTypeValue());
         }
     }
 }

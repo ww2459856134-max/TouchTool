@@ -2,6 +2,7 @@ import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.gradle.tasks.PackageAndroidArtifact
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.application)
@@ -10,6 +11,15 @@ plugins {
 
 val pattern: DateTimeFormatter? = DateTimeFormatter.ofPattern("yyMMdd_HHmm")
 val now: String? = LocalDateTime.now().format(pattern)
+
+// 签名信息从根目录 local.properties 读取（不入库），示例：
+// tt.storePassword=xxx
+// tt.keyAlias=ttkey
+// tt.keyPassword=xxx
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
 
 configure<ApplicationExtension> {
     namespace = "top.bogey.touch_tool"
@@ -21,7 +31,8 @@ configure<ApplicationExtension> {
         applicationId = "top.bogey.touch_tool"
         minSdk = common.versions.minSdk.get().toInt()
         targetSdk = common.versions.targetSdk.get().toInt()
-        versionCode = 58
+        // 版本号自动化：versionCode 按构建日期（yyyyMMdd）递增，versionName 为构建时间
+        versionCode = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")).toInt()
         versionName = now
 
         @Suppress("UnstableApiUsage")
@@ -40,11 +51,13 @@ configure<ApplicationExtension> {
     signingConfigs {
         create("localRelease") {
             val ks = rootProject.file("tt-release.keystore")
-            if (ks.exists()) {
+            val sp = localProps.getProperty("tt.storePassword", "")
+            val kp = localProps.getProperty("tt.keyPassword", "")
+            if (ks.exists() && sp.isNotEmpty() && kp.isNotEmpty()) {
                 storeFile = ks
-                storePassword = "touchtool123"
-                keyAlias = "ttkey"
-                keyPassword = "touchtool123"
+                storePassword = sp
+                keyAlias = localProps.getProperty("tt.keyAlias", "ttkey")
+                keyPassword = kp
             }
         }
     }

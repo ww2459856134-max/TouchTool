@@ -8,6 +8,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
 
 import top.bogey.touch_tool.R;
@@ -42,27 +43,27 @@ import top.bogey.touch_tool.ui.custom.float_view.MarkTargetFloatView;
  */
 public class FindNodeAction extends FindExecuteAction {
     private final transient Pin typePin = new NotLinkAblePin(new PinSingleSelect(R.array.find_node_type), R.string.find_node_action_type);
-    private final transient Pin pathPin = new PathShowablePin(new PinNodePathString(), R.string.find_node_action_path);
-    private final transient Pin fullPathPin = new PathShowablePin(new PinBoolean(true), R.string.find_node_action_full_path);
-    private final transient Pin textPin = new TextShowablePin(new PinString(), R.string.pin_string);
-    private final transient Pin idPin = new IdShowablePin(new PinString(), R.string.find_node_action_id);
-    private final transient Pin classPin = new ClassShowablePin(new PinString(), R.string.find_node_action_class);
-    private final transient Pin descPin = new DescShowablePin(new PinString(), R.string.find_node_action_node_desc);
-    private final transient Pin areaPin = new NotAllPathShowablePin(new PinArea(), R.string.pin_area);
-    private final transient Pin pathTextPin = new PathTextShowablePin(new PinNodePathTextString(), R.string.find_node_action_regex_path);
+    private final transient Pin pathPin = new TypeShowablePin(new PinNodePathString(), R.string.find_node_action_path, t -> t == 0);
+    private final transient Pin fullPathPin = new TypeShowablePin(new PinBoolean(true), R.string.find_node_action_full_path, t -> t == 0);
+    private final transient Pin textPin = new TypeShowablePin(new PinString(), R.string.pin_string, TypeShowablePin.TEXT_OR_MULTI);
+    private final transient Pin idPin = new TypeShowablePin(new PinString(), R.string.find_node_action_id, TypeShowablePin.ID_OR_MULTI);
+    private final transient Pin classPin = new TypeShowablePin(new PinString(), R.string.find_node_action_class, TypeShowablePin.CLASS_OR_MULTI);
+    private final transient Pin descPin = new TypeShowablePin(new PinString(), R.string.find_node_action_node_desc, TypeShowablePin.DESC_OR_MULTI);
+    private final transient Pin areaPin = new TypeShowablePin(new PinArea(), R.string.pin_area, t -> t != 0 && t != 3);
+    private final transient Pin pathTextPin = new TypeShowablePin(new PinNodePathTextString(), R.string.find_node_action_regex_path, t -> t == 3);
     // ===== P0 新增针脚（追加在末尾）=====
-    private final transient Pin textModePin = new TextShowablePin(new PinSingleSelect(R.array.find_node_match_mode), R.string.find_node_pro_text_mode);
-    private final transient Pin idModePin = new IdShowablePin(new PinSingleSelect(R.array.find_node_match_mode), R.string.find_node_pro_id_mode);
-    private final transient Pin classModePin = new ClassShowablePin(new PinSingleSelect(R.array.find_node_match_mode), R.string.find_node_pro_class_mode);
-    private final transient Pin descModePin = new DescShowablePin(new PinSingleSelect(R.array.find_node_match_mode), R.string.find_node_pro_desc_mode);
-    private final transient Pin sortPin = new NotPathShowablePin(new PinSingleSelect(R.array.find_node_sort), R.string.find_node_pro_sort);
-    private final transient Pin indexPin = new NotPathShowablePin(new PinInteger(1), R.string.find_node_pro_index);
-    private final transient Pin relationPin = new MultiShowablePin(new PinSingleSelect(R.array.find_node_relation), R.string.find_node_pro_relation);
+    private final transient Pin textModePin = new TypeShowablePin(new PinSingleSelect(R.array.find_node_match_mode), R.string.find_node_pro_text_mode, TypeShowablePin.TEXT_OR_MULTI);
+    private final transient Pin idModePin = new TypeShowablePin(new PinSingleSelect(R.array.find_node_match_mode), R.string.find_node_pro_id_mode, TypeShowablePin.ID_OR_MULTI);
+    private final transient Pin classModePin = new TypeShowablePin(new PinSingleSelect(R.array.find_node_match_mode), R.string.find_node_pro_class_mode, TypeShowablePin.CLASS_OR_MULTI);
+    private final transient Pin descModePin = new TypeShowablePin(new PinSingleSelect(R.array.find_node_match_mode), R.string.find_node_pro_desc_mode, TypeShowablePin.DESC_OR_MULTI);
+    private final transient Pin sortPin = new TypeShowablePin(new PinSingleSelect(R.array.find_node_sort), R.string.find_node_pro_sort, t -> t != 0);
+    private final transient Pin indexPin = new TypeShowablePin(new PinInteger(1), R.string.find_node_pro_index, t -> t != 0);
+    private final transient Pin relationPin = new TypeShowablePin(new PinSingleSelect(R.array.find_node_relation), R.string.find_node_pro_relation, t -> t == 6);
     // ===== 输出 =====
     private final transient Pin nodePin = new Pin(new PinNode(), R.string.pin_node, true);
     private final transient Pin areaOutPin = new Pin(new PinArea(), R.string.pin_area, true);
-    private final transient Pin nodesPin = new NotPathShowablePin(new PinList(new PinNode()), true);
-    private final transient Pin countPin = new NotPathShowablePin(new PinInteger(), R.string.find_node_pro_count, true);
+    private final transient Pin nodesPin = new TypeShowablePin(new PinList(new PinNode()), true, t -> t != 0);
+    private final transient Pin countPin = new TypeShowablePin(new PinInteger(), R.string.find_node_pro_count, true, t -> t != 0);
 
     private static final int FIELD_TEXT = 0, FIELD_ID = 1, FIELD_CLASS = 2, FIELD_DESC = 3;
 
@@ -345,121 +346,34 @@ public class FindNodeAction extends FindExecuteAction {
         return nodePin;
     }
 
-    // ---------------- ShowAblePin 子类（按类型显隐） ----------------
-    private static class PathShowablePin extends ShowAblePin {
-        public PathShowablePin(PinBase value, int titleId) {
+    // ---------------- ShowAblePin 子类（按类型显隐，统一实现） ----------------
+    private static class TypeShowablePin extends ShowAblePin {
+        static final IntPredicate TEXT_OR_MULTI = t -> t == 1 || t == 6;
+        static final IntPredicate ID_OR_MULTI = t -> t == 2 || t == 6;
+        static final IntPredicate CLASS_OR_MULTI = t -> t == 4 || t == 6;
+        static final IntPredicate DESC_OR_MULTI = t -> t == 5 || t == 6;
+
+        private final IntPredicate match;
+
+        public TypeShowablePin(PinBase value, int titleId, IntPredicate match) {
             super(value, titleId);
+            this.match = match;
         }
 
-        @Override
-        public boolean showAble(Task context) {
-            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 0;
-        }
-    }
-
-    private static class PathTextShowablePin extends ShowAblePin {
-        public PathTextShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 3;
-        }
-    }
-
-    private static class NotAllPathShowablePin extends ShowAblePin {
-        public NotAllPathShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() != 0 && action.getTypeValue() != 3;
-        }
-    }
-
-    private static class NotPathShowablePin extends ShowAblePin {
-        public NotPathShowablePin(PinBase value, boolean out) {
+        public TypeShowablePin(PinBase value, boolean out, IntPredicate match) {
             super(value, out);
+            this.match = match;
         }
 
-        public NotPathShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        public NotPathShowablePin(PinBase value, int titleId, boolean out) {
+        public TypeShowablePin(PinBase value, int titleId, boolean out, IntPredicate match) {
             super(value, titleId, out);
+            this.match = match;
         }
 
         @Override
         public boolean showAble(Task context) {
             FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() != 0;
-        }
-    }
-
-
-    private static class TextShowablePin extends ShowAblePin {
-        public TextShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 1 || action.getTypeValue() == 6;
-        }
-    }
-
-    private static class IdShowablePin extends ShowAblePin {
-        public IdShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 2 || action.getTypeValue() == 6;
-        }
-    }
-
-    private static class ClassShowablePin extends ShowAblePin {
-        public ClassShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 4 || action.getTypeValue() == 6;
-        }
-    }
-
-    private static class DescShowablePin extends ShowAblePin {
-        public DescShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 5 || action.getTypeValue() == 6;
-        }
-    }
-
-    private static class MultiShowablePin extends ShowAblePin {
-        public MultiShowablePin(PinBase value, int titleId) {
-            super(value, titleId);
-        }
-
-        @Override
-        public boolean showAble(Task context) {
-            FindNodeAction action = (FindNodeAction) context.getAction(getOwnerId());
-            return action.getTypeValue() == 6;
+            return match.test(action.getTypeValue());
         }
     }
 }
