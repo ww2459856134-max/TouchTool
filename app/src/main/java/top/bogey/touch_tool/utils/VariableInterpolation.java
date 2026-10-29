@@ -18,7 +18,8 @@ import top.bogey.touch_tool.bean.task.Variable;
  * 未匹配到变量的占位符原样保留，方便发现拼写错误。
  */
 public final class VariableInterpolation {
-    private static final Pattern TOKEN = Pattern.compile("\\{([^{}\\n]+)}");
+    // 注意：Android ICU 正则要求大括号必须成对转义，裸 } 会 PatternSyntaxException
+    private static final Pattern TOKEN = Pattern.compile("\\{([^{}\\n]+)\\}");
 
     private VariableInterpolation() {
     }
