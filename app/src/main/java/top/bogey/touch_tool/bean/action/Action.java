@@ -341,29 +341,39 @@ public abstract class Action extends Identity implements PinListener {
         }
         // 变量插值：针脚自身值（未连线）中的 {变量名} 在运行时替换为变量值；返回拷贝，不污染针脚原配置
         // 代码文本（JS/SQL）除外，避免误伤代码中的大括号；任何异常都不影响任务继续执行
+        // 类型判断用针脚本体值（声明类型可靠），插值结果写进拷贝；拷贝类型丢失时直接换新串
         T value = returnValue(pin.getValue());
         interpolationDiag = null;
-        if (value instanceof PinString pinString && !(value instanceof PinCodeString)
-                && pinString.getValue() != null && pinString.getValue().contains("{")) {
+        PinObject live = pin.getValue();
+        if (live instanceof PinString src && !(live instanceof PinCodeString)
+                && src.getValue() != null && src.getValue().contains("{")) {
             try {
-                String original = pinString.getValue();
+                String original = src.getValue();
                 String replaced = VariableInterpolation.interpolate(runnable.getTask(), original);
-                pinString.setValue(replaced);
+                if (value instanceof PinString copyString) {
+                    copyString.setValue(replaced);
+                } else {
+                    @SuppressWarnings("unchecked")
+                    T newValue = (T) new PinString(replaced);
+                    value = newValue;
+                }
                 if (replaced.equals(original)) {
                     // 诊断：列出任务内与全局变量的实际值，方便定位变量找不到的原因
                     StringBuilder diag = new StringBuilder("任务变量:");
                     java.util.List<Variable> vars = runnable.getTask().getVariables();
                     if (vars.isEmpty()) diag.append(" 无");
                     for (Variable v : vars) {
+                        PinObject sv = v.getSaveValue();
                         diag.append(" ").append(v.getTitle()).append("=")
-                                .append(v.getSaveValue() == null ? "空" : v.getSaveValue().toString());
+                                .append(sv == null ? "空" : sv.getClass().getSimpleName() + ":" + sv);
                     }
                     diag.append("；全局变量:");
                     java.util.List<Variable> globals = VariableSaver.getInstance().getVars();
                     if (globals.isEmpty()) diag.append(" 无");
                     for (Variable v : globals) {
+                        PinObject sv = v.getSaveValue();
                         diag.append(" ").append(v.getTitle()).append("=")
-                                .append(v.getSaveValue() == null ? "空" : v.getSaveValue().toString());
+                                .append(sv == null ? "空" : sv.getClass().getSimpleName() + ":" + sv);
                     }
                     interpolationDiag = diag.toString();
                     runnable.addLog(new LogInfo(new NormalLog("[插值] 未替换 " + original + "；" + diag)), 0);
