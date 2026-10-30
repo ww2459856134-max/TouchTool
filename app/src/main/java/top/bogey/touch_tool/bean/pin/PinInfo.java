@@ -93,10 +93,10 @@ public class PinInfo {
     private final static PinInfo OBJECT_INFO = new PinInfo(PinType.OBJECT, PinSubType.NORMAL, PinObject.class, NormalPinSlotView.class, 0, com.google.android.material.R.attr.colorPrimaryInverse, R.string.pin_object, null, false, false);
     private final static PinInfo DYNAMIC_OBJECT_INFO = new PinInfo(PinType.OBJECT, PinSubType.DYNAMIC, PinObject.class, NormalPinSlotView.class, 0, com.google.android.material.R.attr.colorPrimaryInverse, R.string.pin_object, null, false, false);
 
-    private final static PinInfo LIST_INFO = new PinInfo(PinType.LIST, PinSubType.NORMAL, PinList.class, ListPinSlotView.class, 0, com.google.android.material.R.attr.colorPrimaryInverse, R.string.pin_list, null, false, false);
+    private final static PinInfo LIST_INFO = new PinInfo(PinType.LIST, PinSubType.NORMAL, PinList.class, ListPinSlotView.class, 0, com.google.android.material.R.attr.colorPrimaryInverse, R.string.pin_list, null, true, false);
     private final static PinInfo MULTI_SELECT_INFO = new PinInfo(PinType.LIST, PinSubType.MULTI_SELECT, PinMultiSelect.class, ListPinSlotView.class, 0, com.google.android.material.R.attr.colorPrimaryInverse, R.string.pin_multi_select, PinWidgetList.class, false, false);
 
-    private final static PinInfo MAP_INFO = new PinInfo(PinType.MAP, PinSubType.NORMAL, PinMap.class, MapPinSlotView.class, 0, com.google.android.material.R.attr.colorPrimaryInverse, R.string.pin_map, null, false, false);
+    private final static PinInfo MAP_INFO = new PinInfo(PinType.MAP, PinSubType.NORMAL, PinMap.class, MapPinSlotView.class, 0, com.google.android.material.R.attr.colorPrimaryInverse, R.string.pin_map, null, true, false);
 
     private final static PinInfo STRING_INFO = new PinInfo(PinType.STRING, PinSubType.NORMAL, PinString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string, PinWidgetString.class, true, true);
     private final static PinInfo URL_STRING_INFO = new PinInfo(PinType.STRING, PinSubType.URL, PinUrlString.class, NormalPinSlotView.class, R.color.StringPinColor, 0, R.string.pin_string_url, PinWidgetString.class, false, false);

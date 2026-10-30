@@ -43,8 +43,9 @@ public class PinObject extends PinBase {
 
     @Override
     public boolean linkFromAble(PinBase pin) {
+        // 动态针脚不限定类型组：可接列表/映射等任意类型（JSON 动态输出、结构体嵌套的基础）
+        if (isDynamic() || pin.isDynamic()) return true;
         if (getType().getGroup() == pin.getType().getGroup()) {
-            if (isDynamic() || pin.isDynamic()) return true;
             return super.linkFromAble(pin);
         }
         return false;
@@ -52,8 +53,8 @@ public class PinObject extends PinBase {
 
     @Override
     public boolean linkToAble(PinBase pin) {
+        if (isDynamic() || pin.isDynamic()) return true;
         if (getType().getGroup() == pin.getType().getGroup()) {
-            if (isDynamic() || pin.isDynamic()) return true;
             return super.linkToAble(pin);
         }
         return false;
