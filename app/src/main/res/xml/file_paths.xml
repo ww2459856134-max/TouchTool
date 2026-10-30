@@ -8,4 +8,12 @@
         name="files"
         path="./" />
 
+    <external-path
+        name="external"
+        path="." />
+
+    <external-files-path
+        name="external_files"
+        path="." />
+
 </paths>

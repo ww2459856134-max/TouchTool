@@ -162,6 +162,7 @@
     <string name="pin_add_execute">添加执行</string>
 
     <string name="pin_object">对象</string>
+    <string name="pin_dynamic_result">动态结果(列表/字典/文本)</string>
 
     <string name="pin_list">列表</string>
     <string name="pin_list_app">应用列表</string>
@@ -224,6 +225,7 @@
     <string name="select_variable_value_empty">（空）</string>
     <string name="save_output_title">存入变量</string>
     <string name="save_output_select_pin">选择要存的输出值</string>
+    <string name="save_output_select_pin_format">存入变量 · %s</string>
     <string name="save_output_select_var">存入哪个变量</string>
     <string name="save_output_unbound">未绑定</string>
     <string name="save_output_var_missing">变量已丢失</string>
@@ -232,6 +234,9 @@
     <string name="save_output_none">此卡片没有可存的输出值</string>
     <string name="save_output_saved">已绑定：%s → %s，运行时自动存入</string>
     <string name="save_output_cleared">已清除绑定</string>
+    <string name="load_image_action_path">图片路径或网址（支持 {变量}）</string>
+    <string name="pin_area_expression_edit">区域插值表达式</string>
+    <string name="pin_value_area_expression_edit">区间插值表达式</string>
     <string name="picker_point_title">选择位置</string>
 
     <string name="picker_touch_title">采集手势</string>

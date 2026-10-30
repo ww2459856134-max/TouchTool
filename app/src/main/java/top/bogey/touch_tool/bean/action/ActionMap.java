@@ -91,6 +91,7 @@ public class ActionMap {
 
             case SYSTEM -> list.addAll(Arrays.asList(
                     ActionType.SHELL,
+                    ActionType.INSTALL_APK,
                     ActionType.SHARE_TO,
                     ActionType.SYSTEM_KEY,
 
@@ -308,7 +309,8 @@ public class ActionMap {
                     ActionType.HTTP_REQUEST,
                     ActionType.JSON_GET_VALUE,
                     ActionType.JSON_ARRAY,
-                    ActionType.JS_CODE
+                    ActionType.JS_CODE,
+                    ActionType.DOWNLOAD_FILE
             ));
         }
         return list;

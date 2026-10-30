@@ -181,6 +181,8 @@ public enum ActionType {
 
     HTTP_REQUEST,
     JSON_GET_VALUE,
+    DOWNLOAD_FILE,
+    INSTALL_APK,
     JSON_ARRAY,
     JS_CODE,
 

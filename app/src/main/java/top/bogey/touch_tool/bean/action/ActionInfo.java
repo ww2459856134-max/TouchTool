@@ -96,7 +96,9 @@ import top.bogey.touch_tool.bean.action.map.MapIsEmptyAction;
 import top.bogey.touch_tool.bean.action.map.MapRemoveAction;
 import top.bogey.touch_tool.bean.action.map.MapSetAction;
 import top.bogey.touch_tool.bean.action.map.MapSizeAction;
+import top.bogey.touch_tool.bean.action.api.DownloadFileAction;
 import top.bogey.touch_tool.bean.action.api.HttpRequestAction;
+import top.bogey.touch_tool.bean.action.system.InstallApkAction;
 import top.bogey.touch_tool.bean.action.api.JsCodeAction;
 import top.bogey.touch_tool.bean.action.api.JsonArrayAction;
 import top.bogey.touch_tool.bean.action.api.JsonGetValueAction;
@@ -466,6 +468,8 @@ public class ActionInfo {
     private final static ActionInfo TOUCH_IMAGE_ALL_INFO = new ActionInfo(ActionType.TOUCH_IMAGE_ALL, TouchImageAllAction.class, R.drawable.icon_data_array, R.string.touch_image_all_action, R.string.touch_image_all_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo HTTP_REQUEST_INFO = new ActionInfo(ActionType.HTTP_REQUEST, HttpRequestAction.class, R.drawable.icon_globe, R.string.http_request_action, R.string.http_request_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo JSON_GET_VALUE_INFO = new ActionInfo(ActionType.JSON_GET_VALUE, JsonGetValueAction.class, R.drawable.icon_data_array, R.string.json_get_value_action, R.string.json_get_value_action_desc, 0, NormalActionCard.class);
+    private final static ActionInfo DOWNLOAD_FILE_INFO = new ActionInfo(ActionType.DOWNLOAD_FILE, DownloadFileAction.class, R.drawable.icon_globe, R.string.download_file_action, R.string.download_file_action_desc, 0, NormalActionCard.class);
+    private final static ActionInfo INSTALL_APK_INFO = new ActionInfo(ActionType.INSTALL_APK, InstallApkAction.class, R.drawable.icon_terminal, R.string.install_apk_action, R.string.install_apk_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo JSON_ARRAY_INFO = new ActionInfo(ActionType.JSON_ARRAY, JsonArrayAction.class, R.drawable.icon_data_array, R.string.json_array_action, R.string.json_array_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo JS_CODE_INFO = new ActionInfo(ActionType.JS_CODE, JsCodeAction.class, R.drawable.icon_gesture, R.string.js_code_action, R.string.js_code_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo MULTI_FINGER_SWIPE_INFO = new ActionInfo(ActionType.MULTI_FINGER_SWIPE, MultiFingerSwipeAction.class, R.drawable.icon_zoom_in_map, R.string.multi_finger_swipe_action, R.string.multi_finger_swipe_action_desc, 0, NormalActionCard.class);
@@ -745,6 +749,8 @@ public class ActionInfo {
             case TOUCH_IMAGE_ALL -> TOUCH_IMAGE_ALL_INFO;
             case HTTP_REQUEST -> HTTP_REQUEST_INFO;
             case JSON_GET_VALUE -> JSON_GET_VALUE_INFO;
+            case DOWNLOAD_FILE -> DOWNLOAD_FILE_INFO;
+            case INSTALL_APK -> INSTALL_APK_INFO;
             case JSON_ARRAY -> JSON_ARRAY_INFO;
             case JS_CODE -> JS_CODE_INFO;
             case MULTI_FINGER_SWIPE -> MULTI_FINGER_SWIPE_INFO;

@@ -419,6 +419,12 @@
         <item>DELETE</item>
     </string-array>
 
+    <string-array name="download_conflict">
+        <item>覆盖</item>
+        <item>自动重命名</item>
+        <item>跳过(已存在不下载)</item>
+    </string-array>
+
     <string-array name="json_array_mode">
         <item>取数组长度</item>
         <item>取元素</item>
