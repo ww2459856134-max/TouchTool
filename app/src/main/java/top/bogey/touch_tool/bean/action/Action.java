@@ -34,6 +34,9 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinAdd;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinBase;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinMap;
 import top.bogey.touch_tool.bean.pin.pin_objects.PinObject;
+import top.bogey.touch_tool.bean.pin.pin_objects.PinValueArea;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinNumber;
+import top.bogey.touch_tool.bean.pin.pin_objects.pin_scale_able.PinArea;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_list.PinList;
 import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.save.variable.VariableSaver;
@@ -45,6 +48,7 @@ import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinCodeString;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinString;
 
 import top.bogey.touch_tool.utils.GsonUtil;
+import top.bogey.touch_tool.utils.MathExpression;
 import top.bogey.touch_tool.utils.VariableInterpolation;
 
 public abstract class Action extends Identity implements PinListener {
@@ -375,6 +379,56 @@ public abstract class Action extends Identity implements PinListener {
         T value = returnValue(pin.getValue());
         interpolationDiag = null;
         PinObject live = pin.getValue();
+        // 区间插值：区间针脚（如执行前延迟的最小/最大）配置了表达式时，插值后解析写入拷贝；失败保持原值
+        if (live instanceof PinValueArea srcValueArea
+                && srcValueArea.getExpression() != null && srcValueArea.getExpression().contains("{")) {
+            try {
+                String replaced = VariableInterpolation.interpolate(runnable.getTask(), srcValueArea.getExpression());
+                PinValueArea resolved = new PinValueArea();
+                if (resolved.parse(replaced)) {
+                    if (value instanceof PinValueArea copyValueArea) {
+                        copyValueArea.setMin(resolved.getMin());
+                        copyValueArea.setMax(resolved.getMax());
+                        return value;
+                    }
+                }
+            } catch (Exception ignored) {
+                // 插值或解析失败保持针脚原值，不影响任务继续执行
+            }
+        }
+        // 区域插值：区域针脚配置了表达式（如 {上一步识别的区域}）时，插值后解析为区域写入拷贝；失败保持原值
+        if (live instanceof PinArea srcArea
+                && srcArea.getExpression() != null && srcArea.getExpression().contains("{")) {
+            try {
+                String replaced = VariableInterpolation.interpolate(runnable.getTask(), srcArea.getExpression());
+                PinArea resolved = new PinArea();
+                if (resolved.cast(replaced.trim())) {
+                    if (value instanceof PinArea copyArea) {
+                        copyArea.setValue(resolved.getValue());
+                        return value;
+                    }
+                }
+            } catch (Exception ignored) {
+                // 插值或解析失败保持针脚原值，不影响任务继续执行
+            }
+        }
+        // 数值插值：数值针脚配置了表达式（如 {单价}*{数量}）时，先插值变量再求值，结果写入拷贝；失败保持原值
+        if (live instanceof PinNumber<?> srcNumber
+                && srcNumber.getExpression() != null && srcNumber.getExpression().contains("{")) {
+            try {
+                String replaced = VariableInterpolation.interpolate(runnable.getTask(), srcNumber.getExpression());
+                Number evaluated = MathExpression.evaluate(replaced);
+                if (evaluated == null) throw new NumberFormatException(replaced);
+                if (value instanceof PinNumber<?> copyNumber) {
+                    @SuppressWarnings({"unchecked", "rawtypes"})
+                    PinNumber raw = (PinNumber) copyNumber;
+                    raw.setValue(evaluated);
+                    return value;
+                }
+            } catch (Exception ignored) {
+                // 插值或求值失败保持针脚原值，不影响任务继续执行
+            }
+        }
         if (live instanceof PinString src && !(live instanceof PinCodeString)
                 && src.getValue() != null && src.getValue().contains("{")) {
             try {

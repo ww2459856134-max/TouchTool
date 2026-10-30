@@ -13,6 +13,8 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinType;
 
 public abstract class PinNumber<T extends Number> extends PinObject {
     protected T value;
+    // 数值插值表达式：如 {单价}*{数量}，运行时先插值变量再求值，结果写入本针脚；空表示纯数值
+    private String expression;
 
     protected PinNumber(PinSubType subType) {
         super(PinType.NUMBER, subType);
@@ -31,6 +33,7 @@ public abstract class PinNumber<T extends Number> extends PinObject {
     public void sync(PinBase value) {
         if (value instanceof PinNumber<?> pinNumber) {
             this.value = (T) pinNumber.value;
+            this.expression = pinNumber.expression;
         }
     }
 
@@ -84,6 +87,14 @@ public abstract class PinNumber<T extends Number> extends PinObject {
 
     public void setValue(T value) {
         this.value = value;
+    }
+
+    public String getExpression() {
+        return expression;
+    }
+
+    public void setExpression(String expression) {
+        this.expression = expression;
     }
 
     @Override

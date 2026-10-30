@@ -21,6 +21,7 @@ import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
 import top.bogey.touch_tool.R;
+import top.bogey.touch_tool.bean.pin.pin_objects.PinSubType;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinDate;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinDouble;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinFloat;
@@ -31,6 +32,7 @@ import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinPeriodic;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinTime;
 import top.bogey.touch_tool.databinding.PinWidgetInputBinding;
 import top.bogey.touch_tool.ui.blueprint.card.ActionCard;
+import top.bogey.touch_tool.ui.blueprint.selecter.SelectVariableDialog;
 import top.bogey.touch_tool.ui.blueprint.pin.PinView;
 import top.bogey.touch_tool.utils.AppUtil;
 import top.bogey.touch_tool.utils.listener.TextChangedListener;
@@ -87,6 +89,27 @@ public class PinWidgetNumber extends PinWidget<PinNumber<?>> {
         binding.editText.setSaveFromParentEnabled(false);
         Number value = pinBase.getValue();
         if (value != null) binding.editText.setText(pinBase.toString());
+        if (pinBase.getExpression() != null && !pinBase.getExpression().isEmpty()) {
+            binding.editText.setText(pinBase.getExpression());
+        }
+
+        // 数值快速插值：点选变量插入 {变量名} 到光标处（仅可编辑的数值类型）
+        if (pinBase.getSubType() == PinSubType.INTEGER || pinBase.getSubType() == PinSubType.FLOAT
+                || pinBase.getSubType() == PinSubType.DOUBLE || pinBase.getSubType() == PinSubType.LONG) {
+            binding.varButton.setVisibility(VISIBLE);
+            binding.varButton.setOnClickListener(v -> new SelectVariableDialog(getContext(), card.getTask(), name -> {
+                if (name == null || name.isEmpty()) return;
+                String old = binding.editText.getText() == null ? "" : binding.editText.getText().toString();
+                int start = binding.editText.getSelectionEnd();
+                if (start < 0 || start > old.length()) start = old.length();
+                String insert = "{" + name + "}";
+                String newText = old.substring(0, start) + insert + old.substring(start);
+                binding.editText.setText(newText);
+                binding.editText.setSelection(start + insert.length());
+            }).show());
+        } else {
+            binding.varButton.setVisibility(GONE);
+        }
 
         switch (pinBase.getSubType()) {
             case INTEGER -> {
@@ -95,6 +118,8 @@ public class PinWidgetNumber extends PinWidget<PinNumber<?>> {
                     @Override
                     public void afterTextChanged(Editable s) {
                         String string = s.toString();
+                        // 数值插值：输入含 { 视为表达式存入 expression，运行时插值求值
+                        if (applyExpressionMode(string)) return;
                         try {
                             int i = Integer.parseInt(string);
                             ((PinInteger) pinBase).setValue(i);
@@ -112,6 +137,7 @@ public class PinWidgetNumber extends PinWidget<PinNumber<?>> {
                     @Override
                     public void afterTextChanged(Editable s) {
                         String string = s.toString();
+                        if (applyExpressionMode(string)) return;
                         try {
                             float i = Float.parseFloat(string);
                             ((PinFloat) pinBase).setValue(i);
@@ -129,6 +155,7 @@ public class PinWidgetNumber extends PinWidget<PinNumber<?>> {
                     @Override
                     public void afterTextChanged(Editable s) {
                         String string = s.toString();
+                        if (applyExpressionMode(string)) return;
                         try {
                             double i = Double.parseDouble(string);
                             ((PinDouble) pinBase).setValue(i);
@@ -146,6 +173,7 @@ public class PinWidgetNumber extends PinWidget<PinNumber<?>> {
                     @Override
                     public void afterTextChanged(Editable s) {
                         String string = s.toString();
+                        if (applyExpressionMode(string)) return;
                         try {
                             long i = Long.parseLong(string);
                             ((PinLong) pinBase).setValue(i);
@@ -251,5 +279,27 @@ public class PinWidgetNumber extends PinWidget<PinNumber<?>> {
     @Override
     protected void initCustom() {
 
+    }
+
+    // 表达式模式切换：文本含 { 时存入 expression 并切文本键盘（数字键盘打不出大括号）；
+    // 退出表达式（删掉大括号输纯数字）时清空 expression 并切回数字键盘；返回 true 表示已按表达式处理
+    private boolean applyExpressionMode(String text) {
+        if (text.contains("{")) {
+            pinBase.setExpression(text.trim());
+            int textType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+            if (binding.editText.getInputType() != textType) {
+                binding.editText.setInputType(textType);
+            }
+            return true;
+        }
+        if (pinBase.getExpression() != null) {
+            pinBase.setExpression(null);
+            int numberType = switch (pinBase.getSubType()) {
+                case FLOAT, DOUBLE -> EditorInfo.TYPE_CLASS_NUMBER | EditorInfo.TYPE_NUMBER_FLAG_DECIMAL | EditorInfo.TYPE_NUMBER_FLAG_SIGNED;
+                default -> EditorInfo.TYPE_CLASS_NUMBER | EditorInfo.TYPE_NUMBER_FLAG_SIGNED;
+            };
+            binding.editText.setInputType(numberType);
+        }
+        return false;
     }
 }

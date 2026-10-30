@@ -94,4 +94,9 @@
         style="?attr/iconButtonOutlined"
         app:icon="@drawable/icon_area" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/varButton"
+        style="?attr/iconButtonOutlined"
+        app:icon="@drawable/icon_variables" />
+
 </LinearLayout>

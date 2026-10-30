@@ -19,6 +19,8 @@ import top.bogey.touch_tool.utils.GsonUtil;
 
 // 屏幕区域得实时获取才能兼容横竖屏
 public class PinArea extends PinScaleAble<Rect> {
+    // 区域插值表达式：如 {上一步识别的区域}，运行时插值后解析；空表示纯数值区域
+    private String expression;
 
     public PinArea() {
         super(PinType.AREA);
@@ -43,8 +45,9 @@ public class PinArea extends PinScaleAble<Rect> {
 
     @Override
     public boolean cast(String value) {
-        Pattern pattern = Pattern.compile("\\((\\d+),(\\d+),(\\d+),(\\d+)\\)");
-        Matcher matcher = pattern.matcher(value);
+        // 支持两种格式：带括号 "(l,t,r,b)"（toString 格式）与不带括号 "l,t,r,b"（插值常用格式）
+        Pattern bracket = Pattern.compile("\\(?(\\d+),(\\d+),(\\d+),(\\d+)\\)?");
+        Matcher matcher = bracket.matcher(value);
         if (matcher.find()) {
             try {
                 setScale();
@@ -112,5 +115,13 @@ public class PinArea extends PinScaleAble<Rect> {
         value.offset(-anchorPoint.x, -anchorPoint.y);
         setValue(value);
         this.anchor = anchor;
+    }
+
+    public String getExpression() {
+        return expression;
+    }
+
+    public void setExpression(String expression) {
+        this.expression = expression;
     }
 }

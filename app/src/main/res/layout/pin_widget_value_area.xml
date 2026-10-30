@@ -54,6 +54,12 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/varButton"
+            style="?attr/iconButtonOutlined"
+            android:layout_height="match_parent"
+            app:icon="@drawable/icon_variables" />
+
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton

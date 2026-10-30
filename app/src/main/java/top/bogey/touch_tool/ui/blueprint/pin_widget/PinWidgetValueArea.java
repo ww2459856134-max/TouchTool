@@ -12,6 +12,8 @@ import top.bogey.touch_tool.bean.pin.pin_objects.PinValueArea;
 import top.bogey.touch_tool.databinding.PinWidgetValueAreaBinding;
 import top.bogey.touch_tool.ui.blueprint.card.ActionCard;
 import top.bogey.touch_tool.ui.blueprint.pin.PinView;
+import top.bogey.touch_tool.ui.blueprint.selecter.SelectVariableDialog;
+import top.bogey.touch_tool.utils.AppUtil;
 import top.bogey.touch_tool.utils.listener.TextChangedListener;
 
 @SuppressLint("ViewConstructor")
@@ -61,6 +63,41 @@ public class PinWidgetValueArea extends PinWidget<PinValueArea> {
             binding.lockButton.setChecked(locked);
             binding.lockButton.setIconResource(locked ? R.drawable.icon_lock : R.drawable.icon_lock_open);
         });
+
+        // 区间快速插值：选变量绑定 {变量名}；已绑定时点击可编辑/清除完整表达式（如 {最小}~{最大}）
+        refreshExpressionState();
+        binding.varButton.setOnClickListener(v -> {
+            String current = pinBase.getExpression();
+            if (current == null || current.isEmpty()) {
+                new SelectVariableDialog(getContext(), card.getTask(), name -> {
+                    if (name == null || name.isEmpty()) return;
+                    pinBase.setExpression("{" + name + "}");
+                    refreshExpressionState();
+                }).show();
+            } else {
+                AppUtil.showEditDialog(getContext(), R.string.pin_value_area_expression_edit, current, result -> {
+                    String text = result == null ? "" : result.trim();
+                    pinBase.setExpression(text.isEmpty() ? null : text);
+                    refreshExpressionState();
+                });
+            }
+        });
+    }
+
+    // 表达式状态刷新：绑定表达式时两个数值框禁用，避免误改
+    private void refreshExpressionState() {
+        String expression = pinBase.getExpression();
+        boolean bound = expression != null && !expression.isEmpty();
+        binding.lowEdit.setEnabled(!bound);
+        binding.highEdit.setEnabled(!bound && !locked);
+        if (bound) {
+            binding.lowEdit.setText(expression);
+            binding.highEdit.setText("");
+        } else {
+            binding.lowEdit.setText(String.valueOf(pinBase.getMin()));
+            binding.highEdit.setText(String.valueOf(pinBase.getMax()));
+        }
+        binding.varButton.setIconTint(android.content.res.ColorStateList.valueOf(bound ? 0xFF2E8B57 : 0xFF8A8F9C));
     }
 
     @Override
