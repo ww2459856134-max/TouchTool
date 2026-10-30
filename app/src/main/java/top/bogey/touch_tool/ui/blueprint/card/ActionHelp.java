@@ -109,6 +109,12 @@ public final class ActionHelp {
         SPECIFIC.put(ActionType.MAP_IS_EMPTY, R.string.help_map_is_empty);
         SPECIFIC.put(ActionType.MAP_CLEAR, R.string.help_map_clear);
         SPECIFIC.put(ActionType.MAP_SIZE, R.string.help_map_size);
+        SPECIFIC.put(ActionType.HID_RELAY, R.string.help_hid_relay);
+        SPECIFIC.put(ActionType.LOAD_IMAGE, R.string.help_load_image);
+        SPECIFIC.put(ActionType.CROP_IMAGE, R.string.help_crop_image);
+        SPECIFIC.put(ActionType.SAVE_IMAGE, R.string.help_save_image);
+        SPECIFIC.put(ActionType.DOWNLOAD_FILE, R.string.help_download_file);
+        SPECIFIC.put(ActionType.INSTALL_APK, R.string.help_install_apk);
     }
 
     private final static Map<String, Integer> CATEGORY = new HashMap<>();
