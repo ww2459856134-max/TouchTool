@@ -121,6 +121,11 @@
                     app:iconTint="@color/button_container_check" />
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/saveButton"
+                    style="?attr/iconButton"
+                    app:icon="@drawable/icon_variables" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/copyButton"
                     style="?attr/iconButton"
                     app:icon="@drawable/icon_content_copy" />

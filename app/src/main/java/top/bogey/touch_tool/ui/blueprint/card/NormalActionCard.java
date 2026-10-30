@@ -21,6 +21,7 @@ import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.task.Task;
 import top.bogey.touch_tool.databinding.CardNormalBinding;
 import top.bogey.touch_tool.ui.blueprint.pin.PinBottomView;
+import top.bogey.touch_tool.ui.blueprint.selecter.SaveOutputVariableDialog;
 import top.bogey.touch_tool.ui.blueprint.pin.PinLeftView;
 import top.bogey.touch_tool.ui.blueprint.pin.PinRightView;
 import top.bogey.touch_tool.ui.blueprint.pin.PinTopView;
@@ -46,10 +47,27 @@ public class NormalActionCard extends ActionCard {
         initDelete(binding.removeButton);
         initCopy(binding.copyButton);
         initLock(binding.lockButton);
+        initSaveVariable(binding.saveButton);
         initExpand(binding.expandButton);
         initTest();
         initNextTime();
         initPosView(binding.position);
+    }
+
+    // 快速存变量入口：卡片有输出针脚时显示，点击弹出「选输出值 → 选变量」两步菜单
+    private void initSaveVariable(MaterialButton button) {
+        boolean hasOutput = false;
+        for (Pin pin : action.getPins()) {
+            if (SaveOutputVariableDialog.isSaveAblePin(pin)) {
+                hasOutput = true;
+                break;
+            }
+        }
+        if (!hasOutput) {
+            button.setVisibility(GONE);
+        } else {
+            button.setOnClickListener(v -> new SaveOutputVariableDialog(getContext(), task, action).show());
+        }
     }
 
     // 「定时执行」卡片专属：显示下次执行时间，排期一目了然
@@ -125,7 +143,7 @@ public class NormalActionCard extends ActionCard {
     public boolean isEmptyPosition(float x, float y) {
         float scale = getScaleX();
 
-        List<View> buttons = Arrays.asList(binding.helpButton, binding.editButton, binding.testButton, binding.lockButton, binding.expandButton, binding.copyButton, binding.removeButton);
+        List<View> buttons = Arrays.asList(binding.helpButton, binding.editButton, binding.testButton, binding.saveButton, binding.lockButton, binding.expandButton, binding.copyButton, binding.removeButton);
         for (View button : buttons) {
             PointF pointF = DisplayUtil.getLocationRelativeToView(button, this);
             float px = pointF.x * scale;

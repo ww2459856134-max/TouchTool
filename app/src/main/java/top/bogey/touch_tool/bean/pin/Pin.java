@@ -33,6 +33,9 @@ public class Pin extends Identity {
     private PinBase value;
     private Map<String, String> links = new HashMap<>();
 
+    // 快速存变量：输出针脚绑定的变量 id，运行时执行完自动把针脚值写入该变量
+    private String saveVarId;
+
     private boolean out;
     // 是否为动态针脚，动态针脚可以被删除
     private boolean dynamic;
@@ -78,6 +81,7 @@ public class Pin extends Identity {
         out = GsonUtil.getAsBoolean(jsonObject, "out", false);
         dynamic = GsonUtil.getAsBoolean(jsonObject, "dynamic", false);
         hide = GsonUtil.getAsBoolean(jsonObject, "hide", false);
+        saveVarId = GsonUtil.getAsString(jsonObject, "saveVarId", null);
     }
 
     public void sync(Pin pin) {
@@ -93,6 +97,7 @@ public class Pin extends Identity {
         setOut(pin.isOut());
         setDynamic(pin.isDynamic());
         setHide(pin.isHide());
+        setSaveVarId(pin.saveVarId);
     }
 
     public Pin getLinkedPin(Task task) {
@@ -296,6 +301,14 @@ public class Pin extends Identity {
 
     public boolean isOut() {
         return out;
+    }
+
+    public String getSaveVarId() {
+        return saveVarId;
+    }
+
+    public void setSaveVarId(String saveVarId) {
+        this.saveVarId = saveVarId;
     }
 
     public void setOut(boolean out) {

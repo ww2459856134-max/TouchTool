@@ -25,6 +25,7 @@ import top.bogey.touch_tool.bean.base.Identity;
 import top.bogey.touch_tool.bean.other.log.LogInfo;
 import top.bogey.touch_tool.bean.other.log.NormalLog;
 import top.bogey.touch_tool.bean.other.run.RunResultSaver;
+import top.bogey.touch_tool.bean.other.watcher.VariableWatcher;
 import top.bogey.touch_tool.bean.pin.Pin;
 import top.bogey.touch_tool.bean.pin.PinDescribe;
 import top.bogey.touch_tool.bean.pin.PinRunValueRecorder;
@@ -265,6 +266,10 @@ public abstract class Action extends Identity implements PinListener {
     }
 
     public void executeNext(TaskRunnable runnable, Pin pin) {
+        // 快速存变量：此时 execute 主体已完成（输出针脚已写入新值），而下游动作尚未执行，
+        // 在这里保存输出值到绑定变量，保证下游用 {变量} 插值读到的是本次的最新值
+        saveOutputVariables(runnable);
+
         beforeExecuteNext(runnable, pin);
 
         if (runnable.isCurrentInterrupt()) return;
@@ -309,6 +314,31 @@ public abstract class Action extends Identity implements PinListener {
 
     public void beforeExecuteNext(TaskRunnable runnable, Pin pin) {
         runnable.addDebugLog(this, -1);
+    }
+
+    // 快速存变量：输出针脚绑定了变量（saveVarId）时，动作执行成功后把针脚当前值写入该变量
+    // 未达成（如找图失败）时不写入，保留变量旧值，下游链式判断更安全；任何异常不影响任务继续执行
+    public void saveOutputVariables(TaskRunnable runnable) {
+        if (isUnachieved()) return;
+        Task task = runnable.getTask();
+        for (Pin pin : getPins()) {
+            String varId = pin.getSaveVarId();
+            if (varId == null || varId.isEmpty()) continue;
+            PinObject value = pin.getValue();
+            if (value == null) continue;
+            try {
+                Variable var = task.upFindVariable(varId);
+                if (var == null) var = VariableSaver.getInstance().getVar(varId);
+                if (var == null) continue;
+                PinObject oldValue = var.getValue();
+                var.setSaveValue((PinObject) value.copy());
+                VariableWatcher.getInstance().record(var.getTitle(),
+                        oldValue == null ? "" : oldValue.toString(),
+                        value.toString(), getTitle());
+            } catch (Exception e) {
+                Log.e("Action", "saveOutputVariables error: " + e.getMessage());
+            }
+        }
     }
 
     public abstract void calculate(TaskRunnable runnable, Pin pin);
