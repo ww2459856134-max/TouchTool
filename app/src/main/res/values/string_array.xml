@@ -623,4 +623,8 @@
         <item>单击</item>
         <item>滑动</item>
     </string-array>
+    <string-array name="touch_image_channel">
+        <item>无障碍</item>
+        <item>HID 触摸(ESP32)</item>
+    </string-array>
 </resources>

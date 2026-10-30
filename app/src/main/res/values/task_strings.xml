@@ -1180,6 +1180,7 @@
     <string name="find_image_action_delay">识别前延时（毫秒）</string>
     <string name="touch_image_action_delay">点击前延时（毫秒）</string>
     <string name="touch_image_action_type">点击方式</string>
+    <string name="touch_image_channel">执行通道</string>
     <string name="touch_image_action_duration">长按时长（毫秒）</string>
     <string name="touch_image_action_repeat">重复次数</string>
     <string name="touch_image_action_click_interval">点击间隔（毫秒）</string>
@@ -1298,6 +1299,11 @@
     <string name="setting_cloud_ocr_key_desc">点击输入，用于云端OCR识别动作</string>
     <string name="setting_cloud_ocr_secret">百度OCR Secret Key</string>
     <string name="setting_cloud_ocr_secret_desc">点击输入，与API Key配对使用</string>
+    <string name="setting_hid_device">HID 设备（ESP32）</string>
+    <string name="setting_hid_device_desc">点击配置 ESP32 设备IP与端口，HID中继、点击图片等动作共用</string>
+    <string name="setting_hid_manual">手动配置 IP 与端口</string>
+    <string name="setting_hid_discover">自动发现（扫描局域网）</string>
+    <string name="setting_hid_test">测试连接（获取固件信息）</string>
     <string name="debug_run_from">▶ 从此动作开始执行</string>
     <string name="debug_run_no_link">该动作未连接上游动作，无法从此开始</string>
     <string name="debug_run_need_service">请先开启无障碍服务</string>

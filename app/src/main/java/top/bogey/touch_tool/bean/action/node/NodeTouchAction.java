@@ -15,6 +15,7 @@ import top.bogey.touch_tool.bean.pin.pin_objects.pin_execute.PinExecute;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinInteger;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_number.PinNumber;
 import top.bogey.touch_tool.bean.pin.pin_objects.pin_string.PinSingleSelect;
+import top.bogey.touch_tool.bean.pin.special_pin.NotLinkAblePin;
 import top.bogey.touch_tool.service.TaskRunnable;
 
 public class NodeTouchAction extends ExecuteAction {
@@ -31,15 +32,17 @@ public class NodeTouchAction extends ExecuteAction {
     private final transient Pin repeatCountPin = new Pin(new PinInteger(1), R.string.node_touch_action_repeat);
     // 连点间隔（毫秒）
     private final transient Pin repeatIntervalPin = new Pin(new PinInteger(100), R.string.node_touch_action_interval);
+    // 执行通道：无障碍 / HID 触摸（ESP32，取设置页全局配置），失败自动回退无障碍
+    private final transient Pin channelPin = new NotLinkAblePin(new PinSingleSelect(R.array.touch_image_channel), R.string.touch_image_channel);
 
     public NodeTouchAction() {
         super(ActionType.NODE_TOUCH);
-        addPins(nodePin, ltPin, elsePin, precisePin, posTypePin, holdTimePin, repeatCountPin, repeatIntervalPin);
+        addPins(nodePin, ltPin, elsePin, precisePin, posTypePin, holdTimePin, repeatCountPin, repeatIntervalPin, channelPin);
     }
 
     public NodeTouchAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(nodePin, ltPin, elsePin, precisePin, posTypePin, holdTimePin, repeatCountPin, repeatIntervalPin);
+        reAddPins(nodePin, ltPin, elsePin, precisePin, posTypePin, holdTimePin, repeatCountPin, repeatIntervalPin, channelPin);
     }
 
     @Override
@@ -63,6 +66,13 @@ public class NodeTouchAction extends ExecuteAction {
 
             NodeInfo nodeInfo = node.getNodeInfo();
             if (nodeInfo != null) {
+                // HID 通道：把控件区域换算成坐标，通过 ESP32 蓝牙 HID 点击；失败回退无障碍
+                PinSingleSelect channel = getPinValue(runnable, channelPin);
+                if (channel != null && channel.getIndex() == 1
+                        && runHidTouch(runnable, nodeInfo, precise.getValue(), posIndex, holdMs, longTouch.getValue(), count, intervalMs)) {
+                    executeNext(runnable, outPin);
+                    return;
+                }
                 if (gestureMode) {
                     // 手势作用于实际接收点击的区域：非精确时允许上溯一次找可用父控件
                     NodeInfo target = nodeInfo;
@@ -105,5 +115,56 @@ public class NodeTouchAction extends ExecuteAction {
 
     public Pin getNodePin() {
         return nodePin;
+    }
+
+    // 通过 ESP32 HID 点击控件：按九宫格取坐标，支持长按/连点；成功返回 true
+    private boolean runHidTouch(TaskRunnable runnable, NodeInfo nodeInfo, boolean precise,
+                                int posIndex, long holdMs, boolean longTouch, int count, long intervalMs) {
+        String host = top.bogey.touch_tool.utils.HidClient.getConfigHost();
+        int port = top.bogey.touch_tool.utils.HidClient.getConfigPort();
+        if (host == null) {
+            android.widget.Toast.makeText(top.bogey.touch_tool.MainApplication.getInstance(),
+                    "[HID] 请先在 设置 中配置 ESP32 设备IP，回退无障碍", android.widget.Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        // 手势作用于实际接收点击的区域：非精确时允许上溯一次找可用父控件（与无障碍手势路径一致）
+        NodeInfo target = nodeInfo;
+        if (!precise) {
+            NodeInfo usableParent = nodeInfo.findUsableParent();
+            if (usableParent != null) target = usableParent;
+        }
+        if (target == null || target.area == null || target.area.width() <= 0 || target.area.height() <= 0) {
+            runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
+                    new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 控件区域无效，回退无障碍")), 0);
+            return false;
+        }
+
+        // 九宫格定位（与 NodeActionHelper 一致）
+        float[] posX = {0.5f, 0.25f, 0.5f, 0.75f, 0.25f, 0.75f, 0.25f, 0.5f, 0.75f};
+        float[] posY = {0.5f, 0.25f, 0.25f, 0.25f, 0.5f, 0.5f, 0.75f, 0.75f, 0.75f};
+        int index = posIndex >= 0 && posIndex < 9 ? posIndex : 0;
+        android.graphics.Rect area = target.area;
+        int x = (int) (area.left + area.width() * posX[index]);
+        int y = (int) (area.top + area.height() * posY[index]);
+
+        long duration = holdMs > 0 ? holdMs : (longTouch ? 600 : 60);
+        int times = Math.max(1, count);
+
+        android.graphics.Point p = new android.graphics.Point(x, y);
+        for (int i = 0; i < times; i++) {
+            if (i > 0 && intervalMs > 0) runnable.sleep(intervalMs);
+            StringBuilder hexLog = new StringBuilder();
+            boolean ok = top.bogey.touch_tool.utils.HidClient.sendGesture(host, port,
+                    java.util.Arrays.asList(p, p), duration, hexLog);
+            if (!ok) {
+                runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
+                        new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 发送失败，回退无障碍: " + hexLog)), 0);
+                return false;
+            }
+            // 等固件播完本次手势
+            runnable.sleep((int) Math.min(duration + 30, 60000));
+        }
+        top.bogey.touch_tool.ui.custom.float_view.TouchPathFloatView.showGesture(x, y);
+        return true;
     }
 }

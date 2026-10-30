@@ -1,6 +1,7 @@
 package top.bogey.touch_tool.bean.action.image;
 
 import android.graphics.Bitmap;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Build;
 
@@ -32,6 +33,7 @@ import top.bogey.touch_tool.service.MainAccessibilityService;
 import top.bogey.touch_tool.service.TaskRunnable;
 import top.bogey.touch_tool.ui.custom.float_view.TouchPathFloatView;
 import top.bogey.touch_tool.utils.DisplayUtil;
+import top.bogey.touch_tool.utils.HidClient;
 
 public class TouchImageAction extends ExecuteAction {
     private final transient Pin templatePin = new Pin(new PinImage(), R.string.touch_image_action_template);
@@ -50,15 +52,17 @@ public class TouchImageAction extends ExecuteAction {
     private final transient Pin timeoutPin = new NotLinkAblePin(new PinInteger(0), R.string.wait_if_action_timeout, false, false, true);
     private final transient Pin retryIntervalPin = new NotLinkAblePin(new PinInteger(200), R.string.find_execute_action_interval, false, false, true);
     private final transient Pin elsePin = new Pin(new PinExecute(), R.string.if_action_else, true);
+    // 执行通道：无障碍 / HID 触摸（ESP32 蓝牙 HID，无需无障碍注入，地址取全局设置）
+    private final transient Pin channelPin = new NotLinkAblePin(new PinSingleSelect(R.array.touch_image_channel), R.string.touch_image_channel);
 
     public TouchImageAction() {
         super(ActionType.TOUCH_IMAGE);
-        addPins(templatePin, delayPin, typePin, durationPin, repeatPin, intervalPin, similarityPin, areaPin, scalePin, cannyPin, randomPin, offsetXPin, offsetYPin, timeoutPin, retryIntervalPin, elsePin);
+        addPins(templatePin, delayPin, typePin, durationPin, repeatPin, intervalPin, similarityPin, areaPin, scalePin, cannyPin, randomPin, offsetXPin, offsetYPin, timeoutPin, retryIntervalPin, elsePin, channelPin);
     }
 
     public TouchImageAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(templatePin, delayPin, typePin, durationPin, repeatPin, intervalPin, similarityPin, areaPin, scalePin, cannyPin, randomPin, offsetXPin, offsetYPin, timeoutPin, retryIntervalPin, elsePin);
+        reAddPins(templatePin, delayPin, typePin, durationPin, repeatPin, intervalPin, similarityPin, areaPin, scalePin, cannyPin, randomPin, offsetXPin, offsetYPin, timeoutPin, retryIntervalPin, elsePin, channelPin);
         // 兼容旧任务：旧数据里保存的 hide=false 会盖掉新默认值，这里强制归入高级页
         delayPin.setHide(true);
         cannyPin.setHide(true);
@@ -121,6 +125,15 @@ public class TouchImageAction extends ExecuteAction {
 
         // 按点击方式执行：单击 / 长按 / 双击 / 重复点击
         PinSingleSelect type = getPinValue(runnable, typePin);
+        // 执行通道：HID 触摸优先，发送失败自动回退无障碍
+        PinSingleSelect channel = getPinValue(runnable, channelPin);
+        boolean hid = channel != null && channel.getIndex() == 1;
+        if (hid) hid = runHidGesture(runnable, x, y, type.getIndex());
+        if (hid) {
+            TouchPathFloatView.showGesture(x, y);
+            executeNext(runnable, outPin);
+            return;
+        }
         switch (type.getIndex()) {
             case 1 -> {
                 // 长按
@@ -154,6 +167,51 @@ public class TouchImageAction extends ExecuteAction {
         int interval = 100;
         if (getPinValue(runnable, intervalPin) instanceof PinInteger pinInteger) interval = Math.max(50, pinInteger.getValue());
         return interval;
+    }
+
+    // 通过 ESP32 HID 执行点击手势，返回是否全部发送成功
+    private boolean runHidGesture(TaskRunnable runnable, int x, int y, int type) {
+        // 设备地址取全局设置（设置页配置）
+        String host = HidClient.getConfigHost();
+        int port = HidClient.getConfigPort();
+        if (host == null) {
+            runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
+                    new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 请先在 设置 中配置 ESP32 设备IP，回退无障碍")), 0);
+            return false;
+        }
+
+        long duration = 50;
+        int repeat = 1;
+        int interval = 100;
+        if (type == 1) {
+            // 长按
+            if (getPinValue(runnable, durationPin) instanceof PinInteger pinInteger) duration = Math.max(100, pinInteger.getValue());
+        } else if (type == 2) {
+            // 双击
+            repeat = 2;
+        } else if (type == 3) {
+            // 重复点击
+            if (getPinValue(runnable, repeatPin) instanceof PinInteger pinInteger) repeat = Math.max(1, pinInteger.getValue());
+            interval = getClickInterval(runnable);
+        }
+
+        Point point = new Point(x, y);
+        boolean allOk = true;
+        for (int i = 0; i < repeat; i++) {
+            StringBuilder hexLog = new StringBuilder();
+            // a 数组：按下与抬起同一点
+            boolean ok = HidClient.sendGesture(host, port, java.util.Arrays.asList(point, point), duration, hexLog);
+            if (!ok) {
+                runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
+                        new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 发送失败，回退无障碍: " + hexLog)), 0);
+                allOk = false;
+                break;
+            }
+            // 等待固件播完本次手势
+            runnable.sleep((int) (duration + 30));
+            if (i < repeat - 1) runnable.sleep(interval);
+        }
+        return allOk;
     }
 
     @Override

@@ -47,6 +47,7 @@ import top.bogey.touch_tool.ui.MainActivity;
 import top.bogey.touch_tool.ui.blueprint.picker.ColorPickerPreview;
 import top.bogey.touch_tool.ui.tool.task_manager.ExportTaskDialog;
 import top.bogey.touch_tool.utils.AppUtil;
+import top.bogey.touch_tool.utils.HidClient;
 
 public class SettingView extends Fragment {
     private ViewSettingBinding binding;
@@ -406,8 +407,24 @@ public class SettingView extends Fragment {
 
         binding.cloudOcrSecretKey.setDescription(maskKey(SettingSaver.BAIDU_OCR_SECRET_KEY.get()));
 
-
-
+        // HID 设备（ESP32）：IP 与端口，供 HID 中继、点击图片等动作共用
+        binding.hidDevice.setOnClickListener(v -> new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.setting_hid_device)
+                .setItems(new CharSequence[]{
+                        getString(R.string.setting_hid_manual),
+                        getString(R.string.setting_hid_discover),
+                        getString(R.string.setting_hid_test)}, (dialog, which) -> {
+                    if (which == 0) {
+                        editHidDevice();
+                    } else if (which == 1) {
+                        discoverHidDevice();
+                    } else {
+                        testHidDevice();
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show());
+        refreshHidDevice();
 
         // 定位
         binding.locationSwitch.setOnSwitchClickListener(v -> {
@@ -513,6 +530,83 @@ public class SettingView extends Fragment {
         if (key == null || key.isEmpty()) return "未配置";
         if (key.length() <= 6) return "已配置";
         return key.substring(0, 4) + "****";
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void refreshHidDevice() {
+        String ip = SettingSaver.HID_DEVICE_IP.get();
+        int port = SettingSaver.HID_DEVICE_PORT.get();
+        binding.hidDevice.setDescription(ip == null || ip.isEmpty() ? "未配置（点击输入 IP 与端口）" : ip + ":" + port);
+    }
+
+    // 手动输入 IP 与端口
+    private void editHidDevice() {
+        String currentIp = SettingSaver.HID_DEVICE_IP.get();
+        AppUtil.showEditDialog(requireContext(), R.string.setting_hid_device, currentIp, result -> {
+            String ip = result == null ? "" : result.trim();
+            SettingSaver.HID_DEVICE_IP.set(ip);
+            int currentPort = SettingSaver.HID_DEVICE_PORT.get();
+            AppUtil.showEditDialog(requireContext(), R.string.hid_relay_port, String.valueOf(currentPort), portResult -> {
+                try {
+                    int port = Integer.parseInt(portResult == null ? "" : portResult.trim());
+                    SettingSaver.HID_DEVICE_PORT.set(Math.max(1, Math.min(65535, port)));
+                } catch (NumberFormatException ignored) {
+                }
+                refreshHidDevice();
+            });
+            refreshHidDevice();
+        });
+    }
+
+    // 自动发现：扫描局域网找 ESP32 配置页
+    private void discoverHidDevice() {
+        android.app.ProgressDialog progress = new android.app.ProgressDialog(requireContext());
+        progress.setMessage("正在扫描局域网（约3秒）…");
+        progress.setCancelable(false);
+        progress.show();
+        new Thread(() -> {
+            java.util.List<String> found = HidClient.discoverDevices();
+            requireActivity().runOnUiThread(() -> {
+                progress.dismiss();
+                if (found.isEmpty()) {
+                    Toast.makeText(requireContext(), "未发现 ESP32 设备，请确认手机与设备连同一个WiFi", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.setting_hid_discover)
+                        .setItems(found.toArray(new CharSequence[0]), (dialog, which) -> {
+                            SettingSaver.HID_DEVICE_IP.set(found.get(which));
+                            refreshHidDevice();
+                            Toast.makeText(requireContext(), "已选择 " + found.get(which), Toast.LENGTH_SHORT).show();
+                        })
+                        .setNegativeButton(R.string.cancel, null)
+                        .show();
+            });
+        }, "hid-discover").start();
+    }
+
+    // 测试连接：访问设备配置页，顺带取固件信息
+    private void testHidDevice() {
+        String ip = SettingSaver.HID_DEVICE_IP.get();
+        if (ip == null || ip.isEmpty()) {
+            Toast.makeText(requireContext(), "请先配置设备IP", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(requireContext(), "正在测试 " + ip + " …", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            String body = HidClient.httpGet(ip, 80, 3000);
+            requireActivity().runOnUiThread(() -> {
+                if (body == null) {
+                    Toast.makeText(requireContext(), "连接失败：设备不可达（检查IP与WiFi）", Toast.LENGTH_LONG).show();
+                } else {
+                    new MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("连接成功 " + ip + ":" + SettingSaver.HID_DEVICE_PORT.get())
+                            .setMessage(body)
+                            .setPositiveButton(R.string.enter, null)
+                            .show();
+                }
+            });
+        }, "hid-test").start();
     }
 
     private void refreshNotificationCmd() {

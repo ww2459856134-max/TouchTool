@@ -236,6 +236,14 @@
                         app:description="@string/setting_cloud_ocr_secret_desc"
                         app:icon="@drawable/icon_lock"
                         app:title="@string/setting_cloud_ocr_secret" />
+
+                    <top.bogey.touch_tool.ui.setting.widget.SettingWidgetNormal
+                        android:id="@+id/hidDevice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:description="@string/setting_hid_device_desc"
+                        app:icon="@drawable/icon_bluetooth"
+                        app:title="@string/setting_hid_device" />
                     <top.bogey.touch_tool.ui.setting.widget.SettingWidgetSwitch
                         android:id="@+id/locationSwitch"
                         android:layout_width="match_parent"

@@ -60,6 +60,9 @@ public class SettingSaver {
     public final static SettingSave<Boolean> PERMISSION_STORAGE = new SettingSave<>("PERMISSION_STORAGE", false);
     public final static SettingSave<String> BAIDU_OCR_API_KEY = new SettingSave<>("BAIDU_OCR_API_KEY", "");
     public final static SettingSave<String> BAIDU_OCR_SECRET_KEY = new SettingSave<>("BAIDU_OCR_SECRET_KEY", "");
+    /// HID 中继设备地址（ESP32 蓝牙 HID，全局配置）
+    public final static SettingSave<String> HID_DEVICE_IP = new SettingSave<>("HID_DEVICE_IP", "");
+    public final static SettingSave<Integer> HID_DEVICE_PORT = new SettingSave<>("HID_DEVICE_PORT", 21115);
     /// 定位权限
     public final static SettingSave<Boolean> PERMISSION_LOCATION = new SettingSave<>("PERMISSION_LOCATION", false);
 
