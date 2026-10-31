@@ -273,7 +273,8 @@ public class ComboSaver {
     public static Action replaceVarIds(Action source, Map<String, String> varIdMap) {
         if (varIdMap.isEmpty()) return source;
         try {
-            JsonObject json = GsonUtil.getAsJsonObject(GsonUtil.toJson(source));
+            // 注意 GsonUtil.toJson 返回 String，必须用 JsonParser 解析，不能用 getAsJsonObject 二次序列化
+            JsonObject json = com.google.gson.JsonParser.parseString(GsonUtil.toJson(source)).getAsJsonObject();
             replaceIds(json, varIdMap);
             Action replaced = GsonUtil.getAsObject(json.toString(), Action.class, null);
             return replaced != null ? replaced : source;
@@ -287,7 +288,8 @@ public class ComboSaver {
         if (element.isJsonObject()) {
             JsonObject obj = element.getAsJsonObject();
             for (String key : new java.util.HashSet<>(obj.keySet())) {
-                if (("varId".equals(key) || "saveVarId".equals(key)) && obj.get(key).isJsonPrimitive()) {
+                // 变量动作的值针脚 uid 特殊地等于变量 id，替换 varId 时必须连 uid 一起换，否则反序列化后针脚丢失
+                if (("varId".equals(key) || "saveVarId".equals(key) || "uid".equals(key)) && obj.get(key).isJsonPrimitive()) {
                     String replaced = varIdMap.get(obj.get(key).getAsString());
                     if (replaced != null) obj.addProperty(key, replaced);
                 } else {
