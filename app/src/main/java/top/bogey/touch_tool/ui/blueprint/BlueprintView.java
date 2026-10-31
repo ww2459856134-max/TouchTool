@@ -621,7 +621,7 @@ public class BlueprintView extends Fragment {
             }
             List<Action> actions = ComboSaver.copyActionsWithLinks(sourceActions);
 
-            // 归一化相对位置
+            // 归一化相对位置，并按保存时的上下顺序排列
             int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
             for (Action action : actions) {
                 Point pos = action.getPos();
@@ -629,27 +629,29 @@ public class BlueprintView extends Fragment {
                 minY = Math.min(minY, pos.y);
             }
             int offsetFinalX = minX, offsetFinalY = minY;
+            actions.sort(Comparator.comparingInt((Action a) -> a.getPos().y).thenComparingInt(a -> a.getPos().x));
 
             AppUtil.runOnUiThread(() -> {
                 binding.cardLayout.cleanSelectedCards();
-                boolean first = true;
-                int offsetX = 0, offsetY = 0;
+                // 紧凑垂直排列：不保留源画布上过大的间距，卡与卡之间留 3 格，避免插入后卡片散落画布各处
+                final int gap = 3;
+                int nextGridY = Integer.MIN_VALUE;
+                int baseX = 0;
                 for (Action action : actions) {
                     action.getPos().offset(-offsetFinalX, -offsetFinalY);
                     ActionCard card = binding.cardLayout.addCard(action);
                     if (card == null) continue;
-                    if (first) {
-                        first = false;
-                        int x = action.getPos().x;
-                        int y = action.getPos().y;
+                    if (nextGridY == Integer.MIN_VALUE) {
                         binding.cardLayout.initCardPos(card);
-                        offsetX = card.getAction().getPos().x - x;
-                        offsetY = card.getAction().getPos().y - y;
+                        baseX = action.getPos().x;
+                        nextGridY = action.getPos().y;
                     } else {
-                        Point pos = action.getPos();
-                        action.setPos(pos.x + offsetX, pos.y + offsetY);
+                        action.setPos(baseX, nextGridY);
                         binding.cardLayout.updateCardPos(card);
                     }
+                    card.measure(0, 0);
+                    int gridH = (int) Math.ceil(card.getMeasuredHeight() / binding.cardLayout.getGridSize());
+                    nextGridY += gridH + gap;
                     binding.cardLayout.addSelectedCard(action);
                 }
                 String extra = created.isEmpty() ? "" : "，新建变量：" + String.join("、", created);
