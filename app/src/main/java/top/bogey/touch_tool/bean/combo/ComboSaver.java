@@ -227,10 +227,13 @@ public class ComboSaver {
 
     // 深拷贝一组动作并重建内部连线（与外部的连线自动断开），所有 id/uid 重新生成
     public static List<Action> copyActionsWithLinks(List<Action> sources) {
+        // 连线记录里存的是动作 id 和针脚 id，所以源动作必须用 id 建索引
         Map<String, Action> sourceMap = new HashMap<>();
+        for (Action action : sources) {
+            sourceMap.put(action.getId(), action);
+        }
         Map<String, Action> copyMap = new HashMap<>();
         for (Action action : sources) {
-            sourceMap.put(action.getUid(), action);
             copyMap.put(action.getUid(), action.newCopy());
         }
         for (Action action : sources) {
@@ -254,9 +257,15 @@ public class ComboSaver {
                 }
             }
         }
-        List<Action> result = new ArrayList<>(copyMap.values());
-        // uid 只在拷贝瞬间用于连线映射，副本入画布前重新生成避免重复
-        for (Action action : result) action.setUid(UUID.randomUUID().toString());
+        // 按 sources 原顺序输出（HashMap 无序）
+        List<Action> result = new ArrayList<>();
+        for (Action action : sources) {
+            Action copy = copyMap.get(action.getUid());
+            if (copy != null) {
+                copy.setUid(UUID.randomUUID().toString());
+                result.add(copy);
+            }
+        }
         return result;
     }
 
