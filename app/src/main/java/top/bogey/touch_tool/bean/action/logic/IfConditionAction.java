@@ -34,4 +34,8 @@ public class IfConditionAction extends ExecuteAction {
             executeNext(runnable, elsePin);
         }
     }
+
+    public Pin getConditionPin() {
+        return conditionPin;
+    }
 }

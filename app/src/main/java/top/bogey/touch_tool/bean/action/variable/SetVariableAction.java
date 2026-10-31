@@ -104,4 +104,8 @@ public class SetVariableAction extends ExecuteAction implements SyncAction {
             result.addResult(ActionCheckResult.ResultType.ERROR, R.string.check_not_exist_variable_error);
         }
     }
+
+    public Pin getVarPin() {
+        return varPin;
+    }
 }

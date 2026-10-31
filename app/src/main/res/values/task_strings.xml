@@ -38,6 +38,17 @@
     <string name="time_start_action_countdown">倒计时（分钟，设置后 X 分钟执行一次，仅一次）</string>
     <string name="time_start_action_second">秒数（0~59，补在时间之后，如 20:26:30 执行）</string>
     <string name="time_start_action_next">下次执行：%s</string>
+
+    <!-- 卡片组合库 -->
+    <string name="combo_library">卡片组合库</string>
+    <string name="combo_library_tips">点击组合插入到当前任务（内部连线保留、变量自动映射）；长按自己的组合可删除；★内置为官方黄金流程</string>
+    <string name="combo_library_empty">还没有组合。多选卡片后点 ★ 存为组合，或直接使用内置黄金流程</string>
+    <string name="combo_delete_confirm">删除组合「%s」？</string>
+    <string name="combo_save_title_hint">组合名称（同名会覆盖）</string>
+    <string name="combo_save_desc_hint">备注：用途、使用前提等（可空）</string>
+    <string name="combo_save_success">已保存组合：%s</string>
+    <string name="combo_insert_success">已插入组合「%s」%s</string>
+    <string name="combo_select_empty">请先选中要保存的卡片</string>
     <string name="time_start_action_tips">未设置间隔时设置00:00为间隔24小时\n有间隔时设置00:00为移除间隔</string>
     <string name="time_start_action_set_tips">已设置定时任务，下次开始时间为: %s</string>
 

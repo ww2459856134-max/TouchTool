@@ -164,5 +164,31 @@ public class GsonUtil {
         return defaultValue;
     }
 
+    public static com.google.gson.JsonArray getAsJsonArray(Object src) {
+        try {
+            if (src instanceof com.google.gson.JsonElement) {
+                com.google.gson.JsonElement element = (com.google.gson.JsonElement) src;
+                if (element.isJsonArray()) return element.getAsJsonArray();
+                return new com.google.gson.JsonArray();
+            }
+            return com.google.gson.JsonParser.parseString(gson.toJson(src)).getAsJsonArray();
+        } catch (Exception e) {
+            return new com.google.gson.JsonArray();
+        }
+    }
+
+    public static JsonObject getAsJsonObject(Object src) {
+        try {
+            if (src instanceof JsonObject) return (JsonObject) src;
+            if (src instanceof com.google.gson.JsonElement) {
+                com.google.gson.JsonElement element = (com.google.gson.JsonElement) src;
+                if (element.isJsonObject()) return element.getAsJsonObject();
+                return new JsonObject();
+            }
+            return com.google.gson.JsonParser.parseString(gson.toJson(src)).getAsJsonObject();
+        } catch (Exception e) {
+            return new JsonObject();
+        }
+    }
 
 }

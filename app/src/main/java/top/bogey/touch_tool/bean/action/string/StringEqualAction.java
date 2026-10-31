@@ -70,4 +70,12 @@ public class StringEqualAction extends CalculateAction {
 
         resultPin.getValue(PinBoolean.class).setValue(result);
     }
+
+    public Pin getCompareValuePin() {
+        return compareValuePin;
+    }
+
+    public Pin getResultPin() {
+        return resultPin;
+    }
 }

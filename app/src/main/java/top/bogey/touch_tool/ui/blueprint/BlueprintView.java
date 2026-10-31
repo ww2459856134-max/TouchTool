@@ -25,7 +25,11 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.imageview.ShapeableImageView;
 
+import android.widget.Toast;
+
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -35,6 +39,8 @@ import java.util.regex.Pattern;
 
 import top.bogey.touch_tool.R;
 import top.bogey.touch_tool.bean.action.Action;
+import top.bogey.touch_tool.bean.combo.ActionCombo;
+import top.bogey.touch_tool.bean.combo.ComboSaver;
 import top.bogey.touch_tool.bean.action.start.StartAction;
 import top.bogey.touch_tool.bean.action.task.CustomEndAction;
 import top.bogey.touch_tool.bean.action.task.CustomStartAction;
@@ -42,9 +48,13 @@ import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.save.task.TaskSaver;
 import top.bogey.touch_tool.bean.other.run.RunResultSaver;
 import top.bogey.touch_tool.bean.task.Task;
+import top.bogey.touch_tool.bean.task.Variable;
+import top.bogey.touch_tool.databinding.DialogComboSaveBinding;
 import top.bogey.touch_tool.databinding.ViewBlueprintBinding;
+import top.bogey.touch_tool.MainApplication;
 import top.bogey.touch_tool.ui.MainActivity;
 import top.bogey.touch_tool.ui.blueprint.card.ActionCard;
+import top.bogey.touch_tool.ui.blueprint.selecter.combo.ComboLibraryDialog;
 import top.bogey.touch_tool.ui.blueprint.selecter.select_action.SelectActionDialog;
 import top.bogey.touch_tool.ui.tool.watcher.VariableWatcherFloatView;
 import top.bogey.touch_tool.ui.tool.log.LogFloatView;
@@ -473,6 +483,10 @@ public class BlueprintView extends Fragment {
             });
         });
 
+        binding.comboSaveButton.setOnClickListener(v -> saveCombo());
+
+        binding.comboButton.setOnClickListener(v -> new ComboLibraryDialog(getContext(), this::insertCombo).show());
+
         binding.copyButton.setOnClickListener(v -> {
             List<Action> selectedActions = binding.cardLayout.getSelectedActionsCopy();
             binding.cardLayout.cleanSelectedCards();
@@ -525,6 +539,124 @@ public class BlueprintView extends Fragment {
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), callback);
 
         return binding.getRoot();
+    }
+
+    // 把选中卡片存为组合（连同内部连线与用到的变量定义）
+    private void saveCombo() {
+        List<Action> selectedActions = binding.cardLayout.getSelectedActions();
+        if (selectedActions.isEmpty()) {
+            Toast.makeText(getContext(), R.string.combo_select_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // 深拷贝（保留内部连线），再做 JSON 展示
+        List<Action> copied = ComboSaver.copyActionsWithLinks(selectedActions);
+        if (copied.isEmpty()) return;
+
+        DialogComboSaveBinding saveBinding = DialogComboSaveBinding.inflate(getLayoutInflater());
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(getContext())
+                .setTitle(R.string.combo_library)
+                .setView(saveBinding.getRoot())
+                .setPositiveButton(R.string.enter, (dialog, which) -> {
+                    String title = saveBinding.titleEdit.getText() == null ? "" : saveBinding.titleEdit.getText().toString().trim();
+                    if (title.isEmpty()) title = "未命名组合";
+                    String desc = saveBinding.descEdit.getText() == null ? "" : saveBinding.descEdit.getText().toString().trim();
+
+                    ActionCombo combo = new ActionCombo();
+                    combo.setTitle(title);
+                    combo.setDesc(desc);
+                    combo.setBuiltin(false);
+                    combo.getActions().addAll(copied);
+
+                    // 收集用到的变量定义（从原始选中卡片的变量引用）
+                    Task currTask = taskStack.peek();
+                    List<String> varIds = new ArrayList<>();
+                    ComboSaver.collectVarIds(selectedActions, varIds);
+                    for (String varId : varIds) {
+                        Variable variable = currTask.upFindVariable(varId);
+                        if (variable == null) continue;
+                        boolean exists = combo.getVariables().stream().anyMatch(v -> v.getId().equals(variable.getId()));
+                        if (!exists) combo.getVariables().add(variable.copy());
+                    }
+
+                    ComboSaver.getInstance().addCombo(combo);
+                    Toast.makeText(getContext(), getContext().getString(R.string.combo_save_success, title), Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    // 把组合插入当前任务：变量同名复用、缺的新建，动作里的变量引用全部改写到目标任务
+    private void insertCombo(ActionCombo combo) {
+        if (!binding.cardLayout.isLoaded()) return;
+        ThreadUtil.execute(() -> {
+            Task currTask = taskStack.peek();
+
+            // 变量映射：目标任务有同名变量就复用，否则新建
+            Map<String, String> varIdMap = new HashMap<>();
+            List<String> created = new ArrayList<>();
+            for (Variable variable : combo.getVariables()) {
+                Variable exist = null;
+                for (Variable v : currTask.getVariables()) {
+                    if (v.getTitle().equals(variable.getTitle())) {
+                        exist = v;
+                        break;
+                    }
+                }
+                if (exist != null) {
+                    varIdMap.put(variable.getId(), exist.getId());
+                } else {
+                    Variable copy = variable.newCopy();
+                    if (currTask.addVariable(copy)) {
+                        varIdMap.put(variable.getId(), copy.getId());
+                        created.add(copy.getTitle());
+                    }
+                }
+            }
+
+            // 拷贝动作（重建内部连线）并重写变量引用
+            List<Action> sourceActions = new ArrayList<>();
+            for (Action action : combo.getActions()) {
+                Action replaced = ComboSaver.replaceVarIds(action, varIdMap);
+                sourceActions.add(replaced);
+            }
+            List<Action> actions = ComboSaver.copyActionsWithLinks(sourceActions);
+
+            // 归一化相对位置
+            int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+            for (Action action : actions) {
+                Point pos = action.getPos();
+                minX = Math.min(minX, pos.x);
+                minY = Math.min(minY, pos.y);
+            }
+            int offsetFinalX = minX, offsetFinalY = minY;
+
+            AppUtil.runOnUiThread(() -> {
+                binding.cardLayout.cleanSelectedCards();
+                boolean first = true;
+                int offsetX = 0, offsetY = 0;
+                for (Action action : actions) {
+                    action.getPos().offset(-offsetFinalX, -offsetFinalY);
+                    ActionCard card = binding.cardLayout.addCard(action);
+                    if (card == null) continue;
+                    if (first) {
+                        first = false;
+                        int x = action.getPos().x;
+                        int y = action.getPos().y;
+                        binding.cardLayout.initCardPos(card);
+                        offsetX = card.getAction().getPos().x - x;
+                        offsetY = card.getAction().getPos().y - y;
+                    } else {
+                        Point pos = action.getPos();
+                        action.setPos(pos.x + offsetX, pos.y + offsetY);
+                        binding.cardLayout.updateCardPos(card);
+                    }
+                    binding.cardLayout.addSelectedCard(action);
+                }
+                String extra = created.isEmpty() ? "" : "，新建变量：" + String.join("、", created);
+                Toast.makeText(getContext(), getContext().getString(R.string.combo_insert_success, combo.getTitle(), extra), Toast.LENGTH_LONG).show();
+                currTask.save();
+            });
+        });
     }
 
     @Override
