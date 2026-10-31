@@ -72,6 +72,8 @@ public class GetOrSetVariableAction extends ExecuteOrCalculateAction implements 
             PinObject value = getPinValue(runnable, inVarPin);
             String oldValue = var.getValue() == null ? "" : var.getValue().toString();
             var.setSaveValue(value);
+            // 同步刷新输出针脚：输出没连线时运行结果快照才不会显示旧值，误导为保存失败
+            if (outVarPin != null) outVarPin.setValue(value);
             VariableWatcher.getInstance().record(var.getTitle(), oldValue,
                     value == null ? "" : value.toString(), getTitle());
 
