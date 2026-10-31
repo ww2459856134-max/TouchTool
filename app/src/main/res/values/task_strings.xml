@@ -491,10 +491,12 @@
     <string name="switch_screen_action">开关屏幕</string>
     <string name="switch_screen_action_desc">打开或关闭屏幕</string>
     <string name="unlock_screen_action">解锁屏幕</string>
-    <string name="unlock_screen_action_desc">三种解锁方式：上滑滑过无密码锁屏 / 自动绘制九宫格图案密码 / 提示用户手动解锁（指纹人脸密码无法代解），解锁完成后自动继续任务。熄屏时会先自动点亮屏幕再执行；手势被系统吞掉时会周期性重试直到超时。注意：部分厂商锁屏禁止无障碍在锁屏界面执行手势（防扒手设计），若重试仍无法解锁请换"等用户解锁"模式</string>
+    <string name="unlock_screen_action_desc">解锁流程：亮屏 → 上滑进入密码界面 → 画图案/等待，三步都有开关可单独关闭，每步失败会自动重试直到超时。指纹人脸密码无法代解，选"等用户解锁"模式时请手动解锁。注意：部分厂商锁屏禁止无障碍在锁屏界面执行手势（防扒手设计），若重试仍无法解锁请换"等用户解锁"模式</string>
     <string name="unlock_screen_action_pattern">图案点位（如 159 = 左中→中→右下）</string>
     <string name="unlock_screen_action_center_y">图案中心位置（屏幕高度百分比）</string>
     <string name="unlock_screen_action_mode">解锁方式</string>
+    <string name="unlock_screen_action_wake">先亮屏（熄屏时自动点亮屏幕）</string>
+    <string name="unlock_screen_action_swipe">先上滑（从时钟锁屏页滑到密码输入界面）</string>
     <string name="unlock_screen_action_tips">请解锁屏幕，任务将在解锁后继续</string>
     <string name="keyguard_check_action">是否锁屏</string>
     <string name="keyguard_check_action_desc">输出当前屏幕是否处于锁屏状态，连线给条件判断走不同分支</string>

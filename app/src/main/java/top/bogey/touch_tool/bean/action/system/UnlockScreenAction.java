@@ -48,6 +48,10 @@ public class UnlockScreenAction extends FindExecuteAction {
     private final transient Pin patternPin = new NotLinkAblePin(new PinString("159"), R.string.unlock_screen_action_pattern);
     private final transient Pin centerYPin = new NotLinkAblePin(new PinInteger(50), R.string.unlock_screen_action_center_y);
     private final transient Pin successPin = new Pin(new PinBoolean(), R.string.file_action_success, true);
+    // 开关屏幕：熄屏时先点亮屏幕（定时任务常在熄屏时触发，无障碍手势熄屏时无法生效）
+    private final transient Pin wakePin = new NotLinkAblePin(new PinBoolean(true), R.string.unlock_screen_action_wake);
+    // 先上滑：从时钟锁屏页上滑进入密码/图案输入界面
+    private final transient Pin swipePin = new NotLinkAblePin(new PinBoolean(true), R.string.unlock_screen_action_swipe);
 
     // 每轮执行只自动上滑一次、画一次图案、只提示一次
     private transient TaskRunnable lastRunnable = null;
@@ -61,12 +65,13 @@ public class UnlockScreenAction extends FindExecuteAction {
         super(ActionType.UNLOCK_SCREEN);
         // 等解锁默认 30 秒
         timeoutPin.setValue(new PinInteger(30000));
-        addPins(modePin, patternPin, centerYPin, successPin);
+        // 新针脚必须追加在末尾，旧任务按位置同步
+        addPins(modePin, patternPin, centerYPin, successPin, wakePin, swipePin);
     }
 
     public UnlockScreenAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(modePin, patternPin, centerYPin, successPin);
+        reAddPins(modePin, patternPin, centerYPin, successPin, wakePin, swipePin);
     }
 
     @Override
@@ -85,32 +90,43 @@ public class UnlockScreenAction extends FindExecuteAction {
             return true;
         }
 
-        // 熄屏状态下无障碍手势无法生效（定时任务常在熄屏时触发），先点亮屏幕
-        wakeUpScreen(runnable);
+        // 熄屏状态下无障碍手势无法生效，先点亮屏幕（可关）
+        if (wakePin.getValue(PinBoolean.class).getValue()) wakeUpScreen(runnable);
 
         PinSingleSelect mode = getPinValue(runnable, modePin);
+        boolean swipeEnabled = swipePin.getValue(PinBoolean.class).getValue();
         long now = SystemClock.elapsedRealtime();
         if (mode.getIndex() == MODE_SWIPE) {
             if (!swiped) {
                 swiped = true;
                 nextRetryAt = now + 2500;
-                swipeUp();
-                runnable.sleep(800);
-            } else if (now >= nextRetryAt) {
+                if (swipeEnabled) {
+                    swipeUp();
+                    runnable.sleep(800);
+                }
+            } else if (swipeEnabled && now >= nextRetryAt) {
                 // 上滑没滑掉（可能弹出了密码面板），周期性重试
                 nextRetryAt = now + 2500;
                 swipeUp();
             }
         } else if (mode.getIndex() == MODE_PATTERN) {
             if (!swiped) {
-                // 先上滑唤出图案面板
+                // 先上滑唤出图案面板（时钟锁屏页 → 密码输入界面）
                 swiped = true;
-                nextRetryAt = now + 1200;
-                swipeUp();
-                runnable.sleep(800);
+                if (swipeEnabled) {
+                    nextRetryAt = now + 1200;
+                    swipeUp();
+                    runnable.sleep(800);
+                } else {
+                    nextRetryAt = now + 500;
+                }
             } else if (now >= nextRetryAt) {
-                // 面板出来后画图案；若第一次被系统吞掉，每 2.5 秒重画直到解锁或超时
-                nextRetryAt = now + 2500;
+                // 若第一次手势被系统吞掉或又滑回了时钟页，重试时先上滑再画图案
+                nextRetryAt = now + 3000;
+                if (swipeEnabled) {
+                    swipeUp();
+                    runnable.sleep(800);
+                }
                 drawn = true;
                 drawPattern(getPinValue(runnable, patternPin).toString(), ((PinInteger) getPinValue(runnable, centerYPin)).intValue());
             }
@@ -128,12 +144,13 @@ public class UnlockScreenAction extends FindExecuteAction {
         PowerManager manager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         if (manager == null || manager.isInteractive()) return;
 
+        // FULL_WAKE_LOCK 能从息屏时钟(AOD)唤醒到全亮锁屏，比 SCREEN_BRIGHT 更可靠
         PowerManager.WakeLock wakeLock = manager.newWakeLock(
-                PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
+                PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
                 "touch_tool:unlock_screen");
-        wakeLock.acquire(5000);
+        wakeLock.acquire(8000);
         // 亮屏到锁屏界面渲染完成需要一点时间
-        runnable.sleep(600);
+        runnable.sleep(800);
     }
 
     // 从屏幕底部中央向上滑过锁屏
@@ -145,10 +162,10 @@ public class UnlockScreenAction extends FindExecuteAction {
         int height = service.getResources().getDisplayMetrics().heightPixels;
 
         Path path = new Path();
-        path.moveTo(width / 2f, height * 0.85f);
-        path.lineTo(width / 2f, height * 0.15f);
+        path.moveTo(width / 2f, height * 0.9f);
+        path.lineTo(width / 2f, height * 0.1f);
 
-        runStrokes(service, Collections.singleton(new GestureDescription.StrokeDescription(path, 0, 400)));
+        runStrokes(service, Collections.singleton(new GestureDescription.StrokeDescription(path, 0, 600)));
     }
 
     // 绘制九宫格图案：点位 1-9 从上到下、从左到右排列（1=左上，9=右下）
