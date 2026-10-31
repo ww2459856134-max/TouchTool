@@ -33,16 +33,18 @@ public class TimeStartAction extends StartAction {
     private final transient Pin randomPin = new Pin(new PinInteger(0), R.string.time_start_action_random);
     // 倒计时：从设置时刻起 X 分钟后执行一次，触发后自动清零，0 = 关闭
     private final transient Pin countdownPin = new Pin(new PinInteger(0), R.string.time_start_action_countdown);
+    // 秒数：触发时刻的秒（0~59），时间选择器只有时分，秒在这里补
+    private final transient Pin secondPin = new NotLinkAblePin(new PinInteger(0), R.string.time_start_action_second);
 
     public TimeStartAction() {
         super(ActionType.TIME_START);
         // 新针脚必须追加在末尾，旧任务按位置同步
-        addPins(showTimeLogPin, datePin, timePin, periodic, timesPin, randomPin, countdownPin);
+        addPins(showTimeLogPin, datePin, timePin, periodic, timesPin, randomPin, countdownPin, secondPin);
     }
 
     public TimeStartAction(JsonObject jsonObject) {
         super(jsonObject);
-        reAddPins(showTimeLogPin, datePin, timePin, periodic, timesPin, randomPin, countdownPin);
+        reAddPins(showTimeLogPin, datePin, timePin, periodic, timesPin, randomPin, countdownPin, secondPin);
     }
 
     @Override
@@ -54,7 +56,16 @@ public class TimeStartAction extends StartAction {
     public long getStartTime() {
         long date = datePin.getValue(PinDate.class).getValue();
         long time = timePin.getValue(PinTime.class).getValue();
-        return AppUtil.mergeDateTime(date, time);
+        long start = AppUtil.mergeDateTime(date, time);
+        // 时间选择器只到分，秒由独立针脚补上（0~59）
+        long second = getSecond();
+        if (second > 0) start += second * 1000L;
+        return start;
+    }
+
+    public long getSecond() {
+        long second = secondPin.getValue(PinInteger.class).getValue();
+        return Math.max(0, Math.min(59, second));
     }
 
     public long getPeriodic() {
@@ -85,22 +96,23 @@ public class TimeStartAction extends StartAction {
         long countdown = getCountdownMinutes();
         if (countdown > 0) return current + countdown * 60 * 1000L;
 
-        // 多时间点模式：每天固定的 HH:mm 列表，取最近的下一个
+        // 多时间点模式：每天固定的 HH:mm 或 HH:mm:ss 列表，取最近的下一个
         String times = timesPin.getValue(PinString.class).getValue();
         if (times != null && !times.trim().isEmpty()) {
             long best = -1;
             for (String part : times.split("[,，]")) {
-                String[] hm = part.trim().split(":");
-                if (hm.length != 2) continue;
+                String[] hms = part.trim().split(":");
+                if (hms.length != 2 && hms.length != 3) continue;
                 try {
-                    int hour = Integer.parseInt(hm[0].trim());
-                    int minute = Integer.parseInt(hm[1].trim());
-                    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) continue;
+                    int hour = Integer.parseInt(hms[0].trim());
+                    int minute = Integer.parseInt(hms[1].trim());
+                    int second = hms.length == 3 ? Integer.parseInt(hms[2].trim()) : 0;
+                    if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) continue;
                     Calendar calendar = Calendar.getInstance();
                     calendar.setTimeInMillis(current);
                     calendar.set(Calendar.HOUR_OF_DAY, hour);
                     calendar.set(Calendar.MINUTE, minute);
-                    calendar.set(Calendar.SECOND, 0);
+                    calendar.set(Calendar.SECOND, second);
                     calendar.set(Calendar.MILLISECOND, 0);
                     // 今天的这个点已过，排到明天
                     if (calendar.getTimeInMillis() <= current) calendar.add(Calendar.DAY_OF_MONTH, 1);
