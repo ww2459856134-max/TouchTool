@@ -4,6 +4,8 @@ import android.accessibilityservice.GestureDescription;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.graphics.Path;
+import android.os.PowerManager;
+import android.os.SystemClock;
 import android.widget.Toast;
 
 import com.google.gson.JsonObject;
@@ -52,6 +54,8 @@ public class UnlockScreenAction extends FindExecuteAction {
     private transient boolean swiped = false;
     private transient boolean drawn = false;
     private transient boolean tipped = false;
+    // 下次重试手势的时间点（毫秒），手势失败（熄屏被吞/系统拦截）后周期性重试
+    private transient long nextRetryAt = 0;
 
     public UnlockScreenAction() {
         super(ActionType.UNLOCK_SCREEN);
@@ -72,6 +76,7 @@ public class UnlockScreenAction extends FindExecuteAction {
             swiped = false;
             drawn = false;
             tipped = false;
+            nextRetryAt = 0;
             successPin.getValue(PinBoolean.class).setValue(false);
         }
 
@@ -80,20 +85,32 @@ public class UnlockScreenAction extends FindExecuteAction {
             return true;
         }
 
+        // 熄屏状态下无障碍手势无法生效（定时任务常在熄屏时触发），先点亮屏幕
+        wakeUpScreen(runnable);
+
         PinSingleSelect mode = getPinValue(runnable, modePin);
+        long now = SystemClock.elapsedRealtime();
         if (mode.getIndex() == MODE_SWIPE) {
             if (!swiped) {
                 swiped = true;
+                nextRetryAt = now + 2500;
+                swipeUp();
+                runnable.sleep(800);
+            } else if (now >= nextRetryAt) {
+                // 上滑没滑掉（可能弹出了密码面板），周期性重试
+                nextRetryAt = now + 2500;
                 swipeUp();
             }
         } else if (mode.getIndex() == MODE_PATTERN) {
             if (!swiped) {
                 // 先上滑唤出图案面板
                 swiped = true;
+                nextRetryAt = now + 1200;
                 swipeUp();
                 runnable.sleep(800);
-            } else if (!drawn) {
-                // 面板出来后再画图案
+            } else if (now >= nextRetryAt) {
+                // 面板出来后画图案；若第一次被系统吞掉，每 2.5 秒重画直到解锁或超时
+                nextRetryAt = now + 2500;
                 drawn = true;
                 drawPattern(getPinValue(runnable, patternPin).toString(), ((PinInteger) getPinValue(runnable, centerYPin)).intValue());
             }
@@ -102,6 +119,21 @@ public class UnlockScreenAction extends FindExecuteAction {
             AppUtil.runOnUiThread(() -> Toast.makeText(MainApplication.getInstance(), R.string.unlock_screen_action_tips, Toast.LENGTH_SHORT).show());
         }
         return !isKeyguardLocked();
+    }
+
+    // 熄屏时用 WakeLock 点亮屏幕（亮屏状态下无操作）
+    @SuppressWarnings("deprecation")
+    private void wakeUpScreen(TaskRunnable runnable) {
+        Context context = MainApplication.getInstance();
+        PowerManager manager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if (manager == null || manager.isInteractive()) return;
+
+        PowerManager.WakeLock wakeLock = manager.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
+                "touch_tool:unlock_screen");
+        wakeLock.acquire(5000);
+        // 亮屏到锁屏界面渲染完成需要一点时间
+        runnable.sleep(600);
     }
 
     // 从屏幕底部中央向上滑过锁屏
@@ -152,7 +184,9 @@ public class UnlockScreenAction extends FindExecuteAction {
         }
         if (first) return;
 
-        runStrokes(service, Collections.singleton(new GestureDescription.StrokeDescription(path, 0, 600)));
+        // 时长随点数增加：点越多滑得越慢，避免画太快系统识别不出
+        long duration = 600L + points.size() * 100L;
+        runStrokes(service, Collections.singleton(new GestureDescription.StrokeDescription(path, 0, duration)));
     }
 
     private List<Integer> parsePattern(String pattern) {
