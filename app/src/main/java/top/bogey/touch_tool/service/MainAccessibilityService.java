@@ -542,7 +542,7 @@ public class MainAccessibilityService extends AccessibilityService {
 
         long timeMillis = System.currentTimeMillis();
         // 统一调度：倒计时 / 多时间点 / 固定时间+间隔 都由 TimeStartAction 计算下一次触发时间
-        long nextStartTime = timeStartAction.getNextStartTime(timeMillis);
+        long nextStartTime = timeStartAction.getNextStartTime(timeMillis, task);
         if (nextStartTime < 0) return;
         // 随机延迟：到点后随机等 0~N 分钟再执行
         long randomDelay = timeStartAction.getRandomDelay();

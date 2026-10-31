@@ -21,14 +21,15 @@ import top.bogey.touch_tool.bean.save.setting.SettingSaver;
 import top.bogey.touch_tool.bean.task.Task;
 import top.bogey.touch_tool.service.TaskRunnable;
 import top.bogey.touch_tool.utils.AppUtil;
+import top.bogey.touch_tool.utils.VariableInterpolation;
 
 public class TimeStartAction extends StartAction {
     private final transient Pin showTimeLogPin = new NotLinkAblePin(new PinBoolean(true), R.string.time_start_action_show_time_log);
     private final transient Pin datePin = new Pin(new PinDate(), R.string.time_start_action_date);
     private final transient Pin timePin = new Pin(new PinTime(), R.string.time_start_action_time);
     private final transient Pin periodic = new Pin(new PinPeriodic(), R.string.time_start_action_periodic);
-    // 多时间点：每天固定的 HH:mm 列表（如 08:00,12:30,21:00），留空不用
-    private final transient Pin timesPin = new NotLinkAblePin(new PinString(), R.string.time_start_action_times);
+    // 多时间点：每天固定的 HH:mm[:ss] 列表（如 08:00,12:30,21:00），留空不用；支持连线传入或 {变量} 插值
+    private final transient Pin timesPin = new Pin(new PinString(), R.string.time_start_action_times);
     // 随机延迟：到点后随机等 0~N 分钟再执行，0 = 不延迟
     private final transient Pin randomPin = new Pin(new PinInteger(0), R.string.time_start_action_random);
     // 倒计时：从设置时刻起 X 分钟后执行一次，触发后自动清零，0 = 关闭
@@ -92,12 +93,22 @@ public class TimeStartAction extends StartAction {
 
     // 统一计算下一次触发时间，返回毫秒时间戳，不再需要排期返回 -1
     public long getNextStartTime(long current) {
+        return getNextStartTime(current, null);
+    }
+
+    public long getNextStartTime(long current, Task task) {
         // 倒计时模式：从现在起 X 分钟后
         long countdown = getCountdownMinutes();
         if (countdown > 0) return current + countdown * 60 * 1000L;
 
-        // 多时间点模式：每天固定的 HH:mm 或 HH:mm:ss 列表，取最近的下一个
+        // 多时间点模式：每天固定的 HH:mm[:ss] 列表，取最近的下一个；支持 {变量} 插值
         String times = timesPin.getValue(PinString.class).getValue();
+        if (task != null && times != null && times.contains("{")) {
+            try {
+                times = VariableInterpolation.interpolate(task, times);
+            } catch (Exception ignored) {
+            }
+        }
         if (times != null && !times.trim().isEmpty()) {
             long best = -1;
             for (String part : times.split("[,，]")) {
