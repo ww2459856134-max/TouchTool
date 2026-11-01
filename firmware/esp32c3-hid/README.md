@@ -9,22 +9,29 @@
 
 ### 方式 A：首次 USB 刷机（只需一次）
 
-原厂固件**没有** `/update` 接口，所以第一次必须插线。之后所有升级都能在手机 App 里点几下完成。
+原厂固件**没有** `/update` 接口，所以第一次必须物理连一次线。之后所有升级都能在 App 里点几下完成。
+
+原厂分区表与本工程**逐字节一致**（已解析 `autojs-hid-esp32c3.bin` 的 `0x8000` 确认），
+所以首次刷机**只需要写 app 分区，不要整片刷**：
 
 ```bash
-# 装一次 esptool 即可
 pip install esptool
 
-# 整片烧录，一条命令搞定
+# 只写 app 到 0x10000：不动引导、不动分区表、不动 nvs
+# → WiFi 配置完整保留，不用重新配网
 esptool --chip esp32c3 -p /dev/ttyUSB0 -b 460800 \
-        write_flash 0x0 firmware-merged.bin
+        write_flash 0x10000 firmware.bin
 ```
 
-Windows 把 `/dev/ttyUSB0` 换成 `COM3` 之类。也可以直接用浏览器刷：
-打开 <https://espressif.github.io/esptool-js/>，连上串口，地址填 `0x0`，选 `firmware-merged.bin`。
+Windows 把 `/dev/ttyUSB0` 换成 `COM3` 之类。也可以浏览器刷：
+<https://espressif.github.io/esptool-js/>，**地址填 `0x10000`**，选 `firmware.bin`。
 
-> **`firmware-merged.bin` 只能用于 USB 刷机，不要拿去 OTA。**
-> 它带引导程序，OTA 会把它写进 app 分区，设备将无法启动。
+> 原厂说明书写的是"地址 0x0 + 整片镜像"，那是**全清重刷**，会擦掉 `nvs`
+> （WiFi 密码存在这儿）和 `otadata`，刷完必须重新配网。已经跑原厂固件的板子
+> 不需要这么做，写 `0x10000` 就够。
+
+`firmware-merged.bin` 只在两种情况用：板子是空的，或者分区表被改坏需要救砖。
+**它不能用于 OTA** —— 带引导程序，写进 1.92MB 的 app 分区会让设备起不来。
 
 ### 方式 B：之后在 App 内 OTA（常用）
 
@@ -43,11 +50,20 @@ App → 设置 → ESP32 HID 设备 → **固件升级** → 选 `firmware.bin` 
 
 | 文件 | 用途 |
 | --- | --- |
-| `firmware.bin` | **App 内 OTA 专用**，约 1.3MB，只含 app 分区 |
-| `firmware-merged.bin` | 首次 USB 刷机，含 bootloader + 分区表 + app，整片写 `0x0` |
+| `firmware.bin` | **首次刷机写 `0x10000`**；也是 App 内 OTA 用的文件。约 1.25MB |
+| `firmware-merged.bin` | 仅救砖/空板：含 bootloader + 分区表 + app，整片写 `0x0` |
 | `bootloader.bin` / `partitions.bin` / `boot_app0.bin` | 手动分地址刷写时用 |
 
-分区表和原厂固件**逐字节一致**，所以首次刷机后不需要重新配网、不需要重新配对蓝牙。
+体积核对：`firmware.bin` = 1316032 字节，写入 `[0x10000, 0x1514C0)`，
+app0 分区为 `[0x10000, 0x1F0000)`（1920KB），还剩 634KB 余量。
+
+分区表与原厂一致这一点，已经用两处证据核实：
+- 原厂 bin 的 `0x8000` 分区表逐项解析结果与本工程 `partitions.csv` 相同
+- 原厂 bin 在 `0xE000` 的 otadata 与本工程编译出的 `boot_app0.bin` **逐字节相同**
+  （`seq=1, state=0xFFFFFFFF`，即从 `ota_0`/app0 启动）
+
+所以只写 `0x10000` 会立即生效，且不影响 WiFi。
+
 
 ---
 

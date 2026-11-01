@@ -11,26 +11,37 @@
 
 ## 为什么需要刷一次线
 
-原厂固件只有两个接口：`GET /`（状态页）和 `POST /wifi`（配网），**没有 `/update`**，
-也没有 `0x07/0x08/0x09` 指令字。所以：
+原厂固件只有一个 HTTP 路由 `POST /wifi`（配网），**没有 `/update`**，也没有 ArduinoOTA，
+更没有 `0x07/0x08/0x09` 指令字。ESP32-C3 的 ROM 下载模式只认 UART / USB，
+蓝牙和 WiFi 都进不去。所以：
 
-- **第一次**必须用数据线刷 `esp32c3-hid`（一次就够）
-- **之后**所有升级在 App 里点「设置 → ESP32 HID 设备 → 固件升级」完成，不用再插电脑
+- **第一次**必须物理连一次线（一次就够，手机 OTG 也行）
+- **之后**所有升级在 App 里点「设置 → ESP32 HID 设备 → 固件升级」完成
 
-好在原厂固件的分区表本来就有 `otadata + app0 + app1` 双分区，`esp32c3-hid` 的分区表与原厂
-逐字节一致，因此首次刷机后**不用重新配网**（WiFi 存在 nvs 分区，不动）。
+好在原厂固件的分区表本来就有 `otadata + app0 + app1` 双分区，且与本工程**逐字节一致**
+（已解析原厂 bin 的 `0x8000` 确认，otadata 内容也与本工程的 `boot_app0.bin` 完全相同）。
+
+**因此首次刷机不需要整片刷，只写 app 分区到 `0x10000` 即可** ——
+不动引导、不动分区表、不动 `nvs`，WiFi 配置完整保留，刷完不用重新配网。
 
 ## 首次刷机（USB，只需一次）
 
 ```bash
 pip install esptool
-esptool --chip esp32c3 -p /dev/ttyUSB0 -b 460800 write_flash 0x0 firmware-merged.bin
+
+# 只写 app，保留 WiFi 配置（推荐）
+esptool --chip esp32c3 -p /dev/ttyUSB0 -b 460800 write_flash 0x10000 firmware.bin
 ```
 
 Windows 把端口换成 `COM3` 之类。或打开 <https://espressif.github.io/esptool-js/> 用浏览器刷，
-地址填 `0x0`。
+**地址填 `0x10000`**，选 `firmware.bin`。
 
-刷完重新配对蓝牙（`AutoJS HID-XXXX`），然后按原流程配网。
+原厂说明书写的是"0x0 + 整片镜像"，那是全清重刷，会擦掉 `nvs` 里的 WiFi 密码，
+刷完得重新配网。已经跑原厂固件的板子没必要这么做。
+
+`firmware-merged.bin` 只在板子是空的、或分区表被改坏需要救砖时用。
+
+刷完蓝牙若连不上，取消配对重新配一次；WiFi 不用动。
 
 ## 之后的升级（App 内 OTA）
 
@@ -41,8 +52,9 @@ App → 设置 → ESP32 HID 设备 → 固件升级 → 选 `firmware.bin` → 
 - 升级期间 UDP 手势通道不停，HID 点击仍可用
 - 完成后 App 会自动等设备重启并回读版本号，确认真的换上了
 
-> `firmware-merged.bin` **只能用于 USB 刷机**。它有 1.38MB，带引导程序，
+> `firmware-merged.bin` **只能用于 USB 刷机**。它有 1.32MB，带引导程序，
 > 走 OTA 会写进 app 分区导致无法启动——App 里也会提示这种文件不能用于 OTA。
+
 
 ## 控制协议
 

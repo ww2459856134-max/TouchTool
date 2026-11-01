@@ -261,19 +261,37 @@ String apSsid() {
     return deviceName;
 }
 
+// 等待连接，期间顺手处理 UDP，避免 15 秒里点击指令全丢
+static bool waitWifi(unsigned long timeoutMs) {
+    unsigned long start = millis();
+    while (millis() - start < timeoutMs) {
+        wl_status_t st = WiFi.status();
+        if (st == WL_CONNECTED) return true;
+        // 驱动里没有保存的配置时会立刻返回 NO_SSID_AVAIL，不必干等
+        if (st == WL_NO_SSID_AVAIL && millis() - start > 2000) return false;
+        delay(100);
+        yield();
+    }
+    return WiFi.status() == WL_CONNECTED;
+}
+
 bool connectSavedWifi(unsigned long timeoutMs) {
     String ssid = prefs.getString("ssid", "");
     String pass = prefs.getString("pass", "");
-    if (ssid.isEmpty()) return false;
 
     WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), pass.c_str());
-    unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < timeoutMs) {
-        delay(200);
-        yield();
+    // 先从原厂固件升级上来时，本固件还没存过配置（hidcfg 为空），
+    // 但 WiFi 驱动自己有一份存到 nvs.net80211 的凭据。
+    // 用无参 begin() 直接复用，这样刷机后不用重新配网。
+    if (!ssid.isEmpty()) {
+        WiFi.begin(ssid.c_str(), pass.c_str());
+        Serial.printf("WiFi: using local config, ssid=%s\n", ssid.c_str());
+    } else {
+        WiFi.begin();
+        Serial.println("WiFi: no local config, trying driver-saved credentials");
     }
-    if (WiFi.status() == WL_CONNECTED) {
+
+    if (waitWifi(timeoutMs)) {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
         return true;
     }
@@ -314,12 +332,16 @@ String pageHeader(const String &title) {
 }
 
 void handleRoot() {
-    String ip = WiFi.isConnected() ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
+    bool sta = WiFi.isConnected();
+    String ip = sta ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
     String html = pageHeader("AutoJS HID · ESP32-C3");
     html += "<div class=row><span>固件版本</span><span>" FW_VERSION "</span></div>";
     html += "<div class=row><span>芯片</span><span>" FW_CHIP "</span></div>";
-    html += "<div class=row><span>WiFi 模式</span><span>" + String(WiFi.getMode() == WIFI_AP ? "热点" : "已连接") + "</span></div>";
+    // 显示 SSID：从原厂固件升级上来时，用它确认沿用的是不是原来那个 WiFi
+    html += "<div class=row><span>WiFi</span><span class='" + String(sta ? "ok'>" : "bad'>")
+            + (sta ? htmlEscape(WiFi.SSID()) : String("热点模式")) + "</span></div>";
     html += "<div class=row><span>本机 IP</span><span>" + ip + "</span></div>";
+    html += "<div class=row><span>信号强度</span><span>" + (sta ? String(WiFi.RSSI()) + " dBm" : String("-")) + "</span></div>";
     html += "<div class=row><span>蓝牙 HID</span><span class='" + String(Keyboard.isConnected() ? "ok'>已连接" : "bad'>未连接") + "</span></div>";
     html += "<div class=row><span>手势 / UDP</span><span>" + String(gestureCount) + " / " + String(udpCount) + "</span></div>";
     if (!lastError.isEmpty()) {
