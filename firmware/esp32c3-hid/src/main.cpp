@@ -30,12 +30,12 @@
 #include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.2.0"
+#define FW_VERSION   "1.2.1"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
-#define DEVICE_PREFIX "AutoJS HID-"
+#define DEVICE_PREFIX "鼠标键盘"
 
 // 升级接口的口令：防止同一 WiFi 下任何人随手把固件换掉。
 // App 端固定带 Authorization: Basic base64("admin:autojs1234")
@@ -621,14 +621,9 @@ void handleOtaDone() {
 
 // ---------------- 初始化 ----------------
 void setupBle() {
-    // 设备名后缀取蓝牙 MAC 末两字节，与原厂 "AutoJS HID-XXXX" 命名一致。
-    // 必须用 esp_read_mac(ESP_MAC_BT)：WiFi.macAddress() 在 WiFi 尚未初始化时
-    // 直接返回全 0，之前就是因此出现过 "AutoJS HID-0000" 这种名字。
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_BT);
-    char suffix[5];
-    snprintf(suffix, sizeof(suffix), "%02X%02X", mac[4], mac[5]);
-    deviceName = String(DEVICE_PREFIX) + suffix;
+    // 设备名固定为 "鼠标键盘"（用户指定；v1.2.0 之前是 AutoJS HID-XXXX）。
+    // 注意：BLE GAP 设备名是 UTF-8，中文名现代 Android 蓝牙栈可正常显示。
+    deviceName = DEVICE_PREFIX;
 
     // 名字要在 begin() 之前设置：begin() 会用 deviceName 初始化 BLE 广播
     Keyboard.deviceName = deviceName.c_str();
