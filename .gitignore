@@ -17,3 +17,8 @@ AGENTS.md
 # 本地大文件与签名密钥不入库
 gradle/wrapper/gradle-9.7.1-bin.zip
 tt-release.keystore
+
+# 固件编译输出
+firmware/esp32c3-hid/out/
+firmware/esp32c3-hid/.pio/
+firmware-out/

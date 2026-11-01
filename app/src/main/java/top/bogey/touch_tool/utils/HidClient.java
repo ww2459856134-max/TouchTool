@@ -212,8 +212,55 @@ public class HidClient {
         return path;
     }
 
+    /**
+     * HTTP 探活（比 UDP 可靠）：GET /ping，成功返回固件版本串（如 "pong 1.1.0"），失败返回 null。
+     * <p>
+     * 为什么不用 UDP 判活：UDP 无连接，send() 成功后即使设备关机也返回成功，
+     * 只有 ICMP 端口不可达才抛异常，而 Android 上这条错误经常被静默丢掉。
+     * 走一次 TCP 三次握手才是真的"对方活着"。
+     */
+    public static String httpPing(String host, int port, int timeoutMs) {
+        java.net.HttpURLConnection conn = null;
+        try {
+            conn = (java.net.HttpURLConnection)
+                    new java.net.URL("http://" + host.trim() + ":" + port + "/ping").openConnection();
+            conn.setConnectTimeout(timeoutMs);
+            conn.setReadTimeout(timeoutMs);
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Connection", "close");
+            int code = conn.getResponseCode();
+            if (code != 200) return null;
+            try (java.io.InputStream in = conn.getInputStream();
+                 java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                byte[] buf = new byte[256];
+                int len;
+                while ((len = in.read(buf)) > 0 && out.size() < 512) out.write(buf, 0, len);
+                return out.toString("UTF-8").trim();
+            }
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    /**
+     * 严格判活：走 HTTP /ping（新固件），失败再退回根页面（老固件）。
+     * 结果缓存 {@link #ONLINE_CACHE_MS}，避免每个点击动作都多花一次网络往返。
+     */
+    public static boolean isOnlineStrict() {
+        String host = getConfigHost();
+        if (host == null) return false;
+        long now = SystemClock.elapsedRealtime();
+        if (now - lastOnlineAt < ONLINE_CACHE_MS) return lastOnline;
+        boolean ok = httpPing(host, 80, 1200) != null || httpGet(host, 80, 1500) != null;
+        if (ok) markOnline(); else markOffline();
+        return ok;
+    }
+
     /** HTTP GET 设备配置页，返回响应体前 200 字符；失败返回 null */
     public static String httpGet(String host, int port, int timeoutMs) {
+
         try {
             java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
                     new java.net.URL("http://" + host.trim() + ":" + port + "/").openConnection();

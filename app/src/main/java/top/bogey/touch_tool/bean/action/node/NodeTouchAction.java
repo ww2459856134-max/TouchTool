@@ -128,7 +128,7 @@ public class NodeTouchAction extends ExecuteAction {
             return false;
         }
         // 设备不可达时直接回退无障碍，不再傻等超时
-        if (!top.bogey.touch_tool.utils.HidClient.isOnline()) {
+        if (!top.bogey.touch_tool.utils.HidClient.isOnlineStrict()) {
             runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
                     new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 设备不可达，回退无障碍")), 0);
             return false;

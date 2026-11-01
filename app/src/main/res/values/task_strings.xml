@@ -1345,6 +1345,7 @@
     <string name="setting_hid_discover">自动发现（扫描局域网）</string>
     <string name="setting_hid_test">测试连接（获取固件信息）</string>
     <string name="setting_hid_check">检测连接状态（在线/延迟）</string>
+    <string name="setting_hid_ota">固件升级（OTA 在线刷机）</string>
     <string name="debug_run_from">▶ 从此动作开始执行</string>
     <string name="debug_run_no_link">该动作未连接上游动作，无法从此开始</string>
     <string name="debug_run_need_service">请先开启无障碍服务</string>

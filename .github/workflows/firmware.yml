@@ -1,0 +1,132 @@
+name: Build Firmware
+
+# ESP32-C3 蓝牙 HID 固件自动编译
+#
+# 为什么用 arduino-cli 而不是 PlatformIO：
+#   PlatformIO 每次都要现场下 RISC-V 工具链（境外源，实测 184 B/s），
+#   arduino-cli 走 esp32 官方索引，配合 lib/ 内置依赖，稳定且能离线复现。
+#
+# 产物：
+#   firmware.bin        → App 内 OTA 用（只含 app 分区，约 1.3MB）
+#   firmware-merged.bin → 首次 USB 刷机用（含 bootloader + 分区表，整片烧 0x0）
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/firmware.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 缓存 Arduino 核心与工具链
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.arduino15
+            ~/.cache/arduino
+          key: arduino-esp32-3.3.12-${{ runner.os }}
+          restore-keys: |
+            arduino-esp32-
+
+      - name: 安装 arduino-cli
+        run: |
+          mkdir -p ~/.local/bin
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=~/.local/bin sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          ~/.local/bin/arduino-cli version
+
+      - name: 安装 esp32 核心
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+          arduino-cli core list
+
+      - name: 准备 sketch（main.cpp → 同名 .ino）
+        working-directory: firmware/esp32c3-hid
+        run: |
+          set -e
+          rm -rf /tmp/sketch/tt_hid
+          mkdir -p /tmp/sketch/tt_hid
+          cp src/main.cpp /tmp/sketch/tt_hid/tt_hid.ino
+          cp partitions.csv /tmp/sketch/tt_hid/partitions.csv
+
+      - name: 编译
+        working-directory: firmware/esp32c3-hid
+        run: |
+          set -e
+          arduino-cli compile \
+            --fqbn "esp32:esp32:esp32c3:PartitionScheme=custom,FlashSize=4M" \
+            --build-property "build.custom_partitions=/tmp/sketch/tt_hid/partitions.csv" \
+            --library "$PWD/lib/ESP32-BLE-HID" \
+            --library "$PWD/lib/ArduinoJson" \
+            --output-dir "$PWD/out" \
+            /tmp/sketch/tt_hid
+
+      - name: 整理产物 + 合并整片镜像
+        working-directory: firmware/esp32c3-hid
+        run: |
+          set -e
+          mkdir -p "$GITHUB_WORKSPACE/firmware-out"
+          OUT="$GITHUB_WORKSPACE/firmware-out"
+          ES=$(command -v esptool || true)
+          [ -z "$ES" ] && ES=$(ls ~/.arduino15/packages/esp32/tools/esptool_py/*/esptool | tail -1)
+
+          cp out/*.ino.bin                        "$OUT/firmware.bin"
+          cp out/*.ino.bootloader.bin             "$OUT/bootloader.bin"
+          cp out/*.ino.partitions.bin             "$OUT/partitions.bin"
+          cp out/boot_app0.bin                    "$OUT/boot_app0.bin"
+
+          "$ES" --chip esp32c3 merge-bin -o "$OUT/firmware-merged.bin" \
+            --flash-mode qio --flash-freq 80m --flash-size 4MB \
+            0x0     "$OUT/bootloader.bin" \
+            0x8000  "$OUT/partitions.bin" \
+            0xe000  "$OUT/boot_app0.bin" \
+            0x10000 "$OUT/firmware.bin"
+
+          ls -l "$OUT"
+          echo "--- app 镜像 ---"
+          "$ES" --chip esp32c3 image-info "$OUT/firmware.bin" | head -12 || true
+          echo "--- 整片镜像 ---"
+          "$ES" --chip esp32c3 image-info "$OUT/firmware-merged.bin" | head -12 || true
+
+      - name: 检查体积是否超出 app 分区（1920KB）
+        working-directory: firmware/esp32c3-hid
+        run: |
+          SIZE=$(stat -c%s out/*.ino.bin)
+          LIMIT=$((1920*1024 - 4096))
+          echo "app 镜像 $SIZE 字节，上限 $LIMIT 字节"
+          if [ "$SIZE" -gt "$LIMIT" ]; then
+            echo "::error::固件超出 app 分区，OTA 会失败"
+            exit 1
+          fi
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32c3-hid-firmware
+          path: firmware-out/*.bin
+          if-no-files-found: error
+
+      - name: 构建摘要
+        run: |
+          {
+            echo "## ESP32-C3 HID 固件编译完成"
+            echo ""
+            echo "| 文件 | 用途 |"
+            echo "| --- | --- |"
+            echo "| \`firmware.bin\` | **App 内 OTA 升级专用**，下载这个 |"
+            echo "| \`firmware-merged.bin\` | 首次刷机用，esptool 整片写入 0x0 |"
+            echo "| \`bootloader.bin\` / \`partitions.bin\` / \`boot_app0.bin\` | 手动分地址刷写 |"
+            echo ""
+            echo "> 别用 \`firmware-merged.bin\` 走 OTA：它带引导程序，会覆盖 app 分区导致无法启动。"
+          } >> "$GITHUB_STEP_SUMMARY"

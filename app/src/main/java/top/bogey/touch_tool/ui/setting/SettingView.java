@@ -48,6 +48,7 @@ import top.bogey.touch_tool.ui.blueprint.picker.ColorPickerPreview;
 import top.bogey.touch_tool.ui.tool.task_manager.ExportTaskDialog;
 import top.bogey.touch_tool.utils.AppUtil;
 import top.bogey.touch_tool.utils.HidClient;
+import top.bogey.touch_tool.utils.HidOtaClient;
 
 public class SettingView extends Fragment {
     private ViewSettingBinding binding;
@@ -414,15 +415,18 @@ public class SettingView extends Fragment {
                         getString(R.string.setting_hid_manual),
                         getString(R.string.setting_hid_discover),
                         getString(R.string.setting_hid_test),
-                        getString(R.string.setting_hid_check)}, (dialog, which) -> {
+                        getString(R.string.setting_hid_check),
+                        getString(R.string.setting_hid_ota)}, (dialog, which) -> {
                     if (which == 0) {
                         editHidDevice();
                     } else if (which == 1) {
                         discoverHidDevice();
                     } else if (which == 2) {
                         testHidDevice();
-                    } else {
+                    } else if (which == 3) {
                         refreshHidDevice();
+                    } else {
+                        startHidOta();
                     }
                 })
                 .setNegativeButton(R.string.cancel, null)
@@ -544,14 +548,24 @@ public class SettingView extends Fragment {
             return;
         }
         binding.hidDevice.setDescription(ip + ":" + port + "  ● 检测中…");
-        // 异步探活，结果回填状态点与延迟
+        // 异步探活（走 TCP，UDP 探活不可靠），结果回填状态点、延迟与固件版本
         new Thread(() -> {
             long start = System.currentTimeMillis();
-            boolean online = HidClient.isOnline();
+            String ping = HidClient.httpPing(ip, 80, 1500);
+            if (ping == null) HidClient.markOffline();
+            else HidClient.markOnline();
             long cost = System.currentTimeMillis() - start;
-            String desc = ip + ":" + port + (online ? "  ● 在线 " + cost + "ms" : "  ● 不可达");
+            String desc;
+            if (ping == null) {
+                desc = ip + ":" + port + "  ● 不可达";
+            } else {
+                // 新固件返回 "pong 1.1.0"，老固件只能退回根页面判断
+                String version = ping.startsWith("pong") ? ping.substring(Math.min(4, ping.length())).trim() : "";
+                desc = ip + ":" + port + "  ● 在线 " + cost + "ms" + (version.isEmpty() ? "" : "  v" + version);
+            }
+            String finalDesc = desc;
             requireActivity().runOnUiThread(() -> {
-                if (isAdded()) binding.hidDevice.setDescription(desc);
+                if (isAdded()) binding.hidDevice.setDescription(finalDesc);
             });
         }, "hid-status").start();
     }
@@ -624,6 +638,183 @@ public class SettingView extends Fragment {
                 }
             });
         }, "hid-test").start();
+    }
+
+    // ---------------- HID 固件 OTA 升级 ----------------
+    // 流程：读 /info 确认设备可升级 → 选本地 .bin → 分块上传到 /update → 设备写另一分区并重启
+    private void startHidOta() {
+        String ip = SettingSaver.HID_DEVICE_IP.get();
+        if (ip == null || ip.isEmpty()) {
+            Toast.makeText(requireContext(), "请先配置设备IP", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(requireContext(), "正在读取设备信息…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            String info = HidOtaClient.fetchInfo(ip, 80, 3000);
+            requireActivity().runOnUiThread(() -> {
+                if (!isAdded()) return;
+                if (info == null) {
+                    new MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("无法连接设备")
+                            .setMessage("读取 http://" + ip + ":80/info 失败。\n\n"
+                                    + "请确认：\n1. 手机与设备在同一 WiFi\n2. 设备已刷入支持 OTA 的固件（v1.1.0+）\n3. IP 地址正确")
+                            .setPositiveButton(R.string.enter, null)
+                            .show();
+                    return;
+                }
+                showOtaDialog(ip, info);
+            });
+        }, "hid-ota-info").start();
+    }
+
+    private void showOtaDialog(String ip, String info) {
+        // 从 /info 的 JSON 里粗略取版本与芯片，取不到就原样展示
+        String version = "-";
+        String chip = "-";
+        try {
+            org.json.JSONObject json = new org.json.JSONObject(info);
+            version = json.optString("fw", "-");
+            chip = json.optString("chip", "-");
+        } catch (Exception ignored) {
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("固件升级 " + ip)
+                .setMessage("当前固件：" + version + "\n芯片：" + chip + "\n\n"
+                        + "选择编译好的 firmware.bin 上传。上传期间不要断电，"
+                        + "完成后设备会自动重启，原有 WiFi 配置和蓝牙配对保留。")
+                .setPositiveButton("选择 .bin 文件", (d, w) -> {
+                    MainActivity activity = MainApplication.getInstance().getActivity();
+                    if (activity == null) return;
+                    activity.launcherOpenDocument((code, intent) -> {
+                        if (code != Activity.RESULT_OK || intent == null || intent.getData() == null) return;
+                        android.net.Uri uri = intent.getData();
+                        String name = queryDisplayName(uri);
+                        confirmOta(ip, uri, name);
+                    }, "application/octet-stream");
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private String queryDisplayName(android.net.Uri uri) {
+        android.database.Cursor cursor = null;
+        try {
+            cursor = requireContext().getContentResolver().query(uri,
+                    new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) return cursor.getString(index);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        return "firmware.bin";
+    }
+
+    private void confirmOta(String ip, android.net.Uri uri, String fileName) {
+        if (fileName == null || !fileName.toLowerCase().endsWith(".bin")) {
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("文件类型不对")
+                    .setMessage("请选择 PlatformIO 编译产出的 firmware.bin。\n\n"
+                            + "注意：不要选 autojs-hid-esp32c3.bin 这种整片镜像，"
+                            + "OTA 只能刷应用分区，整片镜像会导致升级后无法启动。")
+                    .setPositiveButton(R.string.enter, null)
+                    .show();
+            return;
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("确认升级")
+                .setMessage("即将把 " + fileName + " 写入设备 " + ip + "\n\n"
+                        + "⚠️ 升级过程中不要断电或断网。若固件与芯片型号不匹配，设备会启动失败，需要用数据线重刷。")
+                .setPositiveButton("开始升级", (d, w) -> doOtaUpload(ip, uri, fileName))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void doOtaUpload(String ip, android.net.Uri uri, String fileName) {
+        android.app.ProgressDialog progress = new android.app.ProgressDialog(requireContext());
+        progress.setTitle("正在升级固件");
+        progress.setMessage("准备中…");
+        progress.setProgressStyle(android.app.ProgressDialog.STYLE_HORIZONTAL);
+        progress.setMax(100);
+        progress.setCancelable(false);
+        progress.show();
+
+        HidOtaClient.uploadFirmware(ip, 80, uri, fileName, new HidOtaClient.Progress() {
+            @Override
+            public void onProgress(int percent, long sent, long total) {
+                requireActivity().runOnUiThread(() -> {
+                    if (!isAdded()) return;
+                    progress.setProgress(Math.max(0, percent));
+                    progress.setMessage("已上传 " + (sent / 1024) + " KB / " + (total / 1024) + " KB");
+                });
+            }
+
+            @Override
+            public void onResult(boolean ok, String message) {
+                requireActivity().runOnUiThread(() -> {
+                    if (!isAdded()) return;
+                    progress.dismiss();
+                    if (!ok) {
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("升级失败")
+                                .setMessage(message + "\n\n"
+                                        + "设备原固件未被破坏，可直接重试。\n"
+                                        + "常见原因：\n"
+                                        + "· 选的不是 firmware.bin（整片镜像 / 老版本固件）\n"
+                                        + "· 上传中途断网或锁屏导致进程被挂起\n"
+                                        + "· 固件不是本工程编译的，缺少 /update 接口")
+                                .setPositiveButton(R.string.enter, null)
+                                .show();
+                        return;
+                    }
+                    // 成功也再确认一次：等设备重启完成后读 /ping 看版本号是否真的变了
+                    verifyOta(ip, message);
+                });
+            }
+        });
+    }
+
+    // 升级后的自检：轮询 /ping，最多等 30 秒，读到版本号才算真成功
+    private void verifyOta(String ip, String successMessage) {
+        android.app.ProgressDialog wait = new android.app.ProgressDialog(requireContext());
+        wait.setMessage("设备重启中，正在确认版本…");
+        wait.setCancelable(false);
+        wait.show();
+        new Thread(() -> {
+            String version = null;
+            long deadline = System.currentTimeMillis() + 30000L;
+            while (System.currentTimeMillis() < deadline) {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ignored) {
+                }
+                String ping = HidClient.httpPing(ip, 80, 1500);
+                if (ping != null && ping.startsWith("pong")) {
+                    version = ping.substring(4).trim();
+                    break;
+                }
+            }
+            String finalVersion = version;
+            requireActivity().runOnUiThread(() -> {
+                if (!isAdded()) return;
+                wait.dismiss();
+                HidClient.markOffline();  // 清缓存，强制下次重新探活
+                refreshHidDevice();
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(finalVersion != null ? "升级成功" : "已上传，待确认")
+                        .setMessage(finalVersion != null
+                                ? successMessage + "\n\n设备当前固件：v" + finalVersion + "\n"
+                                  + "现在可以使用 HID 按键、键盘输入、拖拽/长按/连点了。"
+                                : "固件已写入，但 30 秒内没读到设备新版本号。\n\n"
+                                  + "可能还在重启，稍后点「检测连接状态」看版本号即可。\n"
+                                  + "若版本号长期不变，说明上传的文件不是本工程编译的 firmware.bin。")
+                        .setPositiveButton(R.string.enter, null)
+                        .show();
+            });
+        }, "hid-ota-verify").start();
     }
 
     private void refreshNotificationCmd() {

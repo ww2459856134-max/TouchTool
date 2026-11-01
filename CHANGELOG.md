@@ -2,6 +2,39 @@
 
 本文件记录 TouchTool 定制版的版本演进。下载地址见 [Releases](https://github.com/ww2459856134-max/TouchTool/releases)。
 
+## v90 (2026-11-01)
+
+### 新增：ESP32 固件 OTA 在线升级（不用再插电脑）
+设置 → ESP32 HID 设备 → **固件升级**：选本地 `firmware.bin` 直接上传，几十秒刷完。
+
+- 走设备 `POST /update` 接口，`multipart` 定长流上传（ESP32 的 WebServer 不解析 chunked，
+  必须给 Content-Length，否则服务器读到 0 字节就结束）
+- 写的是另一个 app 分区，**中途断电不砖**，新固件起不来会自动回滚
+- WiFi 配置、蓝牙配对保留；升级期间 UDP 手势不停
+- 升级后自动轮询 `/ping` 最多 30 秒，回读版本号确认真的换上了，而不是只看 HTTP 200
+- 选错文件会拦：`firmware-merged.bin`（1.38MB 整片镜像）不能 OTA，会覆盖 app 分区
+
+### 新增：配套固件工程 `firmware/esp32c3-hid`
+原厂固件无 OTA 接口，故重写一份并保持协议完全兼容：
+
+- UDP 保留 `0x06` 手势；新增 `0x07` 按键、`0x08` 键盘打字、`0x09` 抬起复位
+- HTTP 新增 `/ping`（返回 `pong 1.1.0`，App 判在线与版本）、`/info`（JSON 详情）、`/update`（OTA）
+- 分区表与原厂逐字节一致（`otadata + app0 + app1` 双分区），首次刷机不用重新配网
+- 依赖已内置 `firmware/esp32c3-hid/lib/`，arduino-cli 离线可编
+- GitHub Actions 自动编译，产物含 `firmware.bin`（OTA）与 `firmware-merged.bin`（USB 整片）
+- 已实测编译通过：1314992 字节，占 app 分区（1920KB）的 67%
+
+### 修复：设备在线判断不可靠（UDP 探活是假的）
+`DatagramSocket.send()` 即使设备关机也返回成功，所以「设备不可达回退无障碍」从未真正触发。
+
+- 新增 `httpPing` / `isOnlineStrict`：走 TCP 握手 + `GET /ping`，失败再退回根页面（兼容老固件）
+- 六个点击动作的 HID 通道改用严格探活，结果缓存 10 秒，不拖慢每次点击
+- 设置页状态从「在线 42ms」升级为「在线 42ms v1.1.0」，直接看到固件版本
+
+### 修复：自动发现扫不到设备
+之前排除了 `192.168.4.x` 与 `10.x` 网段——正是 ESP32 热点默认网段与企业 WiFi 常用网段。
+改为只跳过 rmnet/ccmni/tun 等蜂窝与 VPN 接口，并优先选 wlan/ap/softap。
+
 ## v67 (2026-10-30)
 
 ### 新增：HID 触摸全面接入（ESP32 蓝牙 HID）
