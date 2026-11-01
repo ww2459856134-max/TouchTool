@@ -30,7 +30,7 @@
 #include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.1.4"
+#define FW_VERSION   "1.1.5"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -617,6 +617,11 @@ void setupBle() {
 
 void setup() {
     Serial.begin(115200);
+#if ARDUINO_USB_CDC_ON_BOOT
+    // USB-CDC 诊断版：没接电脑/没打开串口终端时，打印直接丢弃不阻塞，
+    // 否则 HWCDC 默认超时会卡住 loop。接上串口终端即可看到 panic 调用栈。
+    Serial.setTxTimeoutMs(0);
+#endif
     delay(200);
     Serial.println("\n=== AutoJS HID (TouchTool) " FW_VERSION " ===");
 
