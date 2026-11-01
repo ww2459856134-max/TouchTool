@@ -14,7 +14,7 @@
  *   POST /update    OTA 固件上传（multipart，字段名 firmware）
  *
  * 关键设计：
- *   - 触摸用 Digitizer HID 绝对坐标，0~10000 千分比，按包里的屏幕尺寸换算
+ *   - 触摸用 Digitizer HID 绝对坐标 0~32767（复刻旧版官方固件），按包里的屏幕尺寸换算
  *   - 分区表为双 app（ota_0 / ota_1），升级写另一块，失败自动回滚
  *   - 升级期间不断 UDP，HID 点击仍可用
  */
@@ -30,7 +30,7 @@
 #include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.1.9"
+#define FW_VERSION   "1.2.0"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -134,12 +134,12 @@ static inline void touchSend(uint8_t state, uint16_t x, uint16_t y) {
     // 计数与时间戳由 hidSafeNotify 统一记录
 }
 
-// 像素 → 千分比（HID 描述符 Logical Maximum = 10000）
+// 像素 → HID 坐标（描述符 Logical Maximum = 32767，与旧版官方固件一致）
 static inline uint16_t toHid(int px, int screen) {
     if (screen <= 0) return 0;
-    long v = (long) px * 10000L / screen;
+    long v = (long) px * 32767L / screen;
     if (v < 0) v = 0;
-    if (v > 10000) v = 10000;
+    if (v > 32767) v = 32767;
     return (uint16_t) v;
 }
 

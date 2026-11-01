@@ -33,14 +33,16 @@ void BleComboMouse::send(int state, int16_t x, int16_t y)
 {
   if (_keyboard->isConnected())
   {
-    uint8_t m[5];
+    // 6 字节：state | ContactIdentifier | X16(LE) | Y16(LE)，与旧版官方固件一致
+    uint8_t m[6];
     m[0] = state;
-    m[1] = MSB(x);
-    m[2] = LSB(x);
-    m[3] = MSB(y);
-    m[4] = LSB(y);
-    _keyboard->inputMouse->setValue(m, 5);
-    hidSafeNotify(_keyboard->inputMouse, "mousesend", m, 5);
+    m[1] = 1;              // Contact Identifier：单指固定 1
+    m[2] = MSB(x);         // 宏名沿用历史，实际是低字节（小端）
+    m[3] = LSB(x);
+    m[4] = MSB(y);
+    m[5] = LSB(y);
+    _keyboard->inputMouse->setValue(m, 6);
+    hidSafeNotify(_keyboard->inputMouse, "mousesend", m, 6);
   }
 }
 

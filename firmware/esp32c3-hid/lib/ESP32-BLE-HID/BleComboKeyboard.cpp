@@ -98,32 +98,43 @@ static const uint8_t _hidReportDescriptor[] = {
   0xa1, 0x01,                    /* COLLECTION (Application) */
   0x85, MOUSE_ID,          /*    REPORT_ID */
 
-  /* 触摸状态：bit0 Tip Switch、bit1 In Range、6 位填充（与旧版布局一致） */
-  0x09, 0x42,                    /*   Usage (Tip Switch) */
-  0x09, 0x32,                    /*   Usage (In Range) */
-  0x15, 0x00,                    /*   LOGICAL_MINIMUM (0) */
-  0x25, 0x01,                    /*   LOGICAL_MAXIMUM (1) */
-  0x75, 0x01,                    /*   REPORT_SIZE (1) */
-  0x95, 0x02,                    /*   REPORT_COUNT (2) */
-  0x81, 0x02,                    /*   INPUT (Data,Var,Abs) */
+  /* 以下结构逐字节复刻旧版官方固件（从其固件镜像提取的报告描述符）：
+   * Usage(Finger) + Collection(Logical)，含 Contact Identifier，
+   * X/Y 为 16-bit、Logical Maximum 32767。Android 只对这种结构走
+   * 标准触摸屏线性映射（工具=手指、坐标精确）；Self 风格的
+   * Pointer/Stylus 物理集合会被当成绝对指针做等比裁切映射。 */
+  0x09, 0x22,                    /*   Usage (Finger) */
+  0xA1, 0x02,                    /*   Collection (Logical) */
 
-  0x75, 0x01,                    /*   REPORT_SIZE (1) */
-  0x95, 0x06,                    /*   REPORT_COUNT (6) */
-  0x81, 0x01,                    /*   INPUT (Cnst,Ary,Abs) */
+  0x09, 0x42,                    /*     Usage (Tip Switch) */
+  0x09, 0x32,                    /*     Usage (In Range) */
+  0x15, 0x00,                    /*     Logical Min (0) */
+  0x25, 0x01,                    /*     Logical Max (1) */
+  0x75, 0x01,                    /*     Report Size (1) */
+  0x95, 0x02,                    /*     Report Count (2) */
+  0x81, 0x02,                    /*     Input (Data,Var,Abs) */
 
-  /* X/Y 直接挂在 Touch Screen 应用集合下，不包 Stylus/Pointer 物理集合。
-   * 原描述符的 Usage(Pointer) 会让 Android 把设备当"绝对指针"（工具=鼠标）
-   * 走指针模式的等比裁切映射，坐标整体放大；平铺后按标准触摸屏处理
-   * （工具=手指，raw/10000 线性映射到屏幕），与旧版固件行为一致。 */
-  0x05, 0x01,                    /*   Usage Page (Generic Desktop) */
-  0x09, 0x30,                    /*   Usage (X) */
-  0x09, 0x31,                    /*   Usage (Y) */
-  0x16, 0x00, 0x00,              /*   Logical Minimum (0) */
-  0x26, 0x10, 0x27,              /*   Logical Maximum (10000) */
-  0x75, 0x10,                    /*   Report Size (16) */
-  0x95, 0x02,                    /*   Report Count (2) */
-  0x81, 0x02,                    /*   Input (Data,Var,Abs) */
-  0xc0,                           /* END_COLLECTION */
+  0x75, 0x01,                    /*     Report Size (1) */
+  0x95, 0x06,                    /*     Report Count (6) */
+  0x81, 0x01,                    /*     Input (Const,Ary,Abs) */
+
+  0x09, 0x51,                    /*     Usage (Contact Identifier) */
+  0x75, 0x08,                    /*     Report Size (8) */
+  0x95, 0x01,                    /*     Report Count (1) */
+  0x15, 0x00,                    /*     Logical Min (0) */
+  0x25, 0x7f,                    /*     Logical Max (127) */
+  0x81, 0x02,                    /*     Input (Data,Var,Abs) */
+
+  0x05, 0x01,                    /*     Usage Page (Generic Desktop) */
+  0x09, 0x30,                    /*     Usage (X) */
+  0x09, 0x31,                    /*     Usage (Y) */
+  0x16, 0x00, 0x00,              /*     Logical Minimum (0) */
+  0x26, 0xff, 0x7f,              /*     Logical Maximum (32767) */
+  0x75, 0x10,                    /*     Report Size (16) */
+  0x95, 0x02,                    /*     Report Count (2) */
+  0x81, 0x02,                    /*     Input (Data,Var,Abs) */
+  0xc0,                          /*   END_COLLECTION (Logical) */
+  0xc0,                           /* END_COLLECTION (Application) */
 
   // With this declaration a data packet must be sent as:
   // byte 1   -> "touch" state          (bit 0 = pen up/down, bit 1 = In Range)
