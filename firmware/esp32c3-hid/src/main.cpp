@@ -30,7 +30,7 @@
 #include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.1.3"
+#define FW_VERSION   "1.1.4"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -85,12 +85,29 @@ void bleEvent(const char *msg) {
 // 当前触摸状态，用于复位
 uint16_t lastX = 0, lastY = 0;
 
+// HID 报文统计：/blelog 里用它判断"断开是否发生在发送报告之后"
+uint32_t hidSendCount = 0;
+uint32_t hidSkipCount = 0;
+uint32_t lastHidSendAt = 0;
+
 // ---------------- HID 触摸 ----------------
 // state: bit0 = Tip Switch(按下)，bit1 = In Range
 static inline void touchSend(uint8_t state, uint16_t x, uint16_t y) {
     lastX = x;
     lastY = y;
+    if (!Keyboard.isConnected()) {
+        hidSkipCount++;
+        return;
+    }
+    // 限速：两次报告至少间隔 8ms。安卓的 HID host 对高频通知敏感，
+    // 连发太密会触发 GATT 拥塞，表现为"一发动作蓝牙就掉"。
+    uint32_t now = millis();
+    if (lastHidSendAt != 0 && now - lastHidSendAt < 8) {
+        delay(8 - (now - lastHidSendAt));
+    }
     Mouse.send(state, (int16_t) x, (int16_t) y);
+    lastHidSendAt = millis();
+    hidSendCount++;
 }
 
 // 像素 → 千分比（HID 描述符 Logical Maximum = 10000）
@@ -443,6 +460,10 @@ void handleBleLog() {
     out += "connected=" + String(Keyboard.isConnected() ? "yes" : "no") + "\n";
     out += "conn=" + String(bleConnectCount) + " dis=" + String(bleDisconnectCount) + "\n";
     out += "uptime=" + String(millis() / 1000) + "s\n";
+    out += "hidSent=" + String((unsigned long) hidSendCount)
+         + " hidSkipped=" + String((unsigned long) hidSkipCount) + "\n";
+    out += "freeHeap=" + String(ESP.getFreeHeap()) + "\n";
+    out += "resetReason=" + String(esp_reset_reason()) + "\n";
     out += "---- trace ----\n";
     out += bleTrace.length() ? bleTrace : "(empty)\n";
     server.sendHeader("Cache-Control", "no-store");
@@ -600,6 +621,10 @@ void setup() {
     Serial.println("\n=== AutoJS HID (TouchTool) " FW_VERSION " ===");
 
     prefs.begin("hidcfg", false);
+
+    // 关掉 WiFi 省电：C3 单射频，省电模式会让 BLE 的连接间隔抖动得厉害，
+    // 表现为 HID 报告延迟/超时、蓝牙频繁掉线。HID 场景吞吐要求极低，不省这个电。
+    WiFi.setSleep(false);
 
     // 顺序很重要：ESP32-C3 只有一套 2.4G 射频，WiFi 必须在 BLE 之前初始化。
     // 反过来的话，WiFi 起来时会重置 BT 控制器，表现就是手机能搜到设备、
