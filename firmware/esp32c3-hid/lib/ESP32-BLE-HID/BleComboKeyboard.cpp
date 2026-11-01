@@ -98,42 +98,31 @@ static const uint8_t _hidReportDescriptor[] = {
   0xa1, 0x01,                    /* COLLECTION (Application) */
   0x85, MOUSE_ID,          /*    REPORT_ID */
 
-  /* declare a finger collection */
-  0x09, 0x20,                    /*   Usage (Stylus) */
-  0xA1, 0x00,                    /*   Collection (Physical) */
+  /* 触摸状态：bit0 Tip Switch、bit1 In Range、6 位填充（与旧版布局一致） */
+  0x09, 0x42,                    /*   Usage (Tip Switch) */
+  0x09, 0x32,                    /*   Usage (In Range) */
+  0x15, 0x00,                    /*   LOGICAL_MINIMUM (0) */
+  0x25, 0x01,                    /*   LOGICAL_MAXIMUM (1) */
+  0x75, 0x01,                    /*   REPORT_SIZE (1) */
+  0x95, 0x02,                    /*   REPORT_COUNT (2) */
+  0x81, 0x02,                    /*   INPUT (Data,Var,Abs) */
 
-  /* Declare a finger touch (finger up/down) */
-  0x09, 0x42,                    /*     Usage (Tip Switch) */
-  0x09, 0x32,                    /*     USAGE (In Range) */
-  0x15, 0x00,                    /*     LOGICAL_MINIMUM (0) */
-  0x25, 0x01,                    /*     LOGICAL_MAXIMUM (1) */
-  0x75, 0x01,                    /*     REPORT_SIZE (1) */
-  0x95, 0x02,                    /*     REPORT_COUNT (2) */
-  0x81, 0x02,                    /*     INPUT (Data,Var,Abs) */
+  0x75, 0x01,                    /*   REPORT_SIZE (1) */
+  0x95, 0x06,                    /*   REPORT_COUNT (6) */
+  0x81, 0x01,                    /*   INPUT (Cnst,Ary,Abs) */
 
-  /* Declare the remaining 6 bits of the first data byte as constant -> the driver will ignore them */
-  0x75, 0x01,                    /*     REPORT_SIZE (1) */
-  0x95, 0x06,                    /*     REPORT_COUNT (6) */
-  0x81, 0x01,                    /*     INPUT (Cnst,Ary,Abs) */
-
-  /* Define absolute X and Y coordinates of 16 bit each (percent values multiplied with 100) */
-  /* http://www.usb.org/developers/hidpage/Hut1_12v2.pdf */
-  /* Chapter 16.2 says: "In the Stylus collection a Pointer physical collection will contain the axes reported by the stylus." */
-  0x05, 0x01,                    /*     Usage Page (Generic Desktop) */
-  0x09, 0x01,                    /*     Usage (Pointer) */
-  0xA1, 0x00,                    /*     Collection (Physical) */
-  0x09, 0x30,                    /*        Usage (X) */
-  0x09, 0x31,                    /*        Usage (Y) */
-  0x16, 0x00, 0x00,              /*        Logical Minimum (0) */
-  0x26, 0x10, 0x27,              /*        Logical Maximum (10000) */
-  0x36, 0x00, 0x00,              /*        Physical Minimum (0) */
-  0x46, 0x10, 0x27,              /*        Physical Maximum (10000) */
-  0x66, 0x00, 0x00,              /*        UNIT (None) */
-  0x75, 0x10,                    /*        Report Size (16), */
-  0x95, 0x02,                    /*        Report Count (2), */
-  0x81, 0x02,                    /*        Input (Data,Var,Abs) */
-  0xc0,                          /*     END_COLLECTION */
-  0xc0,                          /*   END_COLLECTION */
+  /* X/Y 直接挂在 Touch Screen 应用集合下，不包 Stylus/Pointer 物理集合。
+   * 原描述符的 Usage(Pointer) 会让 Android 把设备当"绝对指针"（工具=鼠标）
+   * 走指针模式的等比裁切映射，坐标整体放大；平铺后按标准触摸屏处理
+   * （工具=手指，raw/10000 线性映射到屏幕），与旧版固件行为一致。 */
+  0x05, 0x01,                    /*   Usage Page (Generic Desktop) */
+  0x09, 0x30,                    /*   Usage (X) */
+  0x09, 0x31,                    /*   Usage (Y) */
+  0x16, 0x00, 0x00,              /*   Logical Minimum (0) */
+  0x26, 0x10, 0x27,              /*   Logical Maximum (10000) */
+  0x75, 0x10,                    /*   Report Size (16) */
+  0x95, 0x02,                    /*   Report Count (2) */
+  0x81, 0x02,                    /*   Input (Data,Var,Abs) */
   0xc0,                           /* END_COLLECTION */
 
   // With this declaration a data packet must be sent as:
