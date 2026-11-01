@@ -54,7 +54,7 @@ App → 设置 → ESP32 HID 设备 → **固件升级** → 选 `firmware.bin` 
 | `firmware-merged.bin` | 仅救砖/空板：含 bootloader + 分区表 + app，整片写 `0x0` |
 | `bootloader.bin` / `partitions.bin` / `boot_app0.bin` | 手动分地址刷写时用 |
 
-体积核对：`firmware.bin` = 1316032 字节，写入 `[0x10000, 0x1514C0)`，
+体积核对：`firmware.bin` = 1318272 字节，写入 `[0x10000, 0x151D80)`，
 app0 分区为 `[0x10000, 0x1F0000)`（1920KB），还剩 634KB 余量。
 
 分区表与原厂一致这一点，已经用两处证据核实：
@@ -148,7 +148,7 @@ coredump  0x3F0000  64KB
 | 路径 | 方法 | 说明 |
 | --- | --- | --- |
 | `/` | GET | 状态页：版本、WiFi 模式、IP、蓝牙连接、手势计数、最近错误；含配网与升级表单 |
-| `/ping` | GET | 探活，返回 `pong 1.1.0`。App 用它判断在线与版本 |
+| `/ping` | GET | 探活，返回 `pong 1.1.3`。App 用它判断在线与版本 |
 | `/info` | GET | JSON：`fw/chip/type/name/ble/ip/gestures/commands/uptime/ota/cmds` |
 | `/wifi` | POST | 表单 `ssid`/`pass`，保存后重启；连不上自动回退热点 |
 | `/update` | POST | OTA，`multipart/form-data`，字段名 `firmware`，文件名必须以 `.bin` 结尾 |

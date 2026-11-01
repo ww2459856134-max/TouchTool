@@ -30,7 +30,7 @@
 #include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.1.2"
+#define FW_VERSION   "1.1.3"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -63,6 +63,9 @@ String lastError = "";
 String bleTrace = "";
 uint16_t bleConnectCount = 0;
 uint16_t bleDisconnectCount = 0;
+
+// OTA 预期镜像大小，0 表示本次上传无效（未授权/非 .bin/超分区）
+size_t otaImageSize = 0;
 
 void bleEvent(const char *msg) {
     if (strcmp(msg, "onConnect") == 0) bleConnectCount++;
@@ -469,6 +472,23 @@ bool otaAuthorized() {
     return auth.equalsIgnoreCase(expectedAuthValue());
 }
 
+// 估算 multipart 外壳占用的字节数（边界行 + Content-Disposition 头 + 结束边界）。
+// 浏览器每次生成的 boundary 长度不同，这里按实测常见值放宽估，
+// 宁可少算几十字节让 Update 多留余量，也不能多算出负数。
+size_t multipartOverhead() {
+    // 典型结构：
+    //   --{boundary}\r\n                                (boundary+4)
+    //   Content-Disposition: form-data; name="firmware"; filename="firmware.bin"\r\n
+    //   Content-Type: application/octet-stream\r\n
+    //   \r\n
+    //   <正文>
+    //   \r\n--{boundary}--\r\n
+    const size_t boundaryLen = 40;   // 实际约 32~38
+    const size_t headLen = 120;      // 两行头 + 空行，实测 90~110
+    const size_t tailLen = 6;
+    return (boundaryLen + 4) + headLen + (4 + boundaryLen + 4) + tailLen;
+}
+
 void handleOtaUpload() {
     HTTPUpload &up = server.upload();
     if (up.status == UPLOAD_FILE_START) {
@@ -482,17 +502,49 @@ void handleOtaUpload() {
             Serial.println("OTA rejected: not .bin");
             return;
         }
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+
+        // 之前这里用 UPDATE_SIZE_UNKNOWN，是 OTA 一直写失败的直接原因：
+        // Update 不知道总量就无法在写入阶段做边界检查，末尾一旦对不上
+        // （multipart 边框被算进数据或丢包），Update.end() 直接判定失败。
+        // 正确做法是从 HTTP 请求头拿 Content-Length，减去 multipart 头尾开销，
+        // 得到固件实际大小交给 Update.begin()。
+        size_t total = (size_t) server.clientContentLength();
+        size_t overhead = multipartOverhead();
+        otaImageSize = (total > overhead) ? (total - overhead) : 0;
+
+        Serial.printf("OTA content-length=%u, overhead=%u, image=%u\n",
+                      (unsigned) total, (unsigned) overhead, (unsigned) otaImageSize);
+
+        // 上限按 app 分区实际可用空间兜底，避免把引导区写坏
+        const size_t appMax = 0x1E0000;   // 与 partitions.csv 中 app0 一致
+        if (otaImageSize == 0 || otaImageSize > appMax) {
+            Serial.println("OTA rejected: bad size");
+            otaImageSize = 0;
+            return;
+        }
+        // 只支持应用镜像（首字节 0xE9）。整片 merged 镜像带 bootloader，
+        // 写进 app 分区会让设备起不来，这里直接拒绝。
+        if (!Update.begin(otaImageSize)) {
             Update.printError(Serial);
+            otaImageSize = 0;
         }
     } else if (up.status == UPLOAD_FILE_WRITE) {
+        if (otaImageSize == 0) return;
         if (Update.isRunning() && !Update.hasError()) {
             if (Update.write(up.buf, up.currentSize) != up.currentSize) {
                 Update.printError(Serial);
             }
         }
     } else if (up.status == UPLOAD_FILE_END) {
+        if (otaImageSize == 0) return;
         if (Update.isRunning() && !Update.hasError()) {
+            // 收到的字节数和预期不一致，说明传输出错，宁可失败也别写半截
+            if (up.totalSize != otaImageSize) {
+                Serial.printf("OTA size mismatch: got %u expected %u\n",
+                              (unsigned) up.totalSize, (unsigned) otaImageSize);
+                Update.abort();
+                return;
+            }
             if (Update.end(true)) {
                 Serial.printf("OTA success: %u bytes\n", (unsigned) up.totalSize);
             } else {

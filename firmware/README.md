@@ -78,7 +78,7 @@ App → 设置 → ESP32 HID 设备 → 固件升级 → 选 `firmware.bin` → 
 | 路径 | 说明 |
 | --- | --- |
 | `GET /` | 状态页 + 配网表单 + 升级表单 |
-| `GET /ping` | 返回 `pong 1.1.0`，App 用它判在线与版本 |
+| `GET /ping` | 返回 `pong 1.1.3`，App 用它判在线与版本 |
 | `GET /info` | JSON 详情 |
 | `POST /wifi` | 配网 |
 | `POST /update` | OTA 上传（`multipart`，字段 `firmware`，需 `.bin`） |
