@@ -218,22 +218,6 @@ void BleComboKeyboard::setCallbacks(BLECharacteristicCallbacks *callbacks) {
 
 
 
-// NimBLE 模式下核心库按 UUID 去重特征：BLEHIDDevice::inputReport() 建的所有
-// 输入报告特征共用 UUID 0x2A4D，只有第一个（键盘）能注册成功，其余（鼠标、
-// 相对鼠标、媒体键）被静默丢弃，getHandle() 恒为 0xFFFF。HID host 归类报告
-// 的依据是特征上的 Report Reference 描述符（0x2908，内容 reportId+类型），
-// 与特征 UUID 无关，所以这里用独立 UUID 重建，绕过去重。
-static BLECharacteristic *inputReportUnique(BLEHIDDevice *hid, uint8_t reportId, const char *uuidStr) {
-  BLECharacteristic *c = hid->hidService()->createCharacteristic(
-      BLEUUID(String(uuidStr)),
-      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-  BLEDescriptor *ref = new BLEDescriptor(BLEUUID((uint16_t) 0x2908));
-  uint8_t descVal[] = {reportId, 0x01};  // {reportId, Input}
-  ref->setValue(descVal, 2);
-  c->addDescriptor(ref);
-  return c;
-}
-
 void BleComboKeyboard::taskServer(void* pvParameter) {
   BleComboKeyboard* bleKeyboardInstance = (BleComboKeyboard *) pvParameter; //static_cast<BleComboKeyboard *>(pvParameter);
   BLEDevice::init(bleKeyboardInstance->deviceName.c_str());
@@ -247,13 +231,11 @@ void BleComboKeyboard::taskServer(void* pvParameter) {
   bleKeyboardInstance->connectionStatus->inputKeyboard = bleKeyboardInstance->inputKeyboard;
   bleKeyboardInstance->connectionStatus->outputKeyboard = bleKeyboardInstance->outputKeyboard;
 
-  // 0x2A4D 已被键盘特征占用（NimBLE 按 UUID 去重），改用独立 UUID
-  bleKeyboardInstance->inputMouse = inputReportUnique(bleKeyboardInstance->hid, MOUSE_ID,
-      "2f1a8a01-6a2b-4d3e-9c41-7b5e2f9a1102");
+  // 依赖核心补丁（见 patches/README.md）：NimBLE 去重被放开，重复 0x2A4D 可注册
+  bleKeyboardInstance->inputMouse = bleKeyboardInstance->hid->inputReport(MOUSE_ID);
   bleKeyboardInstance->connectionStatus->inputMouse = bleKeyboardInstance->inputMouse;
 
-  bleKeyboardInstance->inputRELMouse = inputReportUnique(bleKeyboardInstance->hid, REL_MOUSE_ID,
-      "2f1a8a02-6a2b-4d3e-9c41-7b5e2f9a1102");
+  bleKeyboardInstance->inputRELMouse = bleKeyboardInstance->hid->inputReport(REL_MOUSE_ID);
   bleKeyboardInstance->connectionStatus->inputRELMouse = bleKeyboardInstance->inputRELMouse;
 
   bleKeyboardInstance->outputKeyboard->setCallbacks(new KeyboardOutputCallbacks());
