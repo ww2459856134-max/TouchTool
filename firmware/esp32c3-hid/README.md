@@ -54,7 +54,7 @@ App → 设置 → ESP32 HID 设备 → **固件升级** → 选 `firmware.bin` 
 | `firmware-merged.bin` | 仅救砖/空板：含 bootloader + 分区表 + app，整片写 `0x0` |
 | `bootloader.bin` / `partitions.bin` / `boot_app0.bin` | 手动分地址刷写时用 |
 
-体积核对：`firmware.bin` = 1317456 字节（v1.2.0），写入 `[0x10000, 0x141A50)`，
+体积核对：`firmware.bin` = 1270192 字节（v1.3.0，NimBLE-Arduino），写入 `[0x10000, 0x136250)`，
 app0 分区为 `[0x10000, 0x1F0000)`（1920KB），还剩 634KB 余量。
 
 分区表与原厂一致这一点，已经用两处证据核实：

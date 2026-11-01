@@ -1,32 +1,36 @@
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEServer.h>
-#include "BLE2902.h"
-#include "BLEHIDDevice.h"
-#include "HIDTypes.h"
-#include <driver/adc.h>
-#include "sdkconfig.h"
-#include <WiFi.h>
+// TouchHID —— NimBLE-Arduino 2.x 原生实现的 BLE HID 组合设备
+// （键盘 + 绝对触摸屏 + 消费键）。取代旧 Bluedroid 时代的 ESP32-BLE-HID fork：
+// 旧 fork 在 arduino-esp32 3.x 的 NimBLE 模式下有多个致命问题
+// （同 UUID 报告特征被去重、notify 指针链崩溃、String 截断 0x00），
+// 这也是 v1.1.4~v1.2.0 一系列修复的根源；NimBLE-Arduino 原生支持
+// 多个 0x2A4D 报告特征，无需任何核心补丁。
+//
+// 对外接口与旧 fork 完全一致：Keyboard / Mouse 全局实例、
+// press/release/write/releaseAll、Mouse.send(state, x, y)。
 
+#include "TouchHID.h"
+#include <Arduino.h>
 
-#include "BleConnectionStatus.h"
-#include "KeyboardOutputCallbacks.h"
-#include "BleComboKeyboard.h"
-
-#if defined(CONFIG_ARDUHAL_ESP_LOG)
-  #include "esp32-hal-log.h"
-  #define LOG_TAG ""
-#else
-  #include "esp_log.h"
-  static const char* LOG_TAG = "BLEDevice";
-#endif
-
-
-// Report IDs:
-#define KEYBOARD_ID 0x01
+// Report IDs（与报告描述符一一对应）
+#define KEYBOARD_ID   0x01
 #define MEDIA_KEYS_ID 0x02
-#define MOUSE_ID 0x03
-#define REL_MOUSE_ID 0x04
+#define MOUSE_ID      0x03
+#define REL_MOUSE_ID  0x04
+
+// 主程序提供的事件轨迹与统计（/blelog 可见）
+extern void traceAppend(const char *line);
+extern void bleEvent(const char *msg);
+extern uint32_t hidSendCount, hidSkipCount, lastHidSendAt;
+
+static void hidLog(const char *tag, NimBLECharacteristic *c, size_t len) {
+  char line[128];
+  snprintf(line, sizeof(line), "[%lus] HID %s hnd=%u len=%u\n",
+           (unsigned long) (millis() / 1000), tag,
+           (unsigned) ((c != nullptr) ? c->getHandle() : 0), (unsigned) len);
+  traceAppend(line);
+  Serial.print("[HID-TRACE] ");
+  Serial.print(line);
+}
 
 static const uint8_t _hidReportDescriptor[] = {
   USAGE_PAGE(1),      0x01,          // USAGE_PAGE (Generic Desktop Ctrls)
@@ -183,227 +187,118 @@ static const uint8_t _hidReportDescriptor[] = {
 
 };
 
-BleComboKeyboard::BleComboKeyboard(std::string deviceName, std::string deviceManufacturer, uint8_t batteryLevel) : hid(0)
-{
-  this->deviceName = deviceName;
-  this->deviceManufacturer = deviceManufacturer;
-  this->batteryLevel = batteryLevel;
-  this->connectionStatus = new BleConnectionStatus();
-}
+BleComboKeyboard::BleComboKeyboard(std::string deviceName,
+                                   std::string deviceManufacturer,
+                                   uint8_t batteryLevel)
+    : batteryLevel(batteryLevel),
+      deviceManufacturer(deviceManufacturer),
+      deviceName(deviceName) {}
 
-void BleComboKeyboard::begin(void)
-{
-  xTaskCreate(this->taskServer, "server", 20000, (void *)this, 5, NULL);
-}
-
-void BleComboKeyboard::end(void)
-{
+void BleComboKeyboard::begin(void) {
+  // 与旧 fork 相同的异步模式：begin() 只创建任务，BLEDevice::init() 在
+  // 任务线程里执行；调用方在 begin() 之后不能立刻操作 BLE API。
+  xTaskCreate(BleComboKeyboard::taskServer, "server", 8192, this, 5, NULL);
 }
 
 bool BleComboKeyboard::isConnected(void) {
-  return this->connectionStatus->connected;
+  return this->connected;
 }
 
 void BleComboKeyboard::setBatteryLevel(uint8_t level) {
   this->batteryLevel = level;
-  if (hid != 0)
+  if (this->hid != nullptr)
     this->hid->setBatteryLevel(this->batteryLevel);
 }
 
-BLECharacteristicCallbacks* globalCallbacks = nullptr;
-void BleComboKeyboard::setCallbacks(BLECharacteristicCallbacks *callbacks) {
-	globalCallbacks=callbacks;
+void BleComboKeyboard::onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) {
+  this->connected = true;
+  Serial.println("[BLE] onConnect");
+  bleEvent("onConnect");
 }
 
-
-
+void BleComboKeyboard::onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) {
+  this->connected = false;
+  Serial.printf("[BLE] onDisconnect reason=%d\n", reason);
+  bleEvent("onDisconnect");
+  // NimBLE 不会自动重开广播：断开后立刻重开，否则设备永久静音
+  NimBLEDevice::getAdvertising()->start();
+  Serial.println("[BLE] advertising restarted");
+  bleEvent("adv restart");
+}
 
 void BleComboKeyboard::taskServer(void* pvParameter) {
-  BleComboKeyboard* bleKeyboardInstance = (BleComboKeyboard *) pvParameter; //static_cast<BleComboKeyboard *>(pvParameter);
-  BLEDevice::init(bleKeyboardInstance->deviceName.c_str());
-  BLEServer *pServer = BLEDevice::createServer();
-  pServer->setCallbacks(bleKeyboardInstance->connectionStatus);
+  BleComboKeyboard* k = (BleComboKeyboard*) pvParameter;
+  NimBLEDevice::init(k->deviceName);
+  NimBLEServer* server = NimBLEDevice::createServer();
+  server->setCallbacks(k);
 
-  bleKeyboardInstance->hid = new BLEHIDDevice(pServer);
-  bleKeyboardInstance->inputKeyboard = bleKeyboardInstance->hid->inputReport(KEYBOARD_ID); // <-- input REPORTID from report map
-  bleKeyboardInstance->outputKeyboard = bleKeyboardInstance->hid->outputReport(KEYBOARD_ID);
-  bleKeyboardInstance->inputMediaKeys = bleKeyboardInstance->hid->inputReport(MEDIA_KEYS_ID);
-  bleKeyboardInstance->connectionStatus->inputKeyboard = bleKeyboardInstance->inputKeyboard;
-  bleKeyboardInstance->connectionStatus->outputKeyboard = bleKeyboardInstance->outputKeyboard;
+  k->hid = new NimBLEHIDDevice(server);
+  k->inputKeyboard  = k->hid->getInputReport(KEYBOARD_ID);
+  k->outputKeyboard = k->hid->getOutputReport(KEYBOARD_ID);
+  k->inputMediaKeys = k->hid->getInputReport(MEDIA_KEYS_ID);
+  // NimBLE-Arduino 原生支持同 UUID(0x2A4D) 的多个报告特征，
+  // 靠 Report Reference 描述符里的 reportId 区分（规范行为）。
+  k->inputMouse     = k->hid->getInputReport(MOUSE_ID);
+  k->inputRELMouse  = k->hid->getInputReport(REL_MOUSE_ID);
 
-  // 依赖核心补丁（见 patches/README.md）：NimBLE 去重被放开，重复 0x2A4D 可注册
-  bleKeyboardInstance->inputMouse = bleKeyboardInstance->hid->inputReport(MOUSE_ID);
-  bleKeyboardInstance->connectionStatus->inputMouse = bleKeyboardInstance->inputMouse;
+  k->hid->setManufacturer(k->deviceManufacturer);
+  k->hid->setPnp(0x02, 0xe502, 0xa111, 0x0210);
+  k->hid->setHidInfo(0x00, 0x01);
 
-  bleKeyboardInstance->inputRELMouse = bleKeyboardInstance->hid->inputReport(REL_MOUSE_ID);
-  bleKeyboardInstance->connectionStatus->inputRELMouse = bleKeyboardInstance->inputRELMouse;
+  // 安全参数：LE Secure Connections + 绑定，IO 能力无屏无键盘（Just Works）。
+  // 双向分发加密密钥与身份密钥：Android 回连常用 RPA，没有 ID 密钥无法认回自己。
+  NimBLEDevice::setSecurityAuth(true /*bonding*/, false /*mitm*/, true /*sc*/);
+  NimBLEDevice::setSecurityInitKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
+  NimBLEDevice::setSecurityRespKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
 
-  bleKeyboardInstance->outputKeyboard->setCallbacks(new KeyboardOutputCallbacks());
+  k->hid->setReportMap((uint8_t*) _hidReportDescriptor, sizeof(_hidReportDescriptor));
 
-  bleKeyboardInstance->hid->manufacturer()->setValue(bleKeyboardInstance->deviceManufacturer.c_str());
+  NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
+  adv->setAppearance(0x03C1);  // HID Keyboard（外设图标）
+  adv->addServiceUUID(k->hid->getHidService()->getUUID());
+  adv->enableScanResponse(true);
+  adv->start();
 
-  bleKeyboardInstance->hid->pnp(0x02, 0xe502, 0xa111, 0x0210);
-  bleKeyboardInstance->hid->hidInfo(0x00,0x01);
+  k->hid->setBatteryLevel(k->batteryLevel);
 
-  // 安全参数：原来只设了 ESP_LE_AUTH_BOND（传统配对、无 SC），
-  // Android 11+ 对 HID 外设较严格，传统配对容易被对端直接拒绝，
-  // 表现为"点配对转几秒连接被断开"。改为 LE Secure Connections + 绑定，
-  // IO 能力设为 NONE（无屏无键盘）→ 仍是 Just Works，不需要配对码。
-  BLESecurity::setCapability(ESP_IO_CAP_NONE);
-  BLESecurity::setKeySize(16);
-  // 同时分发加密密钥与身份密钥：Android 回连时常用可解析私有地址(RPA)，
-  // 没有 ID 密钥就无法把自己认回来，会表现为"配对成功但下次连不上"。
-  BLESecurity::setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-  BLESecurity::setRespEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-  BLESecurity::setAuthenticationMode(true /*bonding*/, false /*mitm*/, true /*secure connections*/);
-
-  bleKeyboardInstance->hid->reportMap((uint8_t*)_hidReportDescriptor, sizeof(_hidReportDescriptor));
-  bleKeyboardInstance->hid->startServices();
-
-
-	BLEService* pService = pServer->createService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-
-
-	BLECharacteristic* pCharacteristic = pService->createCharacteristic(
-	"beb5483e-36e1-4688-b7f5-ea07361b26a8",
-		BLECharacteristic::PROPERTY_READ |
-		BLECharacteristic::PROPERTY_WRITE
-	);
-
-
-	pCharacteristic->setCallbacks(globalCallbacks);
-
-
-	pService->start();
-
-
-  BLEAdvertising *pAdvertising = pServer->getAdvertising();
-  pAdvertising->setAppearance(HID_KEYBOARD);
-  pAdvertising->addServiceUUID(bleKeyboardInstance->hid->hidService()->getUUID());
-	pAdvertising->addServiceUUID(pService->getUUID());
-	pAdvertising->setScanResponse(true);
-	pAdvertising->setMinPreferred(0x06);  
-  pAdvertising->start();
   {
-    extern void hidDiag(const char *tag, BLECharacteristic *c);
-    extern BLEService* g_hidSvc;
-    g_hidSvc = bleKeyboardInstance->hid->hidService();
-    hidDiag("svc-started kb", bleKeyboardInstance->inputKeyboard);
-    hidDiag("svc-started mouse", bleKeyboardInstance->inputMouse);
-    hidDiag("svc-started relmouse", bleKeyboardInstance->inputRELMouse);
-  }
-  bleKeyboardInstance->hid->setBatteryLevel(bleKeyboardInstance->batteryLevel);
-
-  ESP_LOGD(LOG_TAG, "Advertising started!");
-  vTaskDelay(portMAX_DELAY); 
-}
-
-// ============ 1.1.6 HID 安全发送 ============
-// 1.1.5 的 panic 在 BLECharacteristic::notify() 内部读特征对象里损坏的
-// service 指针。这里不再走那条指针链：
-//   * gatts_if 从 ESP_GATTS_REG_EVT 抓（getGattsIf 在核心库是 private）
-//   * conn_id 从 BLEServer::getConnId() 拿（public）
-//   * 直接调 esp_ble_gatts_send_indicate 发报告
-// 发送前后把指针/句柄值写进主程序的 /blelog 轨迹，坏数据当场现形。
-extern void traceAppend(const char *line);
-extern uint32_t hidSendCount, hidSkipCount, lastHidSendAt;
-
-BLEService *g_hidSvc = nullptr;
-
-void hidInitDiag() {
-  // NimBLE 模式下无需额外初始化；保留入口以便以后扩展
-}
-
-void hidDiag(const char *tag, BLECharacteristic *c) {
-  char line[128];
-  snprintf(line, sizeof(line), "[%lus] DIAG %s chr=%p hnd=%u svc=%p\n",
-           (unsigned long) (millis() / 1000), tag, c,
-           (unsigned) ((c != nullptr) ? c->getHandle() : 0),
-           (void *) g_hidSvc);
-  traceAppend(line);
-  Serial.print("[HID-TRACE] ");
-  Serial.print(line);
-}
-
-bool hidSafeNotify(BLECharacteristic *c, const char *tag, const uint8_t *data, size_t len) {
-  char line[128];
-  BLEServer *srv = (g_hidSvc != nullptr) ? g_hidSvc->getServer() : nullptr;
-  uint16_t handle = (c != nullptr) ? c->getHandle() : 0;
-  uint16_t conn = (srv != nullptr) ? srv->getConnId() : ESP_GATT_IF_NONE;
-  int clients = (srv != nullptr) ? (int) srv->getConnectedCount() : -1;
-  bool ok = (c != nullptr) && (g_hidSvc != nullptr) && (srv != nullptr)
-            && handle != 0xFFFF && len > 0 && len <= 32 && clients > 0
-            && conn != ESP_GATT_IF_NONE;
-  snprintf(line, sizeof(line), "[%lus] HID %s chr=%p hnd=%u conn=%u clients=%d len=%u\n",
-           (unsigned long) (millis() / 1000), tag, c, (unsigned) handle,
-           (unsigned) conn, clients, (unsigned) len);
-  traceAppend(line);
-  Serial.print("[HID-TRACE] ");
-  Serial.print(line);
-  if (!ok) {
-    hidSkipCount++;
-    return false;
-  }
-  // NimBLE 原生发送：绕开 BLECharacteristic::notify() 内部损坏的指针链，
-  // 也绕开它 getValue() -> Arduino String 会把 0x00 字节截断的问题
-  // （鼠标报告里 x/y 低位经常是 0x00，必须按原始字节发）。
-  struct os_mbuf *om = os_msys_get_pkthdr(len, 0);
-  if (om == nullptr) {
-    snprintf(line, sizeof(line), "[%lus] HID %s mbuf alloc failed\n",
-             (unsigned long) (millis() / 1000), tag);
+    char line[128];
+    snprintf(line, sizeof(line), "[%lus] DIAG svc-started kb=%p(%u) mouse=%p(%u) rel=%p(%u)\n",
+             (unsigned long) (millis() / 1000),
+             (void*) k->inputKeyboard,  (unsigned) k->inputKeyboard->getHandle(),
+             (void*) k->inputMouse,     (unsigned) k->inputMouse->getHandle(),
+             (void*) k->inputRELMouse,  (unsigned) k->inputRELMouse->getHandle());
     traceAppend(line);
     Serial.print("[HID-TRACE] ");
     Serial.print(line);
-    hidSkipCount++;
-    return false;
   }
-  if (os_mbuf_append(om, data, len) != 0) {
-    os_mbuf_free_chain(om);
-    snprintf(line, sizeof(line), "[%lus] HID %s mbuf append failed\n",
-             (unsigned long) (millis() / 1000), tag);
-    traceAppend(line);
-    Serial.print("[HID-TRACE] ");
-    Serial.print(line);
+
+  Serial.println("[BLE] HID services started, advertising");
+  vTaskDelay(portMAX_DELAY);
+}
+
+// ---------------- 键盘报告发送 ----------------
+void BleComboKeyboard::sendReport(KeyReport* keys) {
+  if (!this->isConnected() || this->inputKeyboard == nullptr) {
     hidSkipCount++;
-    return false;
+    return;
   }
-  // om 的所有权移交给协议栈（失败时也会被释放）
-  int rc = ble_gatts_notify_custom(conn, handle, om);
-  if (rc != 0) {
-    snprintf(line, sizeof(line), "[%lus] HID %s notify rc=%d\n",
-             (unsigned long) (millis() / 1000), tag, rc);
-    traceAppend(line);
-    Serial.print("[HID-TRACE] ");
-    Serial.print(line);
-    hidSkipCount++;
-    return false;
-  }
+  this->inputKeyboard->setValue((uint8_t*) keys, sizeof(KeyReport));
+  this->inputKeyboard->notify();
   hidSendCount++;
   lastHidSendAt = millis();
-  return true;
 }
-// ============ 1.1.6 安全发送结束 ============
 
-void BleComboKeyboard::sendReport(KeyReport* keys)
-{
-  if (this->isConnected())
-  {
-    this->inputKeyboard->setValue((uint8_t*)keys, sizeof(KeyReport));
-    hidSafeNotify(this->inputKeyboard, "keys", (uint8_t*)keys, sizeof(KeyReport));
+void BleComboKeyboard::sendReport(MediaKeyReport* keys) {
+  if (!this->isConnected() || this->inputMediaKeys == nullptr) {
+    hidSkipCount++;
+    return;
   }
+  this->inputMediaKeys->setValue((uint8_t*) keys, sizeof(MediaKeyReport));
+  this->inputMediaKeys->notify();
+  hidSendCount++;
+  lastHidSendAt = millis();
 }
-
-void BleComboKeyboard::sendReport(MediaKeyReport* keys)
-{
-  if (this->isConnected())
-  {
-    this->inputMediaKeys->setValue((uint8_t*)keys, sizeof(MediaKeyReport));
-    this->inputMediaKeys->notify();
-  }
-}
-
-extern
-const uint8_t _asciimap[128] PROGMEM;
 
 #define SHIFT 0x80
 const uint8_t _asciimap[128] =
@@ -539,153 +434,184 @@ const uint8_t _asciimap[128] =
 	0				// DEL
 };
 
-
-uint8_t USBPutChar(uint8_t c);
-
-// press() adds the specified key (printing, non-printing, or modifier)
-// to the persistent key report and sends the report.  Because of the way
-// USB HID works, the host acts like the key remains pressed until we
-// call release(), releaseAll(), or otherwise clear the report and resend.
-size_t BleComboKeyboard::press(uint8_t k)
-{
-	uint8_t i;
-	if (k >= 136) {			// it's a non-printing key (not a modifier)
-		k = k - 136;
-	} else if (k >= 128) {	// it's a modifier key
-		_keyReport.modifiers |= (1<<(k-128));
-		k = 0;
-	} else {				// it's a printing key
-		k = pgm_read_byte(_asciimap + k);
-		if (!k) {
-			setWriteError();
-			return 0;
-		}
-		if (k & 0x80) {						// it's a capital letter or other character reached with shift
-			_keyReport.modifiers |= 0x02;	// the left shift modifier
-			k &= 0x7F;
-		}
-	}
-
-	// Add k to the key report only if it's not already present
-	// and if there is an empty slot.
-	if (_keyReport.keys[0] != k && _keyReport.keys[1] != k &&
-		_keyReport.keys[2] != k && _keyReport.keys[3] != k &&
-		_keyReport.keys[4] != k && _keyReport.keys[5] != k) {
-
-		for (i=0; i<6; i++) {
-			if (_keyReport.keys[i] == 0x00) {
-				_keyReport.keys[i] = k;
-				break;
-			}
-		}
-		if (i == 6) {
-			setWriteError();
-			return 0;
-		}
-	}
-	sendReport(&_keyReport);
-	return 1;
+size_t BleComboKeyboard::press(uint8_t k) {
+  uint8_t i;
+  if (k >= 136) {
+    k = k - 136;
+  } else if (k >= 128) {
+    _keyReport.modifiers |= (1 << (k - 128));
+    k = 0;
+  } else {
+    k = pgm_read_byte(_asciimap + k);
+    if (!k) {
+      setWriteError();
+      return 0;
+    }
+    if (k & 0x80) {
+      _keyReport.modifiers |= 0x02;
+      k &= 0x7F;
+    }
+  }
+  if (_keyReport.keys[0] != k && _keyReport.keys[1] != k &&
+      _keyReport.keys[2] != k && _keyReport.keys[3] != k &&
+      _keyReport.keys[4] != k && _keyReport.keys[5] != k) {
+    for (i = 0; i < 6; i++) {
+      if (_keyReport.keys[i] == 0x00) {
+        _keyReport.keys[i] = k;
+        break;
+      }
+    }
+    if (i == 6) {
+      setWriteError();
+      return 0;
+    }
+  }
+  sendReport(&_keyReport);
+  return 1;
 }
 
-size_t BleComboKeyboard::press(const MediaKeyReport k)
-{
-    uint16_t k_16 = k[1] | (k[0] << 8);
-    uint16_t mediaKeyReport_16 = _mediaKeyReport[1] | (_mediaKeyReport[0] << 8);
-
-    mediaKeyReport_16 |= k_16;
-    _mediaKeyReport[0] = (uint8_t)((mediaKeyReport_16 & 0xFF00) >> 8);
-    _mediaKeyReport[1] = (uint8_t)(mediaKeyReport_16 & 0x00FF);
-
-	sendReport(&_mediaKeyReport);
-	return 1;
+size_t BleComboKeyboard::press(const MediaKeyReport k) {
+  uint16_t k_16 = k[1] | (k[0] << 8);
+  uint16_t mediaKeyReport_16 = _mediaKeyReport[1] | (_mediaKeyReport[0] << 8);
+  mediaKeyReport_16 |= k_16;
+  _mediaKeyReport[0] = (uint8_t) ((mediaKeyReport_16 & 0xFF00) >> 8);
+  _mediaKeyReport[1] = (uint8_t) (mediaKeyReport_16 & 0x00FF);
+  sendReport(&_mediaKeyReport);
+  return 1;
 }
 
-// release() takes the specified key out of the persistent key report and
-// sends the report.  This tells the OS the key is no longer pressed and that
-// it shouldn't be repeated any more.
-size_t BleComboKeyboard::release(uint8_t k)
-{
-	uint8_t i;
-	if (k >= 136) {			// it's a non-printing key (not a modifier)
-		k = k - 136;
-	} else if (k >= 128) {	// it's a modifier key
-		_keyReport.modifiers &= ~(1<<(k-128));
-		k = 0;
-	} else {				// it's a printing key
-		k = pgm_read_byte(_asciimap + k);
-		if (!k) {
-			return 0;
-		}
-		if (k & 0x80) {							// it's a capital letter or other character reached with shift
-			_keyReport.modifiers &= ~(0x02);	// the left shift modifier
-			k &= 0x7F;
-		}
-	}
-
-	// Test the key report to see if k is present.  Clear it if it exists.
-	// Check all positions in case the key is present more than once (which it shouldn't be)
-	for (i=0; i<6; i++) {
-		if (0 != k && _keyReport.keys[i] == k) {
-			_keyReport.keys[i] = 0x00;
-		}
-	}
-
-	sendReport(&_keyReport);
-	return 1;
+size_t BleComboKeyboard::release(uint8_t k) {
+  uint8_t i;
+  if (k >= 136) {
+    k = k - 136;
+  } else if (k >= 128) {
+    _keyReport.modifiers &= ~(1 << (k - 128));
+    k = 0;
+  } else {
+    k = pgm_read_byte(_asciimap + k);
+    if (!k) return 0;
+    if (k & 0x80) {
+      _keyReport.modifiers &= ~(0x02);
+      k &= 0x7F;
+    }
+  }
+  for (i = 0; i < 6; i++) {
+    if (0 != k && _keyReport.keys[i] == k) {
+      _keyReport.keys[i] = 0x00;
+    }
+  }
+  sendReport(&_keyReport);
+  return 1;
 }
 
-size_t BleComboKeyboard::release(const MediaKeyReport k)
-{
-    uint16_t k_16 = k[1] | (k[0] << 8);
-    uint16_t mediaKeyReport_16 = _mediaKeyReport[1] | (_mediaKeyReport[0] << 8);
-    mediaKeyReport_16 &= ~k_16;
-    _mediaKeyReport[0] = (uint8_t)((mediaKeyReport_16 & 0xFF00) >> 8);
-    _mediaKeyReport[1] = (uint8_t)(mediaKeyReport_16 & 0x00FF);
-
-	sendReport(&_mediaKeyReport);
-	return 1;
+size_t BleComboKeyboard::release(const MediaKeyReport k) {
+  uint16_t k_16 = k[1] | (k[0] << 8);
+  uint16_t mediaKeyReport_16 = _mediaKeyReport[1] | (_mediaKeyReport[0] << 8);
+  mediaKeyReport_16 &= ~k_16;
+  _mediaKeyReport[0] = (uint8_t) ((mediaKeyReport_16 & 0xFF00) >> 8);
+  _mediaKeyReport[1] = (uint8_t) (mediaKeyReport_16 & 0x00FF);
+  sendReport(&_mediaKeyReport);
+  return 1;
 }
 
-void BleComboKeyboard::releaseAll(void)
-{
-	_keyReport.keys[0] = 0;
-	_keyReport.keys[1] = 0;
-	_keyReport.keys[2] = 0;
-	_keyReport.keys[3] = 0;
-	_keyReport.keys[4] = 0;
-	_keyReport.keys[5] = 0;
-	_keyReport.modifiers = 0;
-    _mediaKeyReport[0] = 0;
-    _mediaKeyReport[1] = 0;
-	sendReport(&_keyReport);
+void BleComboKeyboard::releaseAll(void) {
+  _keyReport.keys[0] = 0;
+  _keyReport.keys[1] = 0;
+  _keyReport.keys[2] = 0;
+  _keyReport.keys[3] = 0;
+  _keyReport.keys[4] = 0;
+  _keyReport.keys[5] = 0;
+  _keyReport.modifiers = 0;
+  _mediaKeyReport[0] = 0;
+  _mediaKeyReport[1] = 0;
+  sendReport(&_keyReport);
 }
 
-size_t BleComboKeyboard::write(uint8_t c)
-{
-	uint8_t p = press(c);  // Keydown
-	release(c);            // Keyup
-	return p;              // just return the result of press() since release() almost always returns 1
+size_t BleComboKeyboard::write(uint8_t c) {
+  uint8_t p = press(c);
+  release(c);
+  return p;
 }
 
-size_t BleComboKeyboard::write(const MediaKeyReport c)
-{
-	uint16_t p = press(c);  // Keydown
-	release(c);            // Keyup
-	return p;              // just return the result of press() since release() almost always returns 1
+size_t BleComboKeyboard::write(const MediaKeyReport c) {
+  uint16_t p = press(c);
+  release(c);
+  return p;
 }
 
-size_t BleComboKeyboard::write(const uint8_t *buffer, size_t size) {
-	size_t n = 0;
-	while (size--) {
-		if (*buffer != '\r') {
-			if (write(*buffer)) {
-			  n++;
-			} else {
-			  break;
-			}
-		}
-		buffer++;
-	}
-	return n;
+size_t BleComboKeyboard::write(const uint8_t* buffer, size_t size) {
+  size_t n = 0;
+  while (size--) {
+    if (*buffer != '\r') {
+      if (write(*buffer)) n++;
+      else break;
+    }
+    buffer++;
+  }
+  return n;
 }
 
+// ---------------- 鼠标 / 绝对触摸 ----------------
+void BleComboMouse::move(signed char x, signed char y, signed char wheel, signed char hWheel) {
+  if (!_keyboard->isConnected() || _keyboard->inputRELMouse == nullptr) {
+    hidSkipCount++;
+    return;
+  }
+  uint8_t m[5];
+  m[0] = _buttons;
+  m[1] = x;
+  m[2] = y;
+  m[3] = wheel;
+  m[4] = hWheel;
+  _keyboard->inputRELMouse->setValue(m, 5);
+  _keyboard->inputRELMouse->notify();
+  hidLog("relmove", _keyboard->inputRELMouse, 5);
+  hidSendCount++;
+  lastHidSendAt = millis();
+}
+
+void BleComboMouse::send(int state, int16_t x, int16_t y) {
+  if (!_keyboard->isConnected() || _keyboard->inputMouse == nullptr) {
+    hidSkipCount++;
+    return;
+  }
+  // 6 字节：state | ContactIdentifier | X16(LE) | Y16(LE)，与旧版官方固件一致
+  uint8_t m[6];
+  m[0] = (uint8_t) state;
+  m[1] = 1;              // Contact Identifier：单指固定 1
+  m[2] = (uint8_t) (x & 0xff);        // X 低位（小端）
+  m[3] = (uint8_t) ((x >> 8) & 0xff); // X 高位
+  m[4] = (uint8_t) (y & 0xff);
+  m[5] = (uint8_t) ((y >> 8) & 0xff);
+  _keyboard->inputMouse->setValue(m, 6);
+  _keyboard->inputMouse->notify();
+  hidLog("mousesend", _keyboard->inputMouse, 6);
+  hidSendCount++;
+  lastHidSendAt = millis();
+}
+
+void BleComboMouse::click(uint8_t b) {
+  _buttons = b;
+  move(0, 0, 0, 0);
+  _buttons = 0;
+  move(0, 0, 0, 0);
+}
+
+void BleComboMouse::buttons(uint8_t b) {
+  if (b != _buttons) {
+    _buttons = b;
+    move(0, 0, 0, 0);
+  }
+}
+
+void BleComboMouse::press(uint8_t b) {
+  buttons(_buttons | b);
+}
+
+void BleComboMouse::release(uint8_t b) {
+  buttons(_buttons & ~b);
+}
+
+bool BleComboMouse::isPressed(uint8_t b) {
+  return (b & _buttons) > 0;
+}

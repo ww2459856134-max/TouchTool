@@ -51,9 +51,8 @@ jobs:
           arduino-cli core install esp32:esp32
           arduino-cli core list
 
-      - name: 打核心补丁（NimBLE 允许重复 UUID 特征，HID 多报告必需）
-        run: |
-          python3 firmware/esp32c3-hid/patches/apply-core-patch.py             "$HOME/.arduino15/packages/esp32/hardware/esp32/*/libraries/BLE/src/BLEService.cpp"
+      - name: 安装 NimBLE-Arduino（TouchHID 库依赖）
+        run: arduino-cli lib install NimBLE-Arduino@2.5.2
 
       - name: 准备 sketch（main.cpp → 同名 .ino）
         working-directory: firmware/esp32c3-hid

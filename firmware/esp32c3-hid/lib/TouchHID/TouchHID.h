@@ -1,14 +1,14 @@
-#ifndef ESP32_BLE_COMBO_KEYBOARD_H
-#define ESP32_BLE_COMBO_KEYBOARD_H
+#ifndef TOUCH_HID_COMBO_H
+#define TOUCH_HID_COMBO_H
 #include "sdkconfig.h"
 #if defined(CONFIG_BT_ENABLED)
 
-#include "BleConnectionStatus.h"
-#include "BLEHIDDevice.h"
-#include "BLECharacteristic.h"
-#include "Print.h"
+#include <NimBLEDevice.h>
+#include <NimBLEHIDDevice.h>
+#include "HIDTypes.h"
+#include <Print.h>
 
-
+// ---- 按键常量（与原 ESP32-BLE-HID 保持一致，用户代码无需改动） ----
 const uint8_t KEY_LEFT_CTRL = 0x80;
 const uint8_t KEY_LEFT_SHIFT = 0x81;
 const uint8_t KEY_LEFT_ALT = 0x82;
@@ -31,7 +31,6 @@ const uint8_t KEY_DELETE = 0xD4;
 const uint8_t KEY_PAGE_UP = 0xD3;
 const uint8_t KEY_PAGE_DOWN = 0xD6;
 const uint8_t KEY_HOME = 0xD2;
-const uint8_t KEY_HOME1 = 0x0004;
 const uint8_t KEY_END = 0xD5;
 const uint8_t KEY_CAPS_LOCK = 0xC1;
 const uint8_t KEY_F1 = 0xC2;
@@ -69,41 +68,43 @@ const MediaKeyReport KEY_MEDIA_MUTE = {16, 0};
 const MediaKeyReport KEY_MEDIA_VOLUME_UP = {32, 0};
 const MediaKeyReport KEY_MEDIA_VOLUME_DOWN = {64, 0};
 const MediaKeyReport KEY_MEDIA_WWW_HOME = {128, 0};
-const MediaKeyReport KEY_MEDIA_LOCAL_MACHINE_BROWSER = {0, 1}; // Opens "My Computer" on Windows
+const MediaKeyReport KEY_MEDIA_LOCAL_MACHINE_BROWSER = {0, 1};
 const MediaKeyReport KEY_MEDIA_CALCULATOR = {0, 2};
 const MediaKeyReport KEY_MEDIA_WWW_BOOKMARKS = {0, 4};
 const MediaKeyReport KEY_MEDIA_WWW_SEARCH = {0, 8};
 const MediaKeyReport KEY_MEDIA_WWW_STOP = {0, 16};
 const MediaKeyReport KEY_MEDIA_WWW_BACK = {0, 32};
-const MediaKeyReport KEY_MEDIA_CONSUMER_CONTROL_CONFIGURATION = {0, 64}; // Media Selection
+const MediaKeyReport KEY_MEDIA_CONSUMER_CONTROL_CONFIGURATION = {0, 64};
 const MediaKeyReport KEY_MEDIA_EMAIL_READER = {0, 128};
 
-
-//  Low level key report: up to 6 keys and shift, ctrl etc at once
-typedef struct
-{
+// 低层按键报告：最多 6 键 + 修饰键
+typedef struct {
   uint8_t modifiers;
   uint8_t reserved;
   uint8_t keys[6];
 } KeyReport;
-extern BLECharacteristicCallbacks* globalCallbacks;
-class BleComboKeyboard : public Print
-{
+
+class BleComboMouse;
+
+// ==================== 键盘（+ 绝对触摸 / 消费键） ====================
+class BleComboKeyboard : public Print, public NimBLEServerCallbacks {
 private:
-  BleConnectionStatus* connectionStatus;
-  BLEHIDDevice* hid;
-  BLECharacteristic* inputKeyboard;
-  BLECharacteristic* outputKeyboard;
-  BLECharacteristic* inputMediaKeys;
-  
-  KeyReport _keyReport;
-  MediaKeyReport _mediaKeyReport;
+  NimBLEHIDDevice* hid = nullptr;
+  NimBLECharacteristic* inputKeyboard = nullptr;
+  NimBLECharacteristic* outputKeyboard = nullptr;
+  NimBLECharacteristic* inputMediaKeys = nullptr;
+  NimBLECharacteristic* inputMouse = nullptr;
+  NimBLECharacteristic* inputRELMouse = nullptr;
+  KeyReport _keyReport = {0, 0, {0, 0, 0, 0, 0, 0}};
+  MediaKeyReport _mediaKeyReport = {0, 0};
   static void taskServer(void* pvParameter);
 
 public:
-  BleComboKeyboard(std::string deviceName = "coco-ble-hid", std::string deviceManufacturer = "Espressif", uint8_t batteryLevel = 100);
+  BleComboKeyboard(std::string deviceName = "coco-ble-hid",
+                   std::string deviceManufacturer = "Espressif",
+                   uint8_t batteryLevel = 100);
   void begin(void);
-  void end(void);
+  void end(void) {}
   void sendReport(KeyReport* keys);
   void sendReport(MediaKeyReport* keys);
   size_t press(uint8_t k);
@@ -112,20 +113,48 @@ public:
   size_t release(const MediaKeyReport k);
   size_t write(uint8_t c);
   size_t write(const MediaKeyReport c);
-  size_t write(const uint8_t *buffer, size_t size);
-  void setCallbacks(BLECharacteristicCallbacks *callbacks);
-  
+  size_t write(const uint8_t* buffer, size_t size);
   void releaseAll(void);
   bool isConnected(void);
   void setBatteryLevel(uint8_t level);
   uint8_t batteryLevel;
   std::string deviceManufacturer;
   std::string deviceName;
+  volatile bool connected = false;
 
-  BLECharacteristic* inputMouse;
-  BLECharacteristic* inputRELMouse;
+  // NimBLEServerCallbacks
+  void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override;
+  void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override;
 
+  friend class BleComboMouse;
 };
 
+// ==================== 鼠标 / 绝对触摸 ====================
+#define MOUSE_LEFT 1
+#define MOUSE_RIGHT 2
+#define MOUSE_MIDDLE 4
+#define MOUSE_BACK 8
+#define MOUSE_FORWARD 16
+
+class BleComboMouse {
+private:
+  BleComboKeyboard* _keyboard;
+  uint8_t _buttons = 0;
+  void buttons(uint8_t b);
+public:
+  BleComboMouse(BleComboKeyboard* keyboard) : _keyboard(keyboard) {}
+  void begin(void) {}
+  void end(void) {}
+  void click(uint8_t b = MOUSE_LEFT);
+  void move(signed char x, signed char y, signed char wheel = 0, signed char hWheel = 0);
+  void send(int state, int16_t x, int16_t y);
+  void press(uint8_t b = MOUSE_LEFT);
+  void release(uint8_t b = MOUSE_LEFT);
+  bool isPressed(uint8_t b = MOUSE_LEFT);
+};
+
+extern BleComboMouse Mouse;
+extern BleComboKeyboard Keyboard;
+
 #endif // CONFIG_BT_ENABLED
-#endif // ESP32_BLE_COMBO_KEYBOARD_H
+#endif // TOUCH_HID_COMBO_H

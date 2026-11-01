@@ -26,11 +26,10 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <BleCombo.h>
-#include <BLEDevice.h>
 #include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.2.0"
+#define FW_VERSION   "1.3.0"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -44,7 +43,7 @@
 // 允许不带口令就升级吗？关掉更安全，但网页上手刷要输一次口令
 #define OTA_ALLOW_NO_AUTH 1
 
-// BleCombo.h 里已经导出了全局实例 Keyboard / Mouse（见 lib/ESP32-BLE-HID/BleCombo.cpp），
+// BleCombo.h 里已经导出了全局实例 Keyboard / Mouse（见 lib/TouchHID/BleCombo.cpp），
 // 这里只声明外部引用，重复定义会链接报 "multiple definition of `Keyboard'"
 extern BleComboKeyboard Keyboard;
 extern BleComboMouse Mouse;
@@ -633,7 +632,6 @@ void setupBle() {
     // 名字要在 begin() 之前设置：begin() 会用 deviceName 初始化 BLE 广播
     Keyboard.deviceName = deviceName.c_str();
     Keyboard.deviceManufacturer = "Espressif";
-    hidInitDiag();
     Keyboard.begin();
     Mouse.begin();
     // 注意：begin() 只是创建任务，BLEDevice::init() 在那个任务里异步执行，
