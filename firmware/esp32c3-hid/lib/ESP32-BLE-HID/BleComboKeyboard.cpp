@@ -244,9 +244,17 @@ void BleComboKeyboard::taskServer(void* pvParameter) {
   bleKeyboardInstance->hid->pnp(0x02, 0xe502, 0xa111, 0x0210);
   bleKeyboardInstance->hid->hidInfo(0x00,0x01);
 
-  BLESecurity *pSecurity = new BLESecurity();
-
-  pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
+  // 安全参数：原来只设了 ESP_LE_AUTH_BOND（传统配对、无 SC），
+  // Android 11+ 对 HID 外设较严格，传统配对容易被对端直接拒绝，
+  // 表现为"点配对转几秒连接被断开"。改为 LE Secure Connections + 绑定，
+  // IO 能力设为 NONE（无屏无键盘）→ 仍是 Just Works，不需要配对码。
+  BLESecurity::setCapability(ESP_IO_CAP_NONE);
+  BLESecurity::setKeySize(16);
+  // 同时分发加密密钥与身份密钥：Android 回连时常用可解析私有地址(RPA)，
+  // 没有 ID 密钥就无法把自己认回来，会表现为"配对成功但下次连不上"。
+  BLESecurity::setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+  BLESecurity::setRespEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+  BLESecurity::setAuthenticationMode(true /*bonding*/, false /*mitm*/, true /*secure connections*/);
 
   bleKeyboardInstance->hid->reportMap((uint8_t*)_hidReportDescriptor, sizeof(_hidReportDescriptor));
   bleKeyboardInstance->hid->startServices();

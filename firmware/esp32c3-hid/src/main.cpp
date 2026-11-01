@@ -30,7 +30,7 @@
 #include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.1.1"
+#define FW_VERSION   "1.1.2"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -57,6 +57,27 @@ String deviceName;
 uint32_t gestureCount = 0;
 uint32_t udpCount = 0;
 String lastError = "";
+
+// BLE 事件轨迹：放进环形缓冲，通过 /blelog 直接手机浏览器就能看，
+// 不用连串口也能判断"配对到底断在哪一步"
+String bleTrace = "";
+uint16_t bleConnectCount = 0;
+uint16_t bleDisconnectCount = 0;
+
+void bleEvent(const char *msg) {
+    if (strcmp(msg, "onConnect") == 0) bleConnectCount++;
+    if (strcmp(msg, "onDisconnect") == 0) bleDisconnectCount++;
+    char line[96];
+    snprintf(line, sizeof(line), "[%lus] %s  conn=%d dis=%d\n",
+             (unsigned long) (millis() / 1000), msg,
+             (int) bleConnectCount, (int) bleDisconnectCount);
+    bleTrace += line;
+    if (bleTrace.length() > 3000) {
+        bleTrace = bleTrace.substring(bleTrace.length() - 2400);
+    }
+    Serial.print("[BLE-TRACE] ");
+    Serial.print(line);
+}
 
 // 当前触摸状态，用于复位
 uint16_t lastX = 0, lastY = 0;
@@ -411,6 +432,20 @@ void handlePing() {
     server.send(200, "text/plain", "pong " FW_VERSION);
 }
 
+// 蓝牙排查页：手机连热点后直接打开 /blelog 就能看到事件轨迹，
+// 不用插串口也能判断配对断在连接、还是安全握手之后。
+void handleBleLog() {
+    String out = "fw=" FW_VERSION "\n";
+    out += "name=" + deviceName + "\n";
+    out += "connected=" + String(Keyboard.isConnected() ? "yes" : "no") + "\n";
+    out += "conn=" + String(bleConnectCount) + " dis=" + String(bleDisconnectCount) + "\n";
+    out += "uptime=" + String(millis() / 1000) + "s\n";
+    out += "---- trace ----\n";
+    out += bleTrace.length() ? bleTrace : "(empty)\n";
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, "text/plain; charset=utf-8", out);
+}
+
 // OTA 上传
 // 安全说明：局域网内任何设备都能访问 /update，加一层 Basic 认证，
 // 避免邻居/宿舍网里有人随手把固件换掉。
@@ -501,9 +536,10 @@ void setupBle() {
     Keyboard.deviceManufacturer = "Espressif";
     Keyboard.begin();
     Mouse.begin();
-    // 库内部只配了广播对象，没真正开广播，这里显式启动一次
-    BLEDevice::startAdvertising();
+    // 注意：begin() 只是创建任务，BLEDevice::init() 在那个任务里异步执行，
+    // 此处不能直接调 startAdvertising()，广播由库内部在初始化完成后开启。
     Serial.printf("BLE HID started: %s\n", deviceName.c_str());
+    bleEvent("ble init");
 }
 
 void setup() {
@@ -529,6 +565,7 @@ void setup() {
     server.on("/wifi", HTTP_POST, handleWifi);
     server.on("/info", HTTP_GET, handleInfo);
     server.on("/ping", HTTP_GET, handlePing);
+    server.on("/blelog", HTTP_GET, handleBleLog);
     server.on("/update", HTTP_POST, handleOtaDone, handleOtaUpload);
     server.onNotFound([]() {
         server.send(404, "text/plain", "not found");
@@ -554,13 +591,14 @@ void loop() {
         }
     }
 
-    // 广播保活：WiFi 的射频活动和 BLE 抢时隙，偶尔会把广播打断。
-    // 没连上主机时每 5 秒补一次，避免"能搜到一次，之后再也搜不到"。
+    // 广播保活退化为兜底：正常情况下 onDisconnect 里已经重开广播，
+    // 这里只在"既没连上、又超过 30 秒"时补一次，避免和配对过程抢时序。
     static unsigned long lastAdv = 0;
-    if (millis() - lastAdv > 5000) {
+    if (millis() - lastAdv > 30000) {
         lastAdv = millis();
         if (!Keyboard.isConnected()) {
             BLEDevice::startAdvertising();
+            bleEvent("adv keepalive");
         }
     }
     delay(2);
