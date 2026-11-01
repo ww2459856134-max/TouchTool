@@ -110,6 +110,8 @@ public final class ActionHelp {
         SPECIFIC.put(ActionType.MAP_CLEAR, R.string.help_map_clear);
         SPECIFIC.put(ActionType.MAP_SIZE, R.string.help_map_size);
         SPECIFIC.put(ActionType.HID_RELAY, R.string.help_hid_relay);
+        SPECIFIC.put(ActionType.HID_KEY, R.string.help_hid_key);
+        SPECIFIC.put(ActionType.HID_INPUT_TEXT, R.string.help_hid_input);
         SPECIFIC.put(ActionType.LOAD_IMAGE, R.string.help_load_image);
         SPECIFIC.put(ActionType.CROP_IMAGE, R.string.help_crop_image);
         SPECIFIC.put(ActionType.SAVE_IMAGE, R.string.help_save_image);

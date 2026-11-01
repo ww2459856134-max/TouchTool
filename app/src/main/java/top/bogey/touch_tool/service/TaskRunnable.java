@@ -65,6 +65,16 @@ public class TaskRunnable implements Runnable {
         if (startAction instanceof InnerStartAction) {
             cacheLog = true;
         }
+        // HID 残留按下复位：上一次手势中途丢包会让硬件一直保持"按下"，
+        // 表现为之后所有点击都变成拖拽、界面乱滑。任务启动时先发一次抬起复位。
+        try {
+            if (top.bogey.touch_tool.utils.HidClient.isReady()) {
+                String host = top.bogey.touch_tool.utils.HidClient.getConfigHost();
+                top.bogey.touch_tool.utils.HidClient.sendReset(host,
+                        top.bogey.touch_tool.utils.HidClient.getConfigPort(), null);
+            }
+        } catch (Exception ignored) {
+        }
         try {
             if (SettingSaver.TASK_RESET_DETAIL_LOG.get()) {
                 LogSaver.getInstance().clearLog(task.getId());

@@ -64,7 +64,7 @@ public class TouchPointAction extends ExecuteAction implements SyncAction {
         if (channel != null && channel.getIndex() == 1) {
             String host = HidClient.getConfigHost();
             int port = HidClient.getConfigPort();
-            if (host != null) {
+            if (host != null && HidClient.isOnline()) {
                 android.graphics.Point p = new android.graphics.Point(x, y);
                 StringBuilder hexLog = new StringBuilder();
                 boolean ok = HidClient.sendGesture(host, port, java.util.Arrays.asList(p, p), Math.max(50, timeValue), hexLog);

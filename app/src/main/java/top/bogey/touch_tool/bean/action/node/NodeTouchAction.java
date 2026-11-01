@@ -127,6 +127,12 @@ public class NodeTouchAction extends ExecuteAction {
                     "[HID] 请先在 设置 中配置 ESP32 设备IP，回退无障碍", android.widget.Toast.LENGTH_SHORT).show();
             return false;
         }
+        // 设备不可达时直接回退无障碍，不再傻等超时
+        if (!top.bogey.touch_tool.utils.HidClient.isOnline()) {
+            runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
+                    new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 设备不可达，回退无障碍")), 0);
+            return false;
+        }
         // 手势作用于实际接收点击的区域：非精确时允许上溯一次找可用父控件（与无障碍手势路径一致）
         NodeInfo target = nodeInfo;
         if (!precise) {

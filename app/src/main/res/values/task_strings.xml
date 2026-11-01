@@ -204,8 +204,8 @@
     <string name="help_is_node_exist">【功能】快速判断某控件是否在屏幕上，输出布尔值，比查找控件轻量。\n【针脚】\n· 入"文本/ID/类名/描述/路径"：查找条件，留空=不筛\n· 入"区域"：只在屏幕某区域内找（可选）\n· 出"结果"：存在=真，不存在=假\n【用法】结果→如果→是：继续；否：等下一轮。\n【避坑】只回答"有没有"，要拿节点本身请用查找控件。</string>
     <string name="help_pick_node">【功能】从多个节点中选一个（按位置/顺序），常和"查找控件"的多结果配合。\n【针脚】\n· 入"节点"：候选节点\n· 出"找到"/"未找到"：选择结果\n【用法】查找控件找到一排列表项→挑选节点取第N个→点击。\n【避坑】列表会滚动，取第N个前先想清楚基准是当前屏幕。</string>
     <string name="help_touch">【功能】按坐标执行点击/长按/滑动等手势，是最基础的屏幕操作。\n【针脚】\n· 入"触摸"：坐标或手势路径（连"触摸点/滑动路径"类动作）\n【参数】\n· 时长：按下时长\n· 偏移：整体平移坐标，适配不同分辨率\n· 通道(v60+)：无障碍=软件模拟；HID=ESP32蓝牙硬件模拟物理点击，可点无障碍点不动的界面（需在设置里连接HID设备）\n【用法】标记位置→触摸点→触摸。\n【避坑】坐标是死的，界面元素位置一变就点空；控件会动/会变的场景优先用"点击控件"。</string>
-    <string name="help_hid_relay">【功能】通过 ESP32-C3/S3 蓝牙硬件模拟物理点击/滑动，适用于无障碍点不动的界面（游戏、自绘控件），与无障碍通道并存。\n【针脚】\n· 类型：单击/滑动\n· 起点/终点：坐标，支持 {变量} 插值（v59+），可由计算动作动态生成\n· 时长：按下时长\n【前提】设置→HID 设备：蓝牙配对 ESP32 硬件 + WiFi 中继（默认端口 21115）。\n【避坑】\n· 刷固件后必须重新配网并重新配对蓝牙，否则点击无反应\n· HID 发送失败会等待网络超时，任务里建议配合降级条件使用</string>
-    <string name="help_load_image">【功能】加载一张图片输出，作为找图/点击图片的动态模板。\n【针脚】\n· 入"图片"：相册选图（老方式）\n· 入"图片路径或网址"(v72)：本地路径(如 /sdcard/tpl/图标.png)或网址(https:// 自动下载)，支持 {变量} 插值——可做云端下发模板、热更新模板\n· 出"图片"：加载结果，连线到找图的"模板"针脚\n· 出"区域"：整张图的范围\n【参数】优先级：路径非空时走路径加载，否则用相册选的图。\n【避坑】路径错误的卡片运行时会静默跳过，先在文件管理器里确认路径写法。</string>
+    <string name="help_hid_relay">【功能】通过 ESP32-C3/S3 蓝牙硬件模拟物理点击/滑动，适用于无障碍点不动的界面（游戏、自绘控件），与无障碍通道并存。\n【针脚】\n· 类型：单击/滑动/长按/拖拽/连点\n· 起点/终点：坐标，支持 {变量} 插值，可由计算动作动态生成\n· 时长：按下时长（长按/拖拽至少 500/400ms 才生效）\n· 重复次数/间隔：连点用，单击类型填多次也会连续点\n· 出"成功"：真=已发送，假=发送失败，可接"如果"做降级\n【前提】设置→HID 设备：蓝牙配对 ESP32 硬件 + WiFi 中继（默认端口 21115）。\n【避坑】\n· 刷固件后必须重新配网并重新配对蓝牙，否则点击无反应\n· 丢包可能让硬件保持"按下"状态，导致后续全部失效；本版已在动作开始时自动复位，仍异常时重启任务或重连设备</string>
+    <string name="help_hid_key">【功能】通过 ESP32 蓝牙 HID 发送系统按键——这是无障碍完全做不到的能力：锁屏/点亮、关闭系统权限弹窗、调音量、切歌。\n【针脚】\n· 按键：返回/主页/最近任务/电源/音量±/静音/媒体键/回车/ESC/Tab\n· 重复次数/间隔：连按（如连按返回退出多层）\n· 出"成功"：发送结果\n【前提】固件需支持 0x07 按键指令；旧固件只会超时一次、不会误点。\n【用法】锁屏场景：HID按键"电源"→HID按键"最近任务"；关弹窗：连按 2 次返回。\n【避坑】电源键会真实熄屏/亮屏，定时任务里慎用；误按可能锁屏，建议前接"是否锁屏"判断。</string>\n    <string name="help_hid_input">【功能】通过 ESP32 蓝牙 HID 逐字打字，模拟真实键盘输入。用于屏蔽无障碍 setText 的输入框（部分金融/游戏 App）。\n【针脚】\n· 输入内容：仅英文数字符号，支持 {变量} 插值\n· 按键间隔：每个字符之间的停顿，太快会丢字\n· 出"成功"：发送结果\n【前提】固件需支持 0x08 文本指令；使用前先点击输入框让它获得焦点。\n【避坑】中文无法通过 HID 键盘输入（需要输入法），中文请改用"输入配置"的粘贴方式；间隔建议 30~80ms。</string>\n    <string name="help_load_image">【功能】加载一张图片输出，作为找图/点击图片的动态模板。\n【针脚】\n· 入"图片"：相册选图（老方式）\n· 入"图片路径或网址"(v72)：本地路径(如 /sdcard/tpl/图标.png)或网址(https:// 自动下载)，支持 {变量} 插值——可做云端下发模板、热更新模板\n· 出"图片"：加载结果，连线到找图的"模板"针脚\n· 出"区域"：整张图的范围\n【参数】优先级：路径非空时走路径加载，否则用相册选的图。\n【避坑】路径错误的卡片运行时会静默跳过，先在文件管理器里确认路径写法。</string>
     <string name="help_crop_image">【功能】从一张图片按区域裁出小图，常用于动态生成找图模板。\n【针脚】\n· 入"图片"：源图（可连"获取截图"或"加载图片"）\n· 入"区域"：裁剪范围\n· 出"图片"：裁剪结果\n· 出"偏移"：裁剪区域相对源图的偏移坐标\n【用法】获取截图→裁剪(列表第一项图标区域)→输出连线到找图"模板"——每次运行自动更新模板。\n【避坑】裁剪区域超出源图会得到异常结果，先用快速存变量存识别区域再传入。</string>
     <string name="help_save_image">【功能】把图片保存为文件（如相册/指定目录），用于存证、导出截图。\n【针脚】\n· 入"名称"：保存的文件名\n· 入"图片"：要保存的图片\n【参数】\n· 定时删除：N 秒后自动删除临时文件\n【避坑】需要存储权限；保存路径因系统版本而异，保存后在通知或文件管理器确认位置。</string>
     <string name="help_continuous_tap">【功能】对同一个坐标连续点击多次。\n【针脚】\n· 入"位置"：目标坐标\n· 出"完成"：点完后走\n【参数】\n· 次数/点击间隔：连点节奏\n· 点击时长：每次按下时长\n· 偏移：坐标修正\n【用法】游戏里连点攻击按钮：位置→连点(10次,100ms)。\n【避坑】间隔太短部分应用响应不过来，建议不低于50ms。</string>
@@ -334,6 +334,17 @@
     <string name="hid_relay_start">起点坐标</string>
     <string name="hid_relay_end">终点坐标</string>
     <string name="hid_relay_duration">时长(ms)</string>
+    <string name="hid_relay_repeat">重复次数（连点用）</string>
+    <string name="hid_relay_interval">重复间隔(ms)</string>
+    <string name="hid_key_action">HID按键</string>
+    <string name="hid_key_action_desc">通过 ESP32 蓝牙 HID 发送返回/主页/电源/音量等系统按键，无障碍做不到的按键用它</string>
+    <string name="hid_key_action_key">按键</string>
+    <string name="hid_key_action_repeat">重复次数</string>
+    <string name="hid_key_action_interval">间隔(ms)</string>
+    <string name="hid_input_action">HID键盘输入</string>
+    <string name="hid_input_action_desc">通过 ESP32 蓝牙 HID 逐字打字（仅英文数字符号），用于屏蔽无障碍写入的输入框</string>
+    <string name="hid_input_action_text">输入内容（仅英文数字符号）</string>
+    <string name="hid_input_action_interval">按键间隔(ms)</string>
     <string name="log_action">输出日志</string>
     <string name="log_action_desc">输出日志到日志界面</string>
     <string name="log_action_text">日志</string>
@@ -1333,6 +1344,7 @@
     <string name="setting_hid_manual">手动配置 IP 与端口</string>
     <string name="setting_hid_discover">自动发现（扫描局域网）</string>
     <string name="setting_hid_test">测试连接（获取固件信息）</string>
+    <string name="setting_hid_check">检测连接状态（在线/延迟）</string>
     <string name="debug_run_from">▶ 从此动作开始执行</string>
     <string name="debug_run_no_link">该动作未连接上游动作，无法从此开始</string>
     <string name="debug_run_need_service">请先开启无障碍服务</string>

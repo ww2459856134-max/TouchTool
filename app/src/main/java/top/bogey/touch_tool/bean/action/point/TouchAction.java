@@ -96,6 +96,12 @@ public class TouchAction extends ExecuteAction {
                     new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 未配置设备IP，回退无障碍")), 0);
             return false;
         }
+        // 设备不可达时直接回退无障碍，不再傻等超时
+        if (!HidClient.isOnline()) {
+            runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
+                    new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 设备不可达，回退无障碍")), 0);
+            return false;
+        }
         // 手势按时间切片存储：同一根手指（点 id 相同）的点分散在连续 PathPart 中，按序聚合出每根手指的轨迹
         List<PinTouchPath.PathPart> parts = path.getPathParts(EAnchor.TOP_LEFT);
         if (parts.isEmpty()) {

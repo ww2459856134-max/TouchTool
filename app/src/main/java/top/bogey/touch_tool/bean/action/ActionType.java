@@ -48,6 +48,8 @@ public enum ActionType {
     DELAY,
     LOG,
     HID_RELAY,
+    HID_KEY,
+    HID_INPUT_TEXT,
     STICK,
     CLOSE_STICK,
     CLOSE_ALL_STICK,

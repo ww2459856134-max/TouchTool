@@ -628,6 +628,24 @@
     <string-array name="hid_relay_type">
         <item>单击</item>
         <item>滑动</item>
+        <item>长按</item>
+        <item>拖拽</item>
+        <item>连点</item>
+    </string-array>
+    <string-array name="hid_key_type">
+        <item>返回键</item>
+        <item>主页键</item>
+        <item>最近任务</item>
+        <item>电源键</item>
+        <item>音量+</item>
+        <item>音量-</item>
+        <item>静音</item>
+        <item>播放/暂停</item>
+        <item>下一曲</item>
+        <item>上一曲</item>
+        <item>回车</item>
+        <item>ESC</item>
+        <item>Tab</item>
     </string-array>
     <string-array name="touch_image_channel">
         <item>无障碍</item>

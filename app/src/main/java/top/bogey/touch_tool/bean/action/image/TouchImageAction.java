@@ -179,6 +179,12 @@ public class TouchImageAction extends ExecuteAction {
                     new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 请先在 设置 中配置 ESP32 设备IP，回退无障碍")), 0);
             return false;
         }
+        // 设备不可达（关机/断网/IP 变了）时直接回退无障碍，不再傻等超时
+        if (!HidClient.isOnline()) {
+            runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
+                    new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] 设备不可达，回退无障碍")), 0);
+            return false;
+        }
 
         long duration = 50;
         int repeat = 1;

@@ -413,13 +413,16 @@ public class SettingView extends Fragment {
                 .setItems(new CharSequence[]{
                         getString(R.string.setting_hid_manual),
                         getString(R.string.setting_hid_discover),
-                        getString(R.string.setting_hid_test)}, (dialog, which) -> {
+                        getString(R.string.setting_hid_test),
+                        getString(R.string.setting_hid_check)}, (dialog, which) -> {
                     if (which == 0) {
                         editHidDevice();
                     } else if (which == 1) {
                         discoverHidDevice();
-                    } else {
+                    } else if (which == 2) {
                         testHidDevice();
+                    } else {
+                        refreshHidDevice();
                     }
                 })
                 .setNegativeButton(R.string.cancel, null)
@@ -536,7 +539,21 @@ public class SettingView extends Fragment {
     private void refreshHidDevice() {
         String ip = SettingSaver.HID_DEVICE_IP.get();
         int port = SettingSaver.HID_DEVICE_PORT.get();
-        binding.hidDevice.setDescription(ip == null || ip.isEmpty() ? "未配置（点击输入 IP 与端口）" : ip + ":" + port);
+        if (ip == null || ip.isEmpty()) {
+            binding.hidDevice.setDescription("未配置（点击输入 IP 与端口）");
+            return;
+        }
+        binding.hidDevice.setDescription(ip + ":" + port + "  ● 检测中…");
+        // 异步探活，结果回填状态点与延迟
+        new Thread(() -> {
+            long start = System.currentTimeMillis();
+            boolean online = HidClient.isOnline();
+            long cost = System.currentTimeMillis() - start;
+            String desc = ip + ":" + port + (online ? "  ● 在线 " + cost + "ms" : "  ● 不可达");
+            requireActivity().runOnUiThread(() -> {
+                if (isAdded()) binding.hidDevice.setDescription(desc);
+            });
+        }, "hid-status").start();
     }
 
     // 手动输入 IP 与端口
