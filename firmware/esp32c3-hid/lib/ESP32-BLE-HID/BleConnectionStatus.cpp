@@ -12,6 +12,11 @@ void BleConnectionStatus::onConnect(BLEServer* pServer)
   this->connected = true;
   Serial.println("[BLE] onConnect");
   bleEvent("onConnect");
+  {
+    extern void hidDiag(const char *tag, BLECharacteristic *c);
+    hidDiag("onConnect kb", this->inputKeyboard);
+    hidDiag("onConnect mouse", this->inputMouse);
+  }
 
   // 描述符可能还没建好（回连时存在时序差异），判空避免空指针崩溃
   if (this->inputKeyboard != nullptr) {

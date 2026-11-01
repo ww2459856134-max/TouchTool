@@ -30,7 +30,7 @@
 #include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.1.5"
+#define FW_VERSION   "1.1.6"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -60,12 +60,39 @@ String lastError = "";
 
 // BLE 事件轨迹：放进环形缓冲，通过 /blelog 直接手机浏览器就能看，
 // 不用连串口也能判断"配对到底断在哪一步"
-String bleTrace = "";
+// BLE 事件轨迹：固定环形缓冲（无动态内存）。不能用 String——
+// BLE 事件回调跑在蓝牙协议栈线程、HTTP 页面在 loop 线程读，
+// String 跨线程扩容/释放会撞出堆损坏（这是执行动作崩溃的头号嫌疑）。
+#define BLE_TRACE_SIZE 2400
+static char bleTraceBuf[BLE_TRACE_SIZE];
+static size_t bleTraceLen = 0;
+static portMUX_TYPE bleTraceMux = portMUX_INITIALIZER_UNLOCKED;
+
+void traceAppend(const char *line) {
+    size_t n = strlen(line);
+    portENTER_CRITICAL(&bleTraceMux);
+    if (bleTraceLen + n >= BLE_TRACE_SIZE) {
+        size_t drop = bleTraceLen + n + 1 - BLE_TRACE_SIZE;
+        if (drop > bleTraceLen) drop = bleTraceLen;
+        memmove(bleTraceBuf, bleTraceBuf + drop, bleTraceLen - drop);
+        bleTraceLen -= drop;
+    }
+    memcpy(bleTraceBuf + bleTraceLen, line, n + 1);
+    bleTraceLen += n;
+    portEXIT_CRITICAL(&bleTraceMux);
+}
+
+static void traceSnapshot(char *out, size_t outSize) {
+    portENTER_CRITICAL(&bleTraceMux);
+    size_t n = bleTraceLen;
+    if (n >= outSize) n = outSize - 1;
+    memcpy(out, bleTraceBuf, n);
+    out[n] = 0;
+    portEXIT_CRITICAL(&bleTraceMux);
+}
+
 uint16_t bleConnectCount = 0;
 uint16_t bleDisconnectCount = 0;
-
-// OTA 预期镜像大小，0 表示本次上传无效（未授权/非 .bin/超分区）
-size_t otaImageSize = 0;
 
 void bleEvent(const char *msg) {
     if (strcmp(msg, "onConnect") == 0) bleConnectCount++;
@@ -74,21 +101,19 @@ void bleEvent(const char *msg) {
     snprintf(line, sizeof(line), "[%lus] %s  conn=%d dis=%d\n",
              (unsigned long) (millis() / 1000), msg,
              (int) bleConnectCount, (int) bleDisconnectCount);
-    bleTrace += line;
-    if (bleTrace.length() > 3000) {
-        bleTrace = bleTrace.substring(bleTrace.length() - 2400);
-    }
+    traceAppend(line);
     Serial.print("[BLE-TRACE] ");
     Serial.print(line);
 }
 
-// 当前触摸状态，用于复位
+// HID 报文统计与状态：/blelog 里用它判断断开是否发生在发送报告之后
 uint16_t lastX = 0, lastY = 0;
-
-// HID 报文统计：/blelog 里用它判断"断开是否发生在发送报告之后"
 uint32_t hidSendCount = 0;
 uint32_t hidSkipCount = 0;
 uint32_t lastHidSendAt = 0;
+
+// OTA 预期镜像大小，0 表示本次上传无效（未授权/非 .bin/超分区）
+size_t otaImageSize = 0;
 
 // ---------------- HID 触摸 ----------------
 // state: bit0 = Tip Switch(按下)，bit1 = In Range
@@ -106,8 +131,7 @@ static inline void touchSend(uint8_t state, uint16_t x, uint16_t y) {
         delay(8 - (now - lastHidSendAt));
     }
     Mouse.send(state, (int16_t) x, (int16_t) y);
-    lastHidSendAt = millis();
-    hidSendCount++;
+    // 计数与时间戳由 hidSafeNotify 统一记录
 }
 
 // 像素 → 千分比（HID 描述符 Logical Maximum = 10000）
@@ -465,7 +489,9 @@ void handleBleLog() {
     out += "freeHeap=" + String(ESP.getFreeHeap()) + "\n";
     out += "resetReason=" + String(esp_reset_reason()) + "\n";
     out += "---- trace ----\n";
-    out += bleTrace.length() ? bleTrace : "(empty)\n";
+    char snap[BLE_TRACE_SIZE];
+    traceSnapshot(snap, sizeof(snap));
+    out += snap[0] ? snap : "(empty)\n";
     server.sendHeader("Cache-Control", "no-store");
     server.send(200, "text/plain; charset=utf-8", out);
 }
@@ -607,6 +633,7 @@ void setupBle() {
     // 名字要在 begin() 之前设置：begin() 会用 deviceName 初始化 BLE 广播
     Keyboard.deviceName = deviceName.c_str();
     Keyboard.deviceManufacturer = "Espressif";
+    hidInitDiag();
     Keyboard.begin();
     Mouse.begin();
     // 注意：begin() 只是创建任务，BLEDevice::init() 在那个任务里异步执行，

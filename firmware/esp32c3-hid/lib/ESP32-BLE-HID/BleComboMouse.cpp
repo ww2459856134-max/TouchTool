@@ -1,5 +1,8 @@
 #include "BleComboMouse.h"
 
+// 主程序提供的发送前体检（记录指针链 + 拦截坏指针）
+extern bool hidSafeNotify(BLECharacteristic *c, const char *tag, const uint8_t *data, size_t len);
+
 
 #define LSB(v) ((v >> 8) & 0xff)
 #define MSB(v) (v & 0xff)
@@ -22,7 +25,7 @@ void BleComboMouse::move(signed char x, signed char y, signed char wheel, signed
     m[3] = wheel;
     m[4] = hWheel;
     _keyboard->inputRELMouse->setValue(m, 5);
-    _keyboard->inputRELMouse->notify();
+    hidSafeNotify(_keyboard->inputRELMouse, "relmove", m, 5);
   }
 }
 
@@ -37,7 +40,7 @@ void BleComboMouse::send(int state, int16_t x, int16_t y)
     m[3] = MSB(y);
     m[4] = LSB(y);
     _keyboard->inputMouse->setValue(m, 5);
-    _keyboard->inputMouse->notify();
+    hidSafeNotify(_keyboard->inputMouse, "mousesend", m, 5);
   }
 }
 

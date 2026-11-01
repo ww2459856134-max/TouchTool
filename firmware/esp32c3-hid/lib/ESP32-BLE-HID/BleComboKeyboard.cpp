@@ -283,18 +283,112 @@ void BleComboKeyboard::taskServer(void* pvParameter) {
 	pAdvertising->setScanResponse(true);
 	pAdvertising->setMinPreferred(0x06);  
   pAdvertising->start();
+  {
+    extern void hidDiag(const char *tag, BLECharacteristic *c);
+    extern BLEService* g_hidSvc;
+    g_hidSvc = bleKeyboardInstance->hid->hidService();
+    hidDiag("svc-started kb", bleKeyboardInstance->inputKeyboard);
+    hidDiag("svc-started mouse", bleKeyboardInstance->inputMouse);
+    hidDiag("svc-started relmouse", bleKeyboardInstance->inputRELMouse);
+  }
   bleKeyboardInstance->hid->setBatteryLevel(bleKeyboardInstance->batteryLevel);
 
   ESP_LOGD(LOG_TAG, "Advertising started!");
   vTaskDelay(portMAX_DELAY); 
 }
 
+// ============ 1.1.6 HID 安全发送 ============
+// 1.1.5 的 panic 在 BLECharacteristic::notify() 内部读特征对象里损坏的
+// service 指针。这里不再走那条指针链：
+//   * gatts_if 从 ESP_GATTS_REG_EVT 抓（getGattsIf 在核心库是 private）
+//   * conn_id 从 BLEServer::getConnId() 拿（public）
+//   * 直接调 esp_ble_gatts_send_indicate 发报告
+// 发送前后把指针/句柄值写进主程序的 /blelog 轨迹，坏数据当场现形。
+extern void traceAppend(const char *line);
+extern uint32_t hidSendCount, hidSkipCount, lastHidSendAt;
+
+BLEService *g_hidSvc = nullptr;
+
+void hidInitDiag() {
+  // NimBLE 模式下无需额外初始化；保留入口以便以后扩展
+}
+
+void hidDiag(const char *tag, BLECharacteristic *c) {
+  char line[128];
+  snprintf(line, sizeof(line), "[%lus] DIAG %s chr=%p hnd=%u svc=%p\n",
+           (unsigned long) (millis() / 1000), tag, c,
+           (unsigned) ((c != nullptr) ? c->getHandle() : 0),
+           (void *) g_hidSvc);
+  traceAppend(line);
+  Serial.print("[HID-TRACE] ");
+  Serial.print(line);
+}
+
+bool hidSafeNotify(BLECharacteristic *c, const char *tag, const uint8_t *data, size_t len) {
+  char line[128];
+  BLEServer *srv = (g_hidSvc != nullptr) ? g_hidSvc->getServer() : nullptr;
+  uint16_t handle = (c != nullptr) ? c->getHandle() : 0;
+  uint16_t conn = (srv != nullptr) ? srv->getConnId() : ESP_GATT_IF_NONE;
+  int clients = (srv != nullptr) ? (int) srv->getConnectedCount() : -1;
+  bool ok = (c != nullptr) && (g_hidSvc != nullptr) && (srv != nullptr)
+            && handle != 0xFFFF && len > 0 && len <= 32 && clients > 0
+            && conn != ESP_GATT_IF_NONE;
+  snprintf(line, sizeof(line), "[%lus] HID %s chr=%p hnd=%u conn=%u clients=%d len=%u\n",
+           (unsigned long) (millis() / 1000), tag, c, (unsigned) handle,
+           (unsigned) conn, clients, (unsigned) len);
+  traceAppend(line);
+  Serial.print("[HID-TRACE] ");
+  Serial.print(line);
+  if (!ok) {
+    hidSkipCount++;
+    return false;
+  }
+  // NimBLE 原生发送：绕开 BLECharacteristic::notify() 内部损坏的指针链，
+  // 也绕开它 getValue() -> Arduino String 会把 0x00 字节截断的问题
+  // （鼠标报告里 x/y 低位经常是 0x00，必须按原始字节发）。
+  struct os_mbuf *om = os_msys_get_pkthdr(len, 0);
+  if (om == nullptr) {
+    snprintf(line, sizeof(line), "[%lus] HID %s mbuf alloc failed\n",
+             (unsigned long) (millis() / 1000), tag);
+    traceAppend(line);
+    Serial.print("[HID-TRACE] ");
+    Serial.print(line);
+    hidSkipCount++;
+    return false;
+  }
+  if (os_mbuf_append(om, data, len) != 0) {
+    os_mbuf_free_chain(om);
+    snprintf(line, sizeof(line), "[%lus] HID %s mbuf append failed\n",
+             (unsigned long) (millis() / 1000), tag);
+    traceAppend(line);
+    Serial.print("[HID-TRACE] ");
+    Serial.print(line);
+    hidSkipCount++;
+    return false;
+  }
+  // om 的所有权移交给协议栈（失败时也会被释放）
+  int rc = ble_gatts_notify_custom(conn, handle, om);
+  if (rc != 0) {
+    snprintf(line, sizeof(line), "[%lus] HID %s notify rc=%d\n",
+             (unsigned long) (millis() / 1000), tag, rc);
+    traceAppend(line);
+    Serial.print("[HID-TRACE] ");
+    Serial.print(line);
+    hidSkipCount++;
+    return false;
+  }
+  hidSendCount++;
+  lastHidSendAt = millis();
+  return true;
+}
+// ============ 1.1.6 安全发送结束 ============
+
 void BleComboKeyboard::sendReport(KeyReport* keys)
 {
   if (this->isConnected())
   {
     this->inputKeyboard->setValue((uint8_t*)keys, sizeof(KeyReport));
-    this->inputKeyboard->notify();
+    hidSafeNotify(this->inputKeyboard, "keys", (uint8_t*)keys, sizeof(KeyReport));
   }
 }
 
