@@ -26,9 +26,11 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <BleCombo.h>
+#include <BLEDevice.h>
+#include <esp_mac.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.1.0"
+#define FW_VERSION   "1.1.1"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -485,9 +487,11 @@ void handleOtaDone() {
 
 // ---------------- 初始化 ----------------
 void setupBle() {
-    // 设备名后缀取 MAC 末两字节，与原厂 "AutoJS HID-XXXX" 命名一致
+    // 设备名后缀取蓝牙 MAC 末两字节，与原厂 "AutoJS HID-XXXX" 命名一致。
+    // 必须用 esp_read_mac(ESP_MAC_BT)：WiFi.macAddress() 在 WiFi 尚未初始化时
+    // 直接返回全 0，之前就是因此出现过 "AutoJS HID-0000" 这种名字。
     uint8_t mac[6];
-    WiFi.macAddress(mac);
+    esp_read_mac(mac, ESP_MAC_BT);
     char suffix[5];
     snprintf(suffix, sizeof(suffix), "%02X%02X", mac[4], mac[5]);
     deviceName = String(DEVICE_PREFIX) + suffix;
@@ -497,6 +501,8 @@ void setupBle() {
     Keyboard.deviceManufacturer = "Espressif";
     Keyboard.begin();
     Mouse.begin();
+    // 库内部只配了广播对象，没真正开广播，这里显式启动一次
+    BLEDevice::startAdvertising();
     Serial.printf("BLE HID started: %s\n", deviceName.c_str());
 }
 
@@ -507,14 +513,16 @@ void setup() {
 
     prefs.begin("hidcfg", false);
 
-    setupBle();
-    Keyboard.releaseAll();
-    releaseTouch();
-
-    // WiFi：先试已保存的，失败开热点
+    // 顺序很重要：ESP32-C3 只有一套 2.4G 射频，WiFi 必须在 BLE 之前初始化。
+    // 反过来的话，WiFi 起来时会重置 BT 控制器，表现就是手机能搜到设备、
+    // 点配对转几秒圈然后设备从列表里消失（连接被射频重配打断）。
     if (!connectSavedWifi(15000)) {
         startAp();
     }
+
+    setupBle();
+    Keyboard.releaseAll();
+    releaseTouch();
 
     // HTTP 服务
     server.on("/", HTTP_GET, handleRoot);
@@ -543,6 +551,16 @@ void loop() {
         lastCheck = millis();
         if (WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED) {
             WiFi.reconnect();
+        }
+    }
+
+    // 广播保活：WiFi 的射频活动和 BLE 抢时隙，偶尔会把广播打断。
+    // 没连上主机时每 5 秒补一次，避免"能搜到一次，之后再也搜不到"。
+    static unsigned long lastAdv = 0;
+    if (millis() - lastAdv > 5000) {
+        lastAdv = millis();
+        if (!Keyboard.isConnected()) {
+            BLEDevice::startAdvertising();
         }
     }
     delay(2);
