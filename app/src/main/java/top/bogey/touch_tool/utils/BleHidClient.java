@@ -12,7 +12,7 @@ import android.os.Build;
 import android.os.SystemClock;
 
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
+
 
 import top.bogey.touch_tool.MainApplication;
 
@@ -36,8 +36,8 @@ public class BleHidClient {
     private static BluetoothGattCharacteristic cmdChar;
     private static volatile boolean ready = false;
     private static volatile long lastErrorAt = 0;
+    private static long gattStartMs = 0;
     private static int mtu = 23;
-    private static final AtomicBoolean connecting = new AtomicBoolean(false);
 
     /** 设备 MAC 是否已配置 */
     public static String getConfigMac() {
@@ -51,21 +51,32 @@ public class BleHidClient {
         return ready && gatt != null;
     }
 
-    /** 确保已连接（已连着直接 true；没连且没在连则发起连接，本次先返回 false） */
+    /** 确保已连接（已连着直接 true；没连则发起连接，本次先返回 false） */
     public static boolean ensureConnected() {
         if (isConnected()) return true;
         String mac = getConfigMac();
         if (mac == null) return false;
         // 距上次错误 5 秒内不再反复重试，防止动作线程疯狂重连
         if (SystemClock.elapsedRealtime() - lastErrorAt < 5000) return false;
-        if (!connecting.compareAndSet(false, true)) return false;
-        try {
+        synchronized (LOCK) {
+            if (isConnected()) return true;
+            if (gatt != null) {
+                // 已有连接尝试进行中：挂起超过 15 秒还没就绪 → 关掉重来
+                if (SystemClock.elapsedRealtime() - gattStartMs < 15000) return false;
+                try {
+                    gatt.close();
+                } catch (Exception ignored) {
+                }
+                gatt = null;
+                cmdChar = null;
+            }
             android.bluetooth.BluetoothManager bm =
                     (android.bluetooth.BluetoothManager) MainApplication.getInstance()
                             .getSystemService(Context.BLUETOOTH_SERVICE);
             if (bm == null || bm.getAdapter() == null || !bm.getAdapter().isEnabled()) return false;
             if (!hasConnectPermission()) return false;
             BluetoothDevice device = bm.getAdapter().getRemoteDevice(mac);
+            gattStartMs = SystemClock.elapsedRealtime();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 gatt = device.connectGatt(MainApplication.getInstance(), false, callback,
                         BluetoothDevice.TRANSPORT_LE);
@@ -73,8 +84,6 @@ public class BleHidClient {
                 gatt = device.connectGatt(MainApplication.getInstance(), false, callback);
             }
             return false; // 连接是异步的，本次动作走 UDP 兜底，连上后自动切换
-        } finally {
-            connecting.set(false);
         }
     }
 
@@ -194,11 +203,20 @@ public class BleHidClient {
 
         @Override
         public void onServicesDiscovered(BluetoothGatt g, int status) {
-            if (status != BluetoothGatt.GATT_SUCCESS) return;
-            BluetoothGattService s = g.getService(SERVICE_UUID);
-            if (s == null) return;
-            BluetoothGattCharacteristic c = s.getCharacteristic(CHAR_UUID);
-            if (c == null) return;
+            BluetoothGattService s = (status == BluetoothGatt.GATT_SUCCESS) ? g.getService(SERVICE_UUID) : null;
+            BluetoothGattCharacteristic c = (s == null) ? null : s.getCharacteristic(CHAR_UUID);
+            if (c == null) {
+                // 找不到指令特征：关掉本次 GATT，让下次动作重新发起（避免卡死在"已连但不可用"）
+                lastErrorAt = SystemClock.elapsedRealtime();
+                ready = false;
+                cmdChar = null;
+                try {
+                    g.close();
+                } catch (Exception ignored) {
+                }
+                if (g == BleHidClient.gatt) BleHidClient.gatt = null;
+                return;
+            }
             cmdChar = c;
             ready = true;   // 先置可用（MTU 默认 23 也能发分包），MTU 协商成功后再扩容
             g.requestMtu(247);
