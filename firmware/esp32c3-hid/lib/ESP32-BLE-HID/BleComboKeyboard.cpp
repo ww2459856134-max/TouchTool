@@ -258,24 +258,21 @@ void BleComboKeyboard::taskServer(void* pvParameter) {
   BLESecurity::setAuthenticationMode(true /*bonding*/, false /*mitm*/, true /*secure connections*/);
 
   bleKeyboardInstance->hid->reportMap((uint8_t*)_hidReportDescriptor, sizeof(_hidReportDescriptor));
+
+  // v1.2.4 fix: 自定义指令服务必须在 startServices()（即 ble_gatts_start）之前
+  // 创建并 start——NimBLE 在 ble_gatts_start 之后拒绝 ble_gatts_add_svcs，
+  // 之前的写法服务被静默丢弃，nRF Connect / App 都看不到 beb5483e 特征。
+  BLEService* pService = pServer->createService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+  BLECharacteristic* pCharacteristic = pService->createCharacteristic(
+      "beb5483e-36e1-4688-b7f5-ea07361b26a8",
+      BLECharacteristic::PROPERTY_READ |
+      BLECharacteristic::PROPERTY_WRITE |
+      BLECharacteristic::PROPERTY_WRITE_NR   // 免响应写，App 指令低延迟
+  );
+  pCharacteristic->setCallbacks(globalCallbacks);
+  pService->start();
+
   bleKeyboardInstance->hid->startServices();
-
-
-	BLEService* pService = pServer->createService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-
-
-	BLECharacteristic* pCharacteristic = pService->createCharacteristic(
-	"beb5483e-36e1-4688-b7f5-ea07361b26a8",
-		BLECharacteristic::PROPERTY_READ |
-		BLECharacteristic::PROPERTY_WRITE |
-		BLECharacteristic::PROPERTY_WRITE_NR   // v1.2.3: 免响应写，App 指令低延迟
-	);
-
-	pCharacteristic->setCallbacks(globalCallbacks);
-
-
-	pService->start();
-
 
   BLEAdvertising *pAdvertising = pServer->getAdvertising();
   pAdvertising->setAppearance(HID_KEYBOARD);

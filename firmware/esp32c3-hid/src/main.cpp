@@ -32,7 +32,7 @@
 #include <esp_system.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.2.3"
+#define FW_VERSION   "1.2.4"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
