@@ -32,7 +32,7 @@
 #include <esp_system.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.2.2"
+#define FW_VERSION   "1.2.3"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -67,6 +67,8 @@ Preferences prefs;
 String deviceName;
 uint32_t gestureCount = 0;
 uint32_t udpCount = 0;
+uint32_t bleCount = 0;      // v1.2.3: 蓝牙 GATT 通道收到的指令数
+uint32_t bleDropCount = 0;  // 队列满被丢弃的指令数
 String lastError = "";
 
 // 崩溃自保护：60 秒健康确认是否已通过（定义在文件头，状态页/JSON 都要读）
@@ -250,17 +252,18 @@ bool sendText(const String &text, int intervalMs) {
     return true;
 }
 
-// ---------------- UDP 协议分发 ----------------
-void handleUdpPacket(uint8_t *buf, size_t len) {
+// ---------------- 指令分发（UDP 与 BLE GATT 共用，v1.2.3）----------------
+// 包格式：第 1 字节命令字，后面是 payload：
+//   0x06 手势 / 0x07 按键 / 0x08 打字 / 0x09 抬起复位
+void handleCommand(uint8_t *buf, size_t len) {
     if (len < 2) return;
     uint8_t cmd = buf[0];
-    udpCount++;
 
     // payload 从第 2 个字节开始（第 1 字节是命令字）
     const char *payload = (const char *) (buf + 1);
     size_t payloadLen = len - 1;
 
-    Serial.printf("UDP command=0x%02X length=%u connected=%d\n", cmd, (unsigned) len, Keyboard.isConnected() ? 1 : 0);
+    Serial.printf("CMD 0x%02X length=%u connected=%d\n", cmd, (unsigned) len, Keyboard.isConnected() ? 1 : 0);
 
     switch (cmd) {
         case 0x06: {   // 手势
@@ -320,7 +323,7 @@ void handleUdpPacket(uint8_t *buf, size_t len) {
             Serial.println("RESET done");
             break;
         default:
-            Serial.printf("Unknown UDP command: 0x%02X\n", cmd);
+            Serial.printf("Unknown command: 0x%02X\n", cmd);
             break;
     }
 }
@@ -334,7 +337,108 @@ void pollUdp() {
     }
     uint8_t buf[1500];
     int len = udp.read(buf, sizeof(buf));
-    if (len > 0) handleUdpPacket(buf, (size_t) len);
+    if (len > 0) {
+        udpCount++;
+        handleCommand(buf, (size_t) len);
+    }
+}
+
+// ---------------- BLE GATT 指令通道（v1.2.3）----------------
+// 复用库里的自定义服务 4fafc201-... 特征 beb5483e-...（READ|WRITE|WRITE_NR）。
+// 收包在 NimBLE 协议栈线程，执行在 loop 线程（pollBleCmd）——
+// 手势要跑几百毫秒，绝不能堵住蓝牙协议栈线程。
+//
+// App 侧分包协议（JSON 超过一条写的内容时用）：
+//   单包：[cmd][payload...]                        —— 直接执行
+//   分包：首包 [0xFE][总长lo][总长hi][chunk...]，
+//         后续包 [chunk...]，攒够总长后整体执行
+// 建议连接后先 requestMtu(247)，单包即可覆盖大部分手势。
+#define BLECMD_MAX     1500
+#define BLECMD_QLEN    4        // 指令队列深度（手势耗时长，防连发丢包）
+#define BLECMD_TIMEOUT 3000UL   // 分包中途超过 3 秒没后续 → 丢弃重来
+
+static uint8_t cmdQ[BLECMD_QLEN][BLECMD_MAX];
+static uint16_t cmdQLen[BLECMD_QLEN];
+static volatile uint8_t cmdQHead = 0, cmdQTail = 0;
+static portMUX_TYPE cmdQMux = portMUX_INITIALIZER_UNLOCKED;
+
+// BLE 线程专用：分包重组暂存
+static uint8_t bleRxBuf[BLECMD_MAX];
+static uint16_t bleRxLen = 0, bleRxTotal = 0;
+static uint32_t bleRxStartMs = 0;
+
+static bool bleCmdPush(const uint8_t *data, size_t len) {
+    bool ok = false;
+    portENTER_CRITICAL(&cmdQMux);
+    uint8_t next = (cmdQHead + 1) % BLECMD_QLEN;
+    if (next != cmdQTail && len <= BLECMD_MAX) {
+        memcpy(cmdQ[cmdQHead], data, len);
+        cmdQLen[cmdQHead] = (uint16_t) len;
+        cmdQHead = next;
+        ok = true;
+    }
+    portEXIT_CRITICAL(&cmdQMux);
+    if (!ok) bleDropCount++;
+    return ok;
+}
+
+class BleCmdCallbacks : public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *c) override {
+        String v = c->getValue();
+        size_t n = v.length();
+        if (n == 0) return;
+        const uint8_t *p = (const uint8_t *) v.c_str();
+
+        if (p[0] == 0xFE) {                       // 分包首包
+            if (n < 3) return;
+            bleRxTotal = p[1] | (p[2] << 8);
+            if (bleRxTotal < 2 || bleRxTotal > BLECMD_MAX) { bleRxTotal = 0; return; }
+            bleRxLen = 0;
+            bleRxStartMs = millis();
+            size_t first = n - 3;
+            if (first > (size_t)(BLECMD_MAX - bleRxLen)) first = BLECMD_MAX - bleRxLen;
+            memcpy(bleRxBuf + bleRxLen, p + 3, first);
+            bleRxLen += first;
+        } else if (bleRxTotal > 0) {              // 后续分包
+            if (millis() - bleRxStartMs > BLECMD_TIMEOUT) { bleRxTotal = 0; bleRxLen = 0; return; }
+            size_t room = bleRxTotal - bleRxLen;
+            size_t take = n < room ? n : room;
+            memcpy(bleRxBuf + bleRxLen, p, take);
+            bleRxLen += take;
+        } else {                                  // 单包指令
+            bleCmdPush(p, n);
+            return;
+        }
+        if (bleRxTotal > 0 && bleRxLen >= bleRxTotal) {   // 攒齐了
+            bleCmdPush(bleRxBuf, bleRxLen);
+            bleRxTotal = 0;
+            bleRxLen = 0;
+        }
+    }
+};
+
+static BleCmdCallbacks bleCmdCallbacks;
+
+void pollBleCmd() {
+    uint8_t *frame = nullptr;
+    uint16_t flen = 0;
+    portENTER_CRITICAL(&cmdQMux);
+    if (cmdQTail != cmdQHead) {
+        frame = cmdQ[cmdQTail];
+        flen = cmdQLen[cmdQTail];
+    }
+    portEXIT_CRITICAL(&cmdQMux);
+    if (!frame) return;
+
+    // 复制一份到栈上再放锁，处理期间新指令照常入队
+    uint8_t local[BLECMD_MAX];
+    memcpy(local, frame, flen);
+    portENTER_CRITICAL(&cmdQMux);
+    cmdQTail = (cmdQTail + 1) % BLECMD_QLEN;
+    portEXIT_CRITICAL(&cmdQMux);
+
+    bleCount++;
+    handleCommand(local, flen);
 }
 
 // ---------------- WiFi ----------------
@@ -424,7 +528,7 @@ void handleRoot() {
     html += "<div class=row><span>本机 IP</span><span>" + ip + "</span></div>";
     html += "<div class=row><span>信号强度</span><span>" + (sta ? String(WiFi.RSSI()) + " dBm" : String("-")) + "</span></div>";
     html += "<div class=row><span>蓝牙 HID</span><span class='" + String(Keyboard.isConnected() ? "ok'>已连接" : "bad'>未连接") + "</span></div>";
-    html += "<div class=row><span>手势 / UDP</span><span>" + String(gestureCount) + " / " + String(udpCount) + "</span></div>";
+    html += "<div class=row><span>手势 / UDP / BLE</span><span>" + String(gestureCount) + " / " + String(udpCount) + " / " + String(bleCount) + "</span></div>";
     // 崩溃自保护状态（v1.2.2 起）
     html += "<div class=row><span>固件槽位</span><span>" + String(esp_ota_get_running_partition()->label)
             + " · 自保护" + (healthConfirmed ? "已确认" : "观察中") + "</span></div>";
@@ -476,6 +580,8 @@ void handleInfo() {
     doc["ip"] = WiFi.isConnected() ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
     doc["gestures"] = gestureCount;
     doc["commands"] = udpCount;
+    doc["bleCommands"] = bleCount;
+    doc["bleDrops"] = bleDropCount;
     doc["uptime"] = (uint32_t) (millis() / 1000);
     doc["part"] = esp_ota_get_running_partition()->label;
     doc["health"] = healthConfirmed;
@@ -505,6 +611,8 @@ void handleBleLog() {
     out += "uptime=" + String(millis() / 1000) + "s\n";
     out += "hidSent=" + String((unsigned long) hidSendCount)
          + " hidSkipped=" + String((unsigned long) hidSkipCount) + "\n";
+    out += "cmdUdp=" + String(udpCount) + " cmdBle=" + String(bleCount)
+         + " bleDrops=" + String(bleDropCount) + "\n";
     out += "freeHeap=" + String(ESP.getFreeHeap()) + "\n";
     out += "resetReason=" + String(resetReasonName((uint8_t) esp_reset_reason()))
          + " (last=" + resetReasonName(prefs.getUChar("lastRst", 0xFF)) + ")\n";
@@ -714,6 +822,8 @@ void setupBle() {
     // 名字要在 begin() 之前设置：begin() 会用 deviceName 初始化 BLE 广播
     Keyboard.deviceName = deviceName.c_str();
     Keyboard.deviceManufacturer = "Espressif";
+    // v1.2.3: BLE GATT 指令通道回调（挂在库内自定义服务 beb5483e 特征上）
+    Keyboard.setCallbacks(&bleCmdCallbacks);
     hidInitDiag();
     Keyboard.begin();
     Mouse.begin();
@@ -775,6 +885,7 @@ void loop() {
     server.handleClient();
     crashGuardConfirmHealth();
     pollUdp();
+    pollBleCmd();   // v1.2.3: BLE GATT 指令通道
 
     // WiFi 断线重连（每 30 秒试一次，不阻塞主循环）
     static unsigned long lastCheck = 0;

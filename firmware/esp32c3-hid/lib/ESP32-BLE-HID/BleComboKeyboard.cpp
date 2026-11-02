@@ -267,9 +267,9 @@ void BleComboKeyboard::taskServer(void* pvParameter) {
 	BLECharacteristic* pCharacteristic = pService->createCharacteristic(
 	"beb5483e-36e1-4688-b7f5-ea07361b26a8",
 		BLECharacteristic::PROPERTY_READ |
-		BLECharacteristic::PROPERTY_WRITE
+		BLECharacteristic::PROPERTY_WRITE |
+		BLECharacteristic::PROPERTY_WRITE_NR   // v1.2.3: 免响应写，App 指令低延迟
 	);
-
 
 	pCharacteristic->setCallbacks(globalCallbacks);
 
