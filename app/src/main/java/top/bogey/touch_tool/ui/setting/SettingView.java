@@ -433,6 +433,30 @@ public class SettingView extends Fragment {
                 .show());
         refreshHidDevice();
 
+        // HID 蓝牙直连（固件 v1.2.3+）：指令走 BLE GATT，不依赖 WiFi
+        binding.hidBleMode.setOnSwitchClickListener(v -> {
+            if (binding.hidBleMode.isChecked()) {
+                binding.hidBleMode.setChecked(false);
+                activity.launcherBluetooth((code, data) -> {
+                    boolean enable = code == Activity.RESULT_OK;
+                    SettingSaver.HID_USE_BLE.set(enable);
+                    binding.hidBleMode.setChecked(enable);
+                    refreshHidBle();
+                    if (enable) {
+                        Toast.makeText(requireContext(), "蓝牙直连已开启，动作将优先走蓝牙发送", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } else {
+                SettingSaver.HID_USE_BLE.set(false);
+                top.bogey.touch_tool.utils.BleHidClient.disconnect();
+                refreshHidBle();
+            }
+        });
+        binding.hidBleMode.setChecked(SettingSaver.HID_USE_BLE.get());
+
+        binding.hidBleDevice.setOnClickListener(v -> pickBleDevice());
+        refreshHidBle();
+
         // 定位
         binding.locationSwitch.setOnSwitchClickListener(v -> {
             if (binding.locationSwitch.isChecked()) {
@@ -531,6 +555,59 @@ public class SettingView extends Fragment {
         }
 
         return binding.getRoot();
+    }
+
+    private void refreshHidBle() {
+        String mac = SettingSaver.HID_BLE_MAC.get();
+        if (mac == null || mac.trim().isEmpty()) {
+            binding.hidBleDevice.setDescription("未选择（请先在系统蓝牙里配对「鼠标键盘」）");
+        } else {
+            binding.hidBleDevice.setDescription(mac + (SettingSaver.HID_USE_BLE.get() ? "  ● 蓝牙直连中" : "  ○ 已选择"));
+        }
+    }
+
+    // 从已配对蓝牙设备中选择 ESP32 HID 设备（需先在系统蓝牙里完成配对）
+    private void pickBleDevice() {
+        MainActivity activity = (MainActivity) requireActivity();
+        activity.launcherBluetooth((code, data) -> {
+            if (code != Activity.RESULT_OK || !isAdded()) return;
+            android.bluetooth.BluetoothManager bm = (android.bluetooth.BluetoothManager)
+                    requireContext().getSystemService(Context.BLUETOOTH_SERVICE);
+            if (bm == null || bm.getAdapter() == null) {
+                Toast.makeText(requireContext(), "蓝牙不可用", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            java.util.Set<android.bluetooth.BluetoothDevice> bonded;
+            try {
+                bonded = bm.getAdapter().getBondedDevices();
+            } catch (SecurityException e) {
+                return;
+            }
+            if (bonded == null || bonded.isEmpty()) {
+                Toast.makeText(requireContext(), "没有已配对设备，请先在系统蓝牙里配对", Toast.LENGTH_LONG).show();
+                return;
+            }
+            java.util.List<android.bluetooth.BluetoothDevice> list = new java.util.ArrayList<>(bonded);
+            CharSequence[] names = new CharSequence[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                android.bluetooth.BluetoothDevice d = list.get(i);
+                String name;
+                try {
+                    name = d.getName();
+                } catch (SecurityException e) {
+                    name = null;
+                }
+                names[i] = (name == null || name.isEmpty() ? "未命名设备" : name) + "  (" + d.getAddress() + ")";
+            }
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.setting_hid_ble_device)
+                    .setItems(names, (dialog, which) -> {
+                        SettingSaver.HID_BLE_MAC.set(list.get(which).getAddress());
+                        refreshHidBle();
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+        });
     }
 
     private String maskKey(String key) {

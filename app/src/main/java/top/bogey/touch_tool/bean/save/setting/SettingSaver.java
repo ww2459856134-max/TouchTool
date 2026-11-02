@@ -63,6 +63,9 @@ public class SettingSaver {
     /// HID 中继设备地址（ESP32 蓝牙 HID，全局配置）
     public final static SettingSave<String> HID_DEVICE_IP = new SettingSave<>("HID_DEVICE_IP", "");
     public final static SettingSave<Integer> HID_DEVICE_PORT = new SettingSave<>("HID_DEVICE_PORT", 21115);
+    /// v1.2.3: 指令走 BLE GATT 直连（不依赖 WiFi）；false = 走 UDP/WiFi
+    public final static SettingSave<Boolean> HID_USE_BLE = new SettingSave<>("HID_USE_BLE", false);
+    public final static SettingSave<String> HID_BLE_MAC = new SettingSave<>("HID_BLE_MAC", "");
     /// 定位权限
     public final static SettingSave<Boolean> PERMISSION_LOCATION = new SettingSave<>("PERMISSION_LOCATION", false);
 

@@ -41,9 +41,15 @@ public class HidClient {
         return Math.max(1, Math.min(65535, port));
     }
 
-    /** 设备是否可用：未配置IP、或最近一次探活不可达时返回 false，调用方应直接走无障碍兜底 */
+    /** 设备是否可用：BLE 模式看 MAC 是否已配置；UDP 模式看 IP。调用方在不可达时应直接走无障碍兜底 */
     public static boolean isReady() {
+        if (useBle()) return BleHidClient.getConfigMac() != null;
         return getConfigHost() != null;
+    }
+
+    /** 是否启用蓝牙直连模式（v1.2.3 固件起支持） */
+    public static boolean useBle() {
+        return top.bogey.touch_tool.bean.save.setting.SettingSaver.HID_USE_BLE.get();
     }
 
     /** 标记设备离线（发送异常时调用），让后续动作跳过 HID 直接回退 */
@@ -57,8 +63,15 @@ public class HidClient {
         lastOnlineAt = SystemClock.elapsedRealtime();
     }
 
-    /** 最近一次探活是否可达（带 10 秒缓存），未配置IP返回 false */
+    /** 最近一次探活是否可达（带 10 秒缓存），未配置返回 false */
     public static boolean isOnline() {
+        if (useBle()) {
+            long now = SystemClock.elapsedRealtime();
+            if (now - lastOnlineAt < ONLINE_CACHE_MS) return lastOnline;
+            boolean ok = BleHidClient.isConnected();
+            if (ok) markOnline(); else markOffline();
+            return ok;
+        }
         if (getConfigHost() == null) return false;
         long now = SystemClock.elapsedRealtime();
         if (now - lastOnlineAt < ONLINE_CACHE_MS) return lastOnline;
@@ -127,11 +140,24 @@ public class HidClient {
     // 若固件支持回执，会回一个字节，收到才认定为真成功；收不到则按超时回落为"已发送"，
     // 但连续超时会标记设备离线，让后续动作直接走无障碍兜底而不是干等。
     private static boolean sendCommand(String host, int port, String payload, byte cmd, StringBuilder hexLog) {
-        if (host == null || host.trim().isEmpty()) return false;
         byte[] body = payload.getBytes();
         byte[] data = new byte[1 + body.length];
         data[0] = cmd;
         System.arraycopy(body, 0, data, 1, body.length);
+
+        // v1.2.3: 蓝牙直连模式——指令走 BLE GATT，不依赖 WiFi。
+        // 未连接时尝试触发连接；首次失败降级走 UDP（若配置了 IP），两条腿并行不冲突。
+        if (useBle()) {
+            if (BleHidClient.sendFrame(data)) {
+                markOnline();
+                if (hexLog != null) hexLog.append("[BLE] ").append(toHex(data));
+                return true;
+            }
+            if (hexLog != null) hexLog.append("[BLE失败] ");
+            // 继续尝试 UDP 兜底（未配置 IP 时直接失败）
+        }
+
+        if (host == null || host.trim().isEmpty()) return false;
 
         for (int attempt = 0; attempt < 2; attempt++) {
             DatagramSocket socket = null;
@@ -249,6 +275,7 @@ public class HidClient {
      * 结果缓存 {@link #ONLINE_CACHE_MS}，避免每个点击动作都多花一次网络往返。
      */
     public static boolean isOnlineStrict() {
+        if (useBle()) return isOnline();   // BLE 模式没有 HTTP 可探，看 GATT 连接状态
         String host = getConfigHost();
         if (host == null) return false;
         long now = SystemClock.elapsedRealtime();
