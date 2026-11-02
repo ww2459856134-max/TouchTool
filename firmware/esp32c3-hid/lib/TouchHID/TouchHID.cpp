@@ -197,7 +197,9 @@ BleComboKeyboard::BleComboKeyboard(std::string deviceName,
 void BleComboKeyboard::begin(void) {
   // 与旧 fork 相同的异步模式：begin() 只创建任务，BLEDevice::init() 在
   // 任务线程里执行；调用方在 begin() 之后不能立刻操作 BLE API。
-  xTaskCreate(BleComboKeyboard::taskServer, "server", 8192, this, 5, NULL);
+  // 栈必须给足：旧 fork 用 20KB；1.3.0 曾用 8KB 导致 NimBLE 初始化时
+  // 栈溢出（canary panic 重启循环，WiFi/蓝牙全部表现为消失）。
+  xTaskCreate(BleComboKeyboard::taskServer, "server", 20000, this, 5, NULL);
 }
 
 bool BleComboKeyboard::isConnected(void) {
