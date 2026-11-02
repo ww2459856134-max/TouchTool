@@ -28,9 +28,11 @@
 #include <BleCombo.h>
 #include <BLEDevice.h>
 #include <esp_mac.h>
+#include <esp_ota_ops.h>
+#include <esp_system.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.2.1"
+#define FW_VERSION   "1.2.2"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -43,6 +45,15 @@
 #define OTA_PASS     "autojs1234"
 // 允许不带口令就升级吗？关掉更安全，但网页上手刷要输一次口令
 #define OTA_ALLOW_NO_AUTH 1
+
+// ---------------- 崩溃自保护 ----------------
+// 目标：杜绝 1.3.0 那种「刷了坏固件 → 无限重启循环」变砖。
+// 规则：异常重启（panic / 看门狗）连续攒到 3 次且期间从未通过健康确认
+// （运行满 60 秒），就判定当前槽位的固件坏了，自动把启动项切回
+// 另一个 app 分区（即升级前的旧固件），重启恢复。
+// 正常关机/断电/按 RESET/软件重启不计数，单次偶发崩溃也不触发。
+#define CRASH_ROLLBACK_THRESHOLD 3
+#define HEALTH_CONFIRM_MS        60000UL
 
 // BleCombo.h 里已经导出了全局实例 Keyboard / Mouse（见 lib/ESP32-BLE-HID/BleCombo.cpp），
 // 这里只声明外部引用，重复定义会链接报 "multiple definition of `Keyboard'"
@@ -57,6 +68,9 @@ String deviceName;
 uint32_t gestureCount = 0;
 uint32_t udpCount = 0;
 String lastError = "";
+
+// 崩溃自保护：60 秒健康确认是否已通过（定义在文件头，状态页/JSON 都要读）
+static bool healthConfirmed = false;
 
 // BLE 事件轨迹：放进环形缓冲，通过 /blelog 直接手机浏览器就能看，
 // 不用连串口也能判断"配对到底断在哪一步"
@@ -411,6 +425,9 @@ void handleRoot() {
     html += "<div class=row><span>信号强度</span><span>" + (sta ? String(WiFi.RSSI()) + " dBm" : String("-")) + "</span></div>";
     html += "<div class=row><span>蓝牙 HID</span><span class='" + String(Keyboard.isConnected() ? "ok'>已连接" : "bad'>未连接") + "</span></div>";
     html += "<div class=row><span>手势 / UDP</span><span>" + String(gestureCount) + " / " + String(udpCount) + "</span></div>";
+    // 崩溃自保护状态（v1.2.2 起）
+    html += "<div class=row><span>固件槽位</span><span>" + String(esp_ota_get_running_partition()->label)
+            + " · 自保护" + (healthConfirmed ? "已确认" : "观察中") + "</span></div>";
     if (!lastError.isEmpty()) {
         html += "<div class=row><span>最近错误</span><span class=bad>" + htmlEscape(lastError) + "</span></div>";
     }
@@ -460,6 +477,8 @@ void handleInfo() {
     doc["gestures"] = gestureCount;
     doc["commands"] = udpCount;
     doc["uptime"] = (uint32_t) (millis() / 1000);
+    doc["part"] = esp_ota_get_running_partition()->label;
+    doc["health"] = healthConfirmed;
     doc["ota"] = true;
     doc["cmds"] = "0x06,0x07,0x08,0x09";
     String out;
@@ -487,7 +506,13 @@ void handleBleLog() {
     out += "hidSent=" + String((unsigned long) hidSendCount)
          + " hidSkipped=" + String((unsigned long) hidSkipCount) + "\n";
     out += "freeHeap=" + String(ESP.getFreeHeap()) + "\n";
-    out += "resetReason=" + String(esp_reset_reason()) + "\n";
+    out += "resetReason=" + String(resetReasonName((uint8_t) esp_reset_reason()))
+         + " (last=" + resetReasonName(prefs.getUChar("lastRst", 0xFF)) + ")\n";
+    out += "part=" + String(esp_ota_get_running_partition()->label) + "\n";
+    out += "crashCount=" + String(prefs.getUChar("crashct", 0))
+         + "/" + String(CRASH_ROLLBACK_THRESHOLD) + "\n";
+    out += "rollbacks=" + String(prefs.getUChar("rbct", 0)) + "\n";
+    out += "health=" + String(healthConfirmed ? "confirmed" : "pending") + "\n";
     out += "---- trace ----\n";
     char snap[BLE_TRACE_SIZE];
     traceSnapshot(snap, sizeof(snap));
@@ -619,6 +644,67 @@ void handleOtaDone() {
     }
 }
 
+// ---------------- 崩溃自保护 ----------------
+static const char *resetReasonName(uint8_t r) {
+    switch (r) {
+        case ESP_RST_UNKNOWN:   return "unknown";
+        case ESP_RST_POWERON:   return "poweron";
+        case ESP_RST_EXT:       return "reset-btn";
+        case ESP_RST_SW:        return "software";
+        case ESP_RST_PANIC:     return "panic";
+        case ESP_RST_INT_WDT:   return "int-wdt";
+        case ESP_RST_TASK_WDT:  return "task-wdt";
+        case ESP_RST_WDT:       return "other-wdt";
+        case ESP_RST_DEEPSLEEP: return "deepsleep";
+        case ESP_RST_BROWNOUT:  return "brownout";
+        default:                return "other";
+    }
+}
+
+// 上电最早期调用（prefs 就绪后立刻）：统计异常重启。
+// 正常来源（上电 / RESET 键 / 软件重启 / 深睡唤醒 / 掉电）不计数，
+// panic、看门狗这类异常来源 +1；攒够阈值 → 启动项切回另一个 OTA 槽。
+static void crashGuardBoot() {
+    uint8_t rr = (uint8_t) esp_reset_reason();
+    if (prefs.getUChar("lastRst", 0xFF) != rr) prefs.putUChar("lastRst", rr);
+
+    bool normal = (rr == ESP_RST_POWERON || rr == ESP_RST_EXT || rr == ESP_RST_SW ||
+                   rr == ESP_RST_DEEPSLEEP || rr == ESP_RST_BROWNOUT);
+    uint8_t ct = prefs.getUChar("crashct", 0);
+    if (normal) {
+        if (ct != 0) { ct = 0; prefs.putUChar("crashct", 0); }
+    } else {
+        ct++;
+        prefs.putUChar("crashct", ct);
+        Serial.printf("[crash-guard] abnormal reset (%s), consecutive=%d/%d\n",
+                      resetReasonName(rr), ct, CRASH_ROLLBACK_THRESHOLD);
+    }
+    if (ct >= CRASH_ROLLBACK_THRESHOLD) {
+        const esp_partition_t *cur = esp_ota_get_running_partition();
+        const esp_partition_t *other = esp_ota_get_next_update_partition(cur);
+        prefs.putUChar("rbct", prefs.getUChar("rbct", 0) + 1);
+        prefs.putUChar("crashct", 0);
+        Serial.printf("[crash-guard] %d consecutive crashes -> rollback %s -> %s\n",
+                      ct, cur ? cur->label : "?", other ? other->label : "(none)");
+        if (other) {
+            esp_ota_set_boot_partition(other);
+        }
+        delay(200);
+        ESP.restart();
+    }
+}
+
+// 健康确认：连续运行满 60 秒（WiFi/BLE/HTTP 都已就绪）→ 清零崩溃计数，
+// 并把当前 OTA 槽标记为有效。若引导程序开了 OTA 回滚，这一步同时
+// 会取消 pending-verify 状态；没开也无副作用。
+static void crashGuardConfirmHealth() {
+    if (healthConfirmed || millis() < HEALTH_CONFIRM_MS) return;
+    healthConfirmed = true;
+    prefs.putUChar("crashct", 0);
+    esp_ota_mark_app_valid_cancel_rollback();
+    Serial.println("[crash-guard] health confirmed (uptime >= 60s)");
+}
+
 // ---------------- 初始化 ----------------
 void setupBle() {
     // 设备名固定为 "鼠标键盘"（用户指定；v1.2.0 之前是 AutoJS HID-XXXX）。
@@ -648,6 +734,9 @@ void setup() {
     Serial.println("\n=== AutoJS HID (TouchTool) " FW_VERSION " ===");
 
     prefs.begin("hidcfg", false);
+
+    // 崩溃自保护：越早跑越好，赶在任何可能出问题的初始化之前
+    crashGuardBoot();
 
     // 关掉 WiFi 省电：C3 单射频，省电模式会让 BLE 的连接间隔抖动得厉害，
     // 表现为 HID 报告延迟/超时、蓝牙频繁掉线。HID 场景吞吐要求极低，不省这个电。
@@ -684,6 +773,7 @@ void setup() {
 
 void loop() {
     server.handleClient();
+    crashGuardConfirmHealth();
     pollUdp();
 
     // WiFi 断线重连（每 30 秒试一次，不阻塞主循环）
