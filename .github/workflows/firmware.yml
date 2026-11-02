@@ -91,7 +91,7 @@ jobs:
           cp out/boot_app0.bin                    "$OUT/boot_app0.bin"
 
           "$ES" --chip esp32c3 merge-bin -o "$OUT/firmware-merged.bin" \
-            --flash-mode qio --flash-freq 80m --flash-size 4MB \
+            --flash-mode dio --flash-freq 80m --flash-size 4MB \
             0x0     "$OUT/bootloader.bin" \
             0x8000  "$OUT/partitions.bin" \
             0xe000  "$OUT/boot_app0.bin" \
