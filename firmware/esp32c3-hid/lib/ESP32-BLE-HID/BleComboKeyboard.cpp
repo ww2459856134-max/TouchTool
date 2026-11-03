@@ -1,3 +1,7 @@
+#ifndef HID_TRACE
+#define HID_TRACE 0
+#endif
+
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
@@ -331,12 +335,16 @@ bool hidSafeNotify(BLECharacteristic *c, const char *tag, const uint8_t *data, s
   bool ok = (c != nullptr) && (g_hidSvc != nullptr) && (srv != nullptr)
             && handle != 0xFFFF && len > 0 && len <= 32 && clients > 0
             && conn != ESP_GATT_IF_NONE;
+  // v1.2.10: 逐帧日志默认关闭（每帧触摸都写 trace + 串口，开销大且抖动蓝牙时序）。
+  // 排查时在编译命令加 -DHID_TRACE=1 重新打开。
+#if HID_TRACE
   snprintf(line, sizeof(line), "[%lus] HID %s chr=%p hnd=%u conn=%u clients=%d len=%u\n",
            (unsigned long) (millis() / 1000), tag, c, (unsigned) handle,
            (unsigned) conn, clients, (unsigned) len);
   traceAppend(line);
   Serial.print("[HID-TRACE] ");
   Serial.print(line);
+#endif
   if (!ok) {
     hidSkipCount++;
     return false;
