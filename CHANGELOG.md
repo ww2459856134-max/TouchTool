@@ -2,6 +2,37 @@
 
 本文件记录 TouchTool 定制版的版本演进。下载地址见 [Releases](https://github.com/ww2459856134-max/TouchTool/releases)。
 
+## v92 回退版 + 固件 v1.3.8 (2026-11-04) —— 当前推荐组合
+
+**下载**：[Release v92-rollback](https://github.com/ww2459856134-max/TouchTool/releases/tag/v92-rollback)（App）· [Release v1.2.9-firmware](https://github.com/ww2459856134-max/TouchTool/releases/tag/v1.2.9-firmware)（纯蓝牙固件）
+
+### App：v92 回退版（从源码移除 USB 通道）
+- 彻底删除 `UsbHidClient` / USB 发送路由 / 设置页「USB 有线连接授权」入口
+- 指令只走：**蓝牙 GATT → WiFi/UDP**，不再出现 `[USB]`/`[USB失败]` 日志
+- 保留 v91/v92 蓝牙核心修复（见下），与 v92 行为完全一致，覆盖安装配置不丢
+
+### App：v91/v92 蓝牙点击关键修复（单蓝牙模式全通的基础）
+- **v91**：修复 HID 在线缓存闸门——一次失败被 markOffline 后 10 秒内所有 HID 点击被静默跳过并回落无障碍，表现为「复位指令能到、点击手势永远不发」。改为每次实时确保 GATT 连接
+- **v92**：修复 BLE 分包写入 bug——带响应写之间只 sleep 8ms，52 字节手势的第 2/3 包被 Android busy 拒收（3 字节复位单包正常）。改为等待写完成回调 + 重试 + MTU 等待
+
+### 固件：v1.2.4 → v1.3.8 演进要点（ESP32-S3, 16MB Flash）
+| 版本 | 内容 |
+|---|---|
+| v1.2.7 | 拟人手势序列（悬停→按下→微动→两帧抬起）+ contact ID 轮换 |
+| v1.2.8 | BLE 连接参数优化 `updateConnParams(16,24,0,400)`，实测 itvl=30ms |
+| v1.2.9 | **单蓝牙稳定版**（Release 提供），与 App v92 组合点击全通 |
+| v1.3.0~1.3.1 | USB 有线通道首版（CDC 指令 + TinyUSB HID 触摸） |
+| v1.3.3 | 修复触摸/键盘描述符漏 `addDevice()` 注册 |
+| v1.3.4~1.3.5 | 诊断埋点（dr/rp/idle 计数）+ HID 接口改纯 IN 端点 |
+| v1.3.6~1.3.7 | 触摸改绝对坐标鼠标形态 + `/usbtest` 自测端点 |
+| **v1.3.8** | **纯 HID 形态（无 CDC）+ 罗技 VID/PID 0x046D:0xC077**——绕过小米 HyperOS 对复合设备/开发板厂商 ID 的 USB 输入管控，实测主机开始轮询（`rp=43 d=37 drain=yes`）。指令走蓝牙，USB 线专管触摸输出 |
+
+### 调试结论（踩坑记录）
+- Linux 内核 HID 输入设备**被用户态打开前不轮询 IN 端点**（`usbhid_open` 才提交 URB）；SET_IDLE 在解析描述符之前发出，`idle>0` 不代表驱动绑定成功
+- USB Digitizer（触摸屏）描述符会被内核 hid-multitouch 抢占认领，精简描述符探测失败 → 整个接口不创建输入设备（连键盘也不读）
+- 部分国产 ROM（小米 HyperOS）对复合设备与开发板 VID 有输入管控：**纯 HID + 大厂 VID/PID 可通过**
+- `/blelog` 诊断头部：`usb:conn=? ready=? q=? d=? re=? dr=? rp=? idle=?`——`rp>0`/`drain=yes` 即主机在读取
+
 ## v90 (2026-11-01)
 
 ### 新增：ESP32 固件 OTA 在线升级（不用再插电脑）
