@@ -34,14 +34,9 @@
 #include <esp_system.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.2.10"
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-#define FW_CHIP      "ESP32-S3"
-#elif defined(CONFIG_IDF_TARGET_ESP32C3)
+#define FW_VERSION   "1.2.9"
 #define FW_CHIP      "ESP32-C3"
-#else
-#define FW_CHIP      "ESP32"
-#endif
+
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -52,7 +47,7 @@
 #define OTA_USER     "admin"
 #define OTA_PASS     "autojs1234"
 // 允许不带口令就升级吗？关掉更安全，但网页上手刷要输一次口令
-#define OTA_ALLOW_NO_AUTH 0
+#define OTA_ALLOW_NO_AUTH 1
 
 // ---------------- 崩溃自保护 ----------------
 // 目标：杜绝 1.3.0 那种「刷了坏固件 → 无限重启循环」变砖。
@@ -87,50 +82,31 @@ static bool healthConfirmed = false;
 // BLE 事件轨迹：固定环形缓冲（无动态内存）。不能用 String——
 // BLE 事件回调跑在蓝牙协议栈线程、HTTP 页面在 loop 线程读，
 // String 跨线程扩容/释放会撞出堆损坏（这是执行动作崩溃的头号嫌疑）。
-#define BLE_TRACE_SIZE 4096
+#define BLE_TRACE_SIZE 2400
 static char bleTraceBuf[BLE_TRACE_SIZE];
-static size_t bleTraceLen = 0;    // v1.2.10: 复用为环形写指针 head
-static size_t bleTraceUsed = 0;   // 当前有效字节数
+static size_t bleTraceLen = 0;
 static portMUX_TYPE bleTraceMux = portMUX_INITIALIZER_UNLOCKED;
 
-// v1.2.10: 环形缓冲改为【头指针覆盖写】——旧实现每次追加在临界区里
-// memmove 最多 2.4KB 挪动旧数据，BLE 协议栈线程频繁进长临界区会抖动蓝牙时序。
-// 新实现：直接写 head 位置、head 前移、覆盖最老数据，临界区内零搬移。
-// 代价：快照首行可能是被截断的半行，输出时跳到第一个换行为止。
 void traceAppend(const char *line) {
     size_t n = strlen(line);
-    if (n >= BLE_TRACE_SIZE - 1) {   // 超长行只留尾部
-        line += n - (BLE_TRACE_SIZE - 1);
-        n = BLE_TRACE_SIZE - 1;
-    }
     portENTER_CRITICAL(&bleTraceMux);
-    for (size_t i = 0; i < n; i++) {
-        bleTraceBuf[bleTraceLen] = line[i];   // bleTraceLen 复用为写指针 head
-        bleTraceLen = (bleTraceLen + 1) % BLE_TRACE_SIZE;
-        if (bleTraceUsed < BLE_TRACE_SIZE - 1) bleTraceUsed++;
+    if (bleTraceLen + n >= BLE_TRACE_SIZE) {
+        size_t drop = bleTraceLen + n + 1 - BLE_TRACE_SIZE;
+        if (drop > bleTraceLen) drop = bleTraceLen;
+        memmove(bleTraceBuf, bleTraceBuf + drop, bleTraceLen - drop);
+        bleTraceLen -= drop;
     }
+    memcpy(bleTraceBuf + bleTraceLen, line, n + 1);
+    bleTraceLen += n;
     portEXIT_CRITICAL(&bleTraceMux);
 }
 
 static void traceSnapshot(char *out, size_t outSize) {
     portENTER_CRITICAL(&bleTraceMux);
-    size_t head = bleTraceLen, used = bleTraceUsed;
-    // 按 head→tail 顺序拼出到 out（满缓冲时首行为半行，跳过）
-    size_t o = 0;
-    // 只有缓冲已绕满时首行才可能是被截断的半行；未满时从 0 开始全是完整行
-    bool skipPartial = (used >= BLE_TRACE_SIZE - 1);
-    bool lineStart = true;
-    for (size_t k = 0; k < used && o < outSize - 2; k++) {
-        char c = bleTraceBuf[(head - used + k + BLE_TRACE_SIZE) % BLE_TRACE_SIZE];
-        if (lineStart) {
-            if (skipPartial && c != '\n') continue;   // 跳过截断的半行
-            lineStart = false;
-            if (skipPartial) continue;                 // 半行结束符本身不输出
-        }
-        out[o++] = c;
-    }
-    if (o > 0 && out[o - 1] != '\n') out[o++] = '\n';
-    out[o] = 0;
+    size_t n = bleTraceLen;
+    if (n >= outSize) n = outSize - 1;
+    memcpy(out, bleTraceBuf, n);
+    out[n] = 0;
     portEXIT_CRITICAL(&bleTraceMux);
 }
 
@@ -163,13 +139,10 @@ size_t otaImageSize = 0;
 static uint8_t curContact = 1;   // 当前 contact id（每次手势轮换，安卓靠它区分不同触点）
 static bool touchActive = false; // v1.2.8: 当前是否真的有触点按下（复位时避免发多余抬起帧）
 
-// v1.2.10: 纯蓝牙形态，输出通道 = BLE HID 连接
+// 输出通道是否就绪
 static bool hidOutReady() {
     return Keyboard.isConnected();
 }
-
-static uint32_t tchSeq = 0;
-static uint8_t tchLastLogged = 0xFF;
 
 static inline void touchSend(uint8_t state, uint16_t x, uint16_t y) {
     lastX = x;
@@ -177,15 +150,10 @@ static inline void touchSend(uint8_t state, uint16_t x, uint16_t y) {
     touchActive = (state & 0x01) != 0;
     if (!Keyboard.isConnected()) {
         hidSkipCount++;
-        // v1.2.10 降频：跳过日志只在状态切换或每 8 帧记一次
-        if (tchLastLogged != state || (tchSeq & 7) == 0) {
-            char line[112];
-            snprintf(line, sizeof(line), "[%lus] SKIP state=%u x=%u y=%u (未连接)",
-                     (unsigned long) (millis() / 1000), state, x, y);
-            traceAppend(line);
-            tchLastLogged = state;
-        }
-        tchSeq++;
+        char line[128];
+        snprintf(line, sizeof(line), "[%lus] SKIP state=%u x=%u y=%u (未连接)",
+                 (unsigned long) (millis() / 1000), state, x, y);
+        traceAppend(line);
         return;
     }
     // 限速：两次报告至少间隔 8ms。安卓的 HID host 对高频通知敏感，
@@ -195,16 +163,11 @@ static inline void touchSend(uint8_t state, uint16_t x, uint16_t y) {
         delay(8 - (now - lastHidSendAt));
     }
     Mouse.send(state, (int16_t) x, (int16_t) y, curContact);
-    // v1.2.10 降频：状态切换必记，同状态帧每 8 帧记一次（原来每帧都记）
-    if (tchLastLogged != state || (tchSeq & 7) == 0) {
-        char line[96];
-        snprintf(line, sizeof(line), "[%lus] TCH state=%u x=%u y=%u cid=%u seq=%lu",
-                 (unsigned long) (millis() / 1000), state, x, y, curContact,
-                 (unsigned long) tchSeq);
-        traceAppend(line);
-        tchLastLogged = state;
-    }
-    tchSeq++;
+    // v1.2.6 诊断：记录触摸报文详情
+    char line[96];
+    snprintf(line, sizeof(line), "[%lus] TCH state=%u x=%u y=%u cid=%u",
+             (unsigned long) (millis() / 1000), state, x, y, curContact);
+    traceAppend(line);
 }
 
 // 像素 → HID 坐标（描述符 Logical Maximum = 32767，与旧版官方固件一致）
@@ -240,7 +203,7 @@ static uint16_t bleConnItvl() {
 bool runGesture(const int *coords, int count, int duration, int sw, int sh) {
     if (count < 2 || sw <= 0 || sh <= 0) return false;
     if (!hidOutReady()) {
-        Serial.printf("GESTURE rejected: no HID output (BLE not connected)\n");
+        Serial.printf("GESTURE rejected: no HID output (BLE/USB)\n");
         return false;
     }
 
@@ -263,11 +226,6 @@ bool runGesture(const int *coords, int count, int duration, int sw, int sh) {
     if (itvl > 32) {   // >40ms 就太慢了，重新请求 20~30ms
         BLEServer *srv = BLEDevice::getServer();
         if (srv) srv->requestConnParams(srv->getConnId(), 16, 24, 0, 400);
-        // v1.2.10: 等参数生效（最多 100ms）——v1.2.9 里本次手势仍跑旧间隔，
-        // 只有下一个手势受益；手机拒绝时按 itvlMs*3 兜底补偿
-        for (int i = 0; i < 10 && bleConnItvl() > 32; i++) delay(10);
-        itvl = bleConnItvl();
-        itvlMs = (int) (itvl * 1.25f);
     }
 
     // v1.2.7 拟人序列：清残留 → 悬停 → 按下 → (微动) → 悬停抬起 → 离开
@@ -286,7 +244,7 @@ bool runGesture(const int *coords, int count, int duration, int sw, int sh) {
         if (itvlMs > 0 && hold < itvlMs * 2) hold = itvlMs * 2;
         touchSend(0x03, hx, hy);
         delay(hold / 2);
-        touchSend(0x03, (uint16_t) (hx + 6 > 32767 ? 32767 : hx + 6), (uint16_t) (hy + 6 > 32767 ? 32767 : hy + 6));
+        touchSend(0x03, (uint16_t) (hx + 6), (uint16_t) (hy + 6));
         delay(hold - hold / 2);
         touchSend(0x03, hx, hy);
     } else {
@@ -379,10 +337,7 @@ void handleCommand(uint8_t *buf, size_t len) {
 
     switch (cmd) {
         case 0x06: {   // 手势
-            // v1.2.10: 静态复用，杜绝每次 4KB 堆分配/释放（长期运行堆碎片风险）
-            // handleCommand 只在 loop 线程被调，静态复用安全
-            static StaticJsonDocument<1024> doc;
-            doc.clear();
+            DynamicJsonDocument doc(4096);
             DeserializationError err = deserializeJson(doc, payload, payloadLen);
             if (err) {
                 lastError = String("Invalid gesture JSON: ") + err.c_str();
@@ -406,8 +361,8 @@ void handleCommand(uint8_t *buf, size_t len) {
             int coords[128];
             for (int i = 0; i < count * 2; i++) coords[i] = a[i].as<int>();
 
-            {   // 诊断：手势解析结果 + 当前连接间隔
-                char line[128];
+            {   // 诊断：手势解析结果 + 当前连接间隔 + USB 状态
+                char line[160];
                 snprintf(line, sizeof(line), "[%lus] GESTURE cmd: n=%d dur=%d screen=%dx%d p0=(%d,%d) itvl=%ums",
                          (unsigned long) (millis() / 1000), count, duration, sw, sh, coords[0], coords[1],
                          (unsigned) (bleConnItvl() * 5 / 4));
@@ -420,8 +375,7 @@ void handleCommand(uint8_t *buf, size_t len) {
             break;
         }
         case 0x07: {   // 按键
-            static StaticJsonDocument<512> doc;
-            doc.clear();
+            DynamicJsonDocument doc(512);
             if (deserializeJson(doc, payload, payloadLen)) return;
             String key = doc["k"] | "";
             int times = doc["n"] | 1;
@@ -432,8 +386,7 @@ void handleCommand(uint8_t *buf, size_t len) {
             break;
         }
         case 0x08: {   // 键盘打字
-            static StaticJsonDocument<2048> doc;
-            doc.clear();
+            DynamicJsonDocument doc(2048);
             if (deserializeJson(doc, payload, payloadLen)) return;
             String text = doc["t"] | "";
             int iv = doc["i"] | 30;
@@ -479,7 +432,7 @@ void pollUdp() {
 //         后续包 [chunk...]，攒够总长后整体执行
 // 建议连接后先 requestMtu(247)，单包即可覆盖大部分手势。
 #define BLECMD_MAX     1500
-#define BLECMD_QLEN    8        // v1.2.10: 4→8，批量任务连发不再溢出
+#define BLECMD_QLEN    4        // 指令队列深度（手势耗时长，防连发丢包）
 #define BLECMD_TIMEOUT 3000UL   // 分包中途超过 3 秒没后续 → 丢弃重来
 
 static uint8_t cmdQ[BLECMD_QLEN][BLECMD_MAX];
@@ -572,15 +525,6 @@ void pollBleCmd() {
     portEXIT_CRITICAL(&cmdQMux);
 
     bleCount++;
-    if (flen >= 1 && local[0] == 0x09) {
-        // v1.2.10: 连续多条复位折叠成一条——App 任务收尾常连发 0x09，
-        // 逐条执行会把手势顶到队列更后面
-        portENTER_CRITICAL(&cmdQMux);
-        while (cmdQTail != cmdQHead && cmdQ[cmdQTail][0] == 0x09) {
-            cmdQTail = (cmdQTail + 1) % BLECMD_QLEN;
-        }
-        portEXIT_CRITICAL(&cmdQMux);
-    }
     handleCommand(local, flen);
 }
 
@@ -662,7 +606,7 @@ String pageHeader(const String &title) {
 void handleRoot() {
     bool sta = WiFi.isConnected();
     String ip = sta ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
-    String html = pageHeader("AutoJS HID · " FW_CHIP);
+    String html = pageHeader("AutoJS HID · ESP32-C3");
     html += "<div class=row><span>固件版本</span><span>" FW_VERSION "</span></div>";
     html += "<div class=row><span>芯片</span><span>" FW_CHIP "</span></div>";
     // 显示 SSID：从原厂固件升级上来时，用它确认沿用的是不是原来那个 WiFi
@@ -817,9 +761,6 @@ void handleOtaUpload() {
     if (up.status == UPLOAD_FILE_START) {
         if (!otaAuthorized()) {
             Serial.println("OTA rejected: unauthorized");
-            // v1.2.10: 回 401 让浏览器弹密码框（App 一直带 Basic 认证头，不受影响）
-            server.sendHeader("WWW-Authenticate", "Basic realm=\"ota\"");
-            server.send(401, "text/plain; charset=utf-8", "需要升级口令");
             return;
         }
         Serial.printf("OTA start: %s\n", up.filename.c_str());
