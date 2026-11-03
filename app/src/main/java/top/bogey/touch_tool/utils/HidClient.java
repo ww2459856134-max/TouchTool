@@ -275,7 +275,12 @@ public class HidClient {
      * 结果缓存 {@link #ONLINE_CACHE_MS}，避免每个点击动作都多花一次网络往返。
      */
     public static boolean isOnlineStrict() {
-        if (useBle()) return isOnline();   // BLE 模式没有 HTTP 可探，看 GATT 连接状态
+        if (useBle()) {
+            // v91 修复：不吃 10 秒在线缓存——之前一次失败 markOffline 后，
+            // 10 秒内所有 HID 点击被静默跳过并回落无障碍，表现为
+            // "复位指令能到设备、点击手势永远不发"。这里每次实时确保 GATT 连接。
+            return BleHidClient.ensureConnected();
+        }
         String host = getConfigHost();
         if (host == null) return false;
         long now = SystemClock.elapsedRealtime();

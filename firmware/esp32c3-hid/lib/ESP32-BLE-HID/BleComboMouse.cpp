@@ -29,14 +29,14 @@ void BleComboMouse::move(signed char x, signed char y, signed char wheel, signed
   }
 }
 
-void BleComboMouse::send(int state, int16_t x, int16_t y)
+void BleComboMouse::send(int state, int16_t x, int16_t y, uint8_t contact)
 {
   if (_keyboard->isConnected())
   {
     // 6 字节：state | ContactIdentifier | X16(LE) | Y16(LE)，与旧版官方固件一致
     uint8_t m[6];
     m[0] = state;
-    m[1] = 1;              // Contact Identifier：单指固定 1
+    m[1] = contact ? contact : 1; // Contact Identifier：0 视为 1
     m[2] = MSB(x);         // 宏名沿用历史，实际是低字节（小端）
     m[3] = LSB(x);
     m[4] = MSB(y);

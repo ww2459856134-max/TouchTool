@@ -38,6 +38,14 @@ public class BleHidClient {
     private static volatile long lastErrorAt = 0;
     private static long gattStartMs = 0;
     private static int mtu = 23;
+    private static volatile boolean mtuDone = false;
+
+    // 写完成同步：WRITE_TYPE_DEFAULT 是带响应写，同一时刻只允许一个在途写。
+    // 之前 writeChunk 只 sleep 8ms 就发下一包，而空中传输一包要 15~60ms，
+    // 第二包提交时上一包未完成 → Android 返回 busy → 整条分包指令静默失败。
+    // 表现为"3 字节复位能到、52 字节手势永远丢"。现在等 onCharacteristicWrite 回调。
+    private static volatile java.util.concurrent.CountDownLatch writeLatch;
+    private static volatile int lastWriteStatus = -1;
 
     /** 设备 MAC 是否已配置 */
     public static String getConfigMac() {
@@ -118,11 +126,18 @@ public class BleHidClient {
         synchronized (LOCK) {
             if (!isConnected() && !waitConnected(1500)) return false;
             try {
+                // 等 MTU 协商完成（最多 600ms），协商成功后 52 字节手势单包直发，不进分包路径
+                if (!mtuDone) {
+                    long deadline = SystemClock.elapsedRealtime() + 600;
+                    while (!mtuDone && SystemClock.elapsedRealtime() < deadline) {
+                        Thread.sleep(20);
+                    }
+                }
                 BluetoothGattCharacteristic c = cmdChar;
                 if (c == null) return false;
                 int chunkMax = Math.max(20, mtu - 3);
                 if (data.length <= chunkMax) {
-                    return writeChunk(c, data, 0);
+                    return writeChunk(c, data);
                 }
                 // 分包：首包 0xFE + 总长 + 内容
                 byte[] first = new byte[3 + Math.min(chunkMax - 3, data.length)];
@@ -131,13 +146,13 @@ public class BleHidClient {
                 first[2] = (byte) ((data.length >> 8) & 0xFF);
                 int head = first.length - 3;
                 System.arraycopy(data, 0, first, 3, head);
-                if (!writeChunk(c, first, 0)) return false;
+                if (!writeChunk(c, first)) return false;
                 int off = head;
                 while (off < data.length) {
                     int take = Math.min(chunkMax, data.length - off);
                     byte[] chunk = new byte[take];
                     System.arraycopy(data, off, chunk, 0, take);
-                    if (!writeChunk(c, chunk, off)) return false;
+                    if (!writeChunk(c, chunk)) return false;
                     off += take;
                 }
                 return true;
@@ -149,23 +164,42 @@ public class BleHidClient {
         }
     }
 
-    private static boolean writeChunk(BluetoothGattCharacteristic c, byte[] data, int offset) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            int r = gatt.writeCharacteristic(c, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-            if (r != android.bluetooth.BluetoothStatusCodes.SUCCESS) return false;
-        } else {
-            c.setValue(data);
-            c.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-            if (!gatt.writeCharacteristic(c)) return false;
-        }
-        // 等待底层完成再发下一包（带响应写由栈保证顺序，这里仅做节流）
-        if (offset >= 0) {
+    /** 提交一次带响应写并等待完成回调；失败（含 busy）自动重试最多 3 次 */
+    private static boolean writeChunk(BluetoothGattCharacteristic c, byte[] data) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            lastWriteStatus = -1;
+            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            writeLatch = latch;
+            boolean queued;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                int r = gatt.writeCharacteristic(c, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                queued = (r == android.bluetooth.BluetoothStatusCodes.SUCCESS);
+            } else {
+                c.setValue(data);
+                c.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                queued = gatt.writeCharacteristic(c);
+            }
+            if (!queued) {
+                writeLatch = null;
+                try {
+                    Thread.sleep(25);   // 可能是 busy：等在途写完成再重试
+                } catch (InterruptedException ignored) {
+                }
+                continue;
+            }
             try {
-                Thread.sleep(8);
+                latch.await(400, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ignored) {
+            }
+            writeLatch = null;
+            // 有回调：按真实状态判定；无回调（个别平台不派发）：已成功入队即视为完成
+            if (lastWriteStatus == 0 || lastWriteStatus == -1) return true;
+            try {
+                Thread.sleep(25);
             } catch (InterruptedException ignored) {
             }
         }
-        return true;
+        return false;
     }
 
     private static boolean waitConnected(long timeoutMs) {
@@ -219,12 +253,30 @@ public class BleHidClient {
             }
             cmdChar = c;
             ready = true;   // 先置可用（MTU 默认 23 也能发分包），MTU 协商成功后再扩容
+            mtuDone = false;
             g.requestMtu(247);
         }
 
         @Override
         public void onMtuChanged(BluetoothGatt g, int mtu, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) BleHidClient.mtu = mtu;
+            mtuDone = true;   // 失败也算完成，sendFrame 不再干等
+        }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic characteristic, int status) {
+            noteWriteDone(status);
+        }
+
+        // Android 13+ 新签名（部分编译环境的 android.jar 缺这个重载，故不加 @Override，运行时靠多态分发）
+        public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic characteristic, byte[] value, int status) {
+            noteWriteDone(status);
+        }
+
+        private void noteWriteDone(int status) {
+            lastWriteStatus = status;
+            java.util.concurrent.CountDownLatch l = writeLatch;
+            if (l != null) l.countDown();
         }
     };
 }

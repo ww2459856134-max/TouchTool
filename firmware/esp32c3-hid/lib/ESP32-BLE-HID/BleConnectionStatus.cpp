@@ -27,6 +27,12 @@ void BleConnectionStatus::onConnect(BLEServer* pServer)
     BLE2902* desc = (BLE2902*)this->inputMouse->getDescriptorByUUID(BLEUUID((uint16_t)0x2902));
     if (desc != nullptr) desc->setNotifications(true);
   }
+
+  // v1.2.8: 请求快速连接参数。手机默认会给很长的连接间隔（省电），
+  // 触摸报文会被挤进同一个连接事件几乎同时到达——安卓看到一个 0ms 触摸，
+  // 直接被防误触丢掉（表现为"第一条点击必失败，第二条才生效"）。
+  // 20~30ms 间隔 + 0 延迟让射频保持活跃，报文节奏稳定。
+  pServer->requestConnParams(pServer->getConnId(), 16, 24, 0, 400);
 }
 
 void BleConnectionStatus::onDisconnect(BLEServer* pServer)

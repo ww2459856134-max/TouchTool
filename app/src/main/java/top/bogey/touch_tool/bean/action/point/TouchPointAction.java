@@ -68,6 +68,9 @@ public class TouchPointAction extends ExecuteAction implements SyncAction {
                 android.graphics.Point p = new android.graphics.Point(x, y);
                 StringBuilder hexLog = new StringBuilder();
                 boolean ok = HidClient.sendGesture(host, port, java.util.Arrays.asList(p, p), Math.max(50, timeValue), hexLog);
+                // 无论成败都记日志：之前只在失败时记，成功与否无从判断，排障困难
+                runnable.addLog(new top.bogey.touch_tool.bean.other.log.LogInfo(
+                        new top.bogey.touch_tool.bean.other.log.NormalLog("[HID] " + (ok ? "已发送 " : "发送失败 ") + hexLog)), 0);
                 if (ok) {
                     runnable.sleep(timeValue);
                     TouchPathFloatView.showGesture(x, y);

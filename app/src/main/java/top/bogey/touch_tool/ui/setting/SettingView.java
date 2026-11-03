@@ -616,6 +616,13 @@ public class SettingView extends Fragment {
         return key.substring(0, 4) + "****";
     }
 
+    /** 安全的主线程调度：页面已退出（Fragment 未挂载）时静默丢弃，不再抛 IllegalStateException */
+    private void runOnUi(Runnable r) {
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            if (isAdded()) r.run();
+        });
+    }
+
     @SuppressLint("SetTextI18n")
     private void refreshHidDevice() {
         String ip = SettingSaver.HID_DEVICE_IP.get();
@@ -641,7 +648,7 @@ public class SettingView extends Fragment {
                 desc = ip + ":" + port + "  ● 在线 " + cost + "ms" + (version.isEmpty() ? "" : "  v" + version);
             }
             String finalDesc = desc;
-            requireActivity().runOnUiThread(() -> {
+            runOnUi(() -> {
                 if (isAdded()) binding.hidDevice.setDescription(finalDesc);
             });
         }, "hid-status").start();
@@ -674,7 +681,7 @@ public class SettingView extends Fragment {
         progress.show();
         new Thread(() -> {
             java.util.List<String> found = HidClient.discoverDevices();
-            requireActivity().runOnUiThread(() -> {
+            runOnUi(() -> {
                 progress.dismiss();
                 if (found.isEmpty()) {
                     Toast.makeText(requireContext(), "未发现 ESP32 设备，请确认手机与设备连同一个WiFi", Toast.LENGTH_LONG).show();
@@ -703,7 +710,7 @@ public class SettingView extends Fragment {
         Toast.makeText(requireContext(), "正在测试 " + ip + " …", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             String body = HidClient.httpGet(ip, 80, 3000);
-            requireActivity().runOnUiThread(() -> {
+            runOnUi(() -> {
                 if (body == null) {
                     Toast.makeText(requireContext(), "连接失败：设备不可达（检查IP与WiFi）", Toast.LENGTH_LONG).show();
                 } else {
@@ -728,7 +735,7 @@ public class SettingView extends Fragment {
         Toast.makeText(requireContext(), "正在读取设备信息…", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             String info = HidOtaClient.fetchInfo(ip, 80, 3000);
-            requireActivity().runOnUiThread(() -> {
+            runOnUi(() -> {
                 if (!isAdded()) return;
                 if (info == null) {
                     new MaterialAlertDialogBuilder(requireContext())
@@ -822,7 +829,7 @@ public class SettingView extends Fragment {
         HidOtaClient.uploadFirmware(ip, 80, uri, fileName, new HidOtaClient.Progress() {
             @Override
             public void onProgress(int percent, long sent, long total) {
-                requireActivity().runOnUiThread(() -> {
+                runOnUi(() -> {
                     if (!isAdded()) return;
                     progress.setProgress(Math.max(0, percent));
                     progress.setMessage("已上传 " + (sent / 1024) + " KB / " + (total / 1024) + " KB");
@@ -831,7 +838,7 @@ public class SettingView extends Fragment {
 
             @Override
             public void onResult(boolean ok, String message) {
-                requireActivity().runOnUiThread(() -> {
+                runOnUi(() -> {
                     if (!isAdded()) return;
                     progress.dismiss();
                     if (!ok) {
@@ -875,7 +882,7 @@ public class SettingView extends Fragment {
                 }
             }
             String finalVersion = version;
-            requireActivity().runOnUiThread(() -> {
+            runOnUi(() -> {
                 if (!isAdded()) return;
                 wait.dismiss();
                 HidClient.markOffline();  // 清缓存，强制下次重新探活

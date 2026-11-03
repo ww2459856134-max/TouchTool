@@ -27,12 +27,25 @@
 #include <ArduinoJson.h>
 #include <BleCombo.h>
 #include <BLEDevice.h>
+#include <host/ble_gap.h>
+#include <esp_mac.h>
+#include "USB.h"
+#include "tusb.h"
+#include "USBHID.h"
+#include <USBHIDConsumerControl.h>
+#include <esp_hid_common.h>
+// v1.3.4: USB 库诊断埋点（USBHID.cpp 内定义）
+extern uint32_t g_usbHidDescReq;     // 手机请求 HID 报告描述符次数
+extern uint32_t g_usbHidDescOk;      // 描述符成功返回次数（失败会 STALL）
+extern uint32_t g_usbHidReportDone;  // 手机读完 IN 报告次数
+extern uint32_t g_usbHidSetIdle;
+extern uint32_t g_usbHidSetProto;
 #include <esp_mac.h>
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.2.4"
+#define FW_VERSION   "1.3.8"
 #define FW_CHIP      "ESP32-C3"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
@@ -133,11 +146,215 @@ size_t otaImageSize = 0;
 
 // ---------------- HID 触摸 ----------------
 // state: bit0 = Tip Switch(按下)，bit1 = In Range
+static uint8_t curContact = 1;   // 当前 contact id（每次手势轮换，安卓靠它区分不同触点）
+static bool touchActive = false; // v1.2.8: 当前是否真的有触点按下（复位时避免发多余抬起帧）
+
+// ---------------- USB 有线 HID（v1.3.6，ESP32-S3 USB-OTG）----------------
+// v1.3.6 关键修复：USB "触摸"改用【绝对坐标鼠标】描述符。
+// 之前用 Digitizer/TouchScreen 描述符，USB 上会被内核 hid-multitouch 驱动
+// 认领，它要求 Contact Count 等 MT 专用字段，我们的精简描述符不达标 →
+// 整个 HID 接口探测失败 → 手机一个输入设备都不创建 → 永不轮询 IN 端点
+// （实测 dr>0 idle>0 但 rp=0）。鼠标走通用 hid-input，全部手机都支持。
+// 报文 = buttons | X16(LE) | Y16(LE)，bit0=左键（对应原 tip switch）。
+#define USB_TOUCH_REPORT_ID  7
+
+static const uint8_t USB_TOUCH_REPORT_DESC[] = {
+    0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+    0x09, 0x02,                    // USAGE (Mouse)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x85, USB_TOUCH_REPORT_ID,     // REPORT_ID
+    0x09, 0x01,                    //   USAGE (Pointer)
+    0xa1, 0x00,                    //   COLLECTION (Physical)
+    0x05, 0x09,                    //     USAGE_PAGE (Buttons)
+    0x19, 0x01, 0x29, 0x03,        //     Usage Min 1 / Max 3
+    0x15, 0x00, 0x25, 0x01,        //     LOGICAL_MIN 0 / MAX 1
+    0x75, 0x01, 0x95, 0x03,        //     SIZE 1 / COUNT 3
+    0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+    0x75, 0x05, 0x95, 0x01,        //     SIZE 5 / COUNT 1 (padding)
+    0x81, 0x01,                    //     INPUT (Const)
+    0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
+    0x09, 0x30, 0x09, 0x31,        //     USAGE X / Y
+    0x15, 0x00,                    //     LOGICAL_MIN 0
+    0x26, 0xff, 0x7f,              //     LOGICAL_MAX 32767
+    0x75, 0x10, 0x95, 0x02,        //     SIZE 16 / COUNT 2
+    0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+    0xc0, 0xc0                     //   END_COLLECTION ×2
+};
+
+static const uint8_t USB_KB_REPORT_DESC[] = {
+    0x05, 0x01,       // USAGE_PAGE (Generic Desktop)
+    0x09, 0x06,       // USAGE (Keyboard)
+    0xa1, 0x01,       // COLLECTION (Application)
+    0x85, 0x01,       // REPORT_ID 1
+    0x05, 0x07,       //   USAGE_PAGE (Keyboard)
+    0x19, 0xe0, 0x29, 0xe7,   //   Usage Min 0xE0 / Max 0xE7 (modifiers)
+    0x15, 0x00, 0x25, 0x01, 0x75, 0x01, 0x95, 0x08,
+    0x81, 0x02,       //   INPUT (Data,Var,Abs) modifier bits
+    0x75, 0x08, 0x95, 0x01, 0x81, 0x01,   // INPUT (Const) reserved
+    0x75, 0x08, 0x95, 0x06,   //   SIZE 8 / COUNT 6
+    0x15, 0x00, 0x25, 0x65,   //   LOGICAL_MIN 0 / MAX 0x65
+    0x05, 0x07, 0x19, 0x00, 0x29, 0x65,
+    0x81, 0x00,       //   INPUT (Data,Ary,Abs) keycodes
+    0xc0
+};
+
+class UsbTouchDevice : public USBHIDDevice {
+public:
+    uint16_t _onGetDescriptor(uint8_t *buffer) override {
+        memcpy(buffer, USB_TOUCH_REPORT_DESC, sizeof(USB_TOUCH_REPORT_DESC));
+        return sizeof(USB_TOUCH_REPORT_DESC);
+    }
+
+    // 报文 = buttons | X16(LE) | Y16(LE)（5 字节），SendReport 自动加 report id 前缀。
+    // state bit0 = 原 Tip Switch，映射为鼠标左键；bit1 = In Range（鼠标形态忽略）
+    void send(uint8_t state, uint16_t x, uint16_t y) {
+        uint8_t r[5] = { (uint8_t) (state & 0x01),
+                         (uint8_t) (x & 0xFF), (uint8_t) (x >> 8),
+                         (uint8_t) (y & 0xFF), (uint8_t) (y >> 8) };
+        hidTouch.SendReport(USB_TOUCH_REPORT_ID, r, sizeof(r));
+    }
+
+    USBHID hidTouch{HID_ITF_PROTOCOL_NONE};
+};
+
+static UsbTouchDevice usbTouch;
+static USBHIDConsumerControl usbConsumer;
+
+// USB 键盘：不用库内置 USBHIDKeyboard（其 KeyReport 与 BLE 库重名，无法共存），
+// 自带 8 字节标准键盘报告 + ASCII 映射
+class UsbKbDevice : public USBHIDDevice {
+public:
+    uint16_t _onGetDescriptor(uint8_t *buffer) override {
+        memcpy(buffer, USB_KB_REPORT_DESC, sizeof(USB_KB_REPORT_DESC));
+        return sizeof(USB_KB_REPORT_DESC);
+    }
+
+    void rawPress(uint8_t code) {
+        uint8_t r[8] = {0};
+        r[2] = code;
+        hidKb.SendReport(1, r, sizeof(r));
+    }
+    void rawRelease() {
+        uint8_t r[8] = {0};
+        hidKb.SendReport(1, r, sizeof(r));
+    }
+    // 单个 ASCII 字符（ASCII 0x20~0x7E；中文等非 ASCII 由 App 端另行处理）
+    void writeAscii(char c) {
+        uint8_t code = 0;
+        bool shift = false;
+        if (c >= 'a' && c <= 'z')      code = 0x04 + (c - 'a');
+        else if (c >= 'A' && c <= 'Z') { code = 0x04 + (c - 'A'); shift = true; }
+        else if (c >= '1' && c <= '9') code = 0x1e + (c - '1');
+        else if (c >= '!' && c <= '*') code = 0x1e + (c - '!'), shift = true;
+        else if (c == '(' || c == ')') { code = 0x26 + (c == '(' ? 0 : 1); shift = true; }
+        else switch (c) {
+            case '0': code = 0x27; break;
+            case '\n': code = 0x28; break;
+            case 0x1b: code = 0x29; break;
+            case '\t': code = 0x2b; break;
+            case ' ': code = 0x2c; break;
+            case '-': case '_': code = 0x2d; shift = (c == '_'); break;
+            case '=': case '+': code = 0x2e; shift = (c == '+'); break;
+            case '[': case '{': code = 0x2f; shift = (c == '{'); break;
+            case ']': case '}': code = 0x30; shift = (c == '}'); break;
+            case '\\': case '|': code = 0x31; shift = (c == '|'); break;
+            case ';': case ':': code = 0x33; shift = (c == ':'); break;
+            case '\'': case '"': code = 0x34; shift = (c == '"'); break;
+            case '`': case '~': code = 0x35; shift = (c == '~'); break;
+            case ',': case '<': code = 0x36; shift = (c == '<'); break;
+            case '.': case '>': code = 0x37; shift = (c == '>'); break;
+            case '/': case '?': code = 0x38; shift = (c == '?'); break;
+            default: return;
+        }
+        uint8_t r[8] = {0};
+        r[0] = shift ? 0x02 : 0;   // Left Shift
+        r[2] = code;
+        hidKb.SendReport(1, r, sizeof(r));
+        delay(12);
+        rawRelease();
+    }
+
+    USBHID hidKb{HID_ITF_PROTOCOL_KEYBOARD};
+};
+
+static UsbKbDevice usbKb;
+
+// USB 输出通道是否可用：已枚举挂载且 HID 端点就绪。
+// 注意优先级：USB 插着就用 USB（即使 BLE 也连着），避免同一触摸在两条通道重复注入。
+static bool usbOutReady() {
+    if (!tud_ready()) return false;              // USB 未配置/被挂起，物理不可用
+    return tud_hid_n_ready(0);
+}
+
+// v1.3.3: USB host 健康跟踪。报告入队后 ready 从 0 变回 1，
+// 说明手机真的从 HID 端点取走了数据（读了报告）。
+static uint32_t usbQueuedCount = 0;    // 成功入队的 HID 报告数
+static uint32_t usbDrainedCount = 0;   // 被手机取走的报告数
+static bool usbArmed = false;          // 当前有报告在端点里等人取
+static uint32_t usbArmAt = 0;
+static bool usbEverDrained = false;    // 自启动以来手机取走过至少一帧
+static uint8_t usbReenumCount = 0;     // 自愈重枚举次数（上限 2）
+
+static void usbNoteQueued() {
+    usbQueuedCount++;
+    usbArmed = true;
+    usbArmAt = millis();
+}
+
+// 在 loop() 里周期调用：确认手机取走了报告；5 秒没人取则软重枚举自愈
+static void usbHealthPoll() {
+    if (usbArmed && tud_hid_n_ready(0)) {
+        usbArmed = false;
+        usbDrainedCount++;
+        usbEverDrained = true;
+    }
+    // 自愈：CDC 指令正常（说明枚举 OK）但手机从不读 HID → 重枚举让手机重新拿描述符
+    if (usbArmed && !usbEverDrained && usbReenumCount < 2 &&
+        millis() - usbArmAt > 5000 && tud_ready()) {
+        usbReenumCount++;
+        usbArmed = false;
+        char line[96];
+        snprintf(line, sizeof(line), "[%lus] USB host不读HID, 重枚举#%u", (unsigned long) (millis() / 1000), usbReenumCount);
+        traceAppend(line);
+        tud_disconnect();
+        vTaskDelay(pdMS_TO_TICKS(500));
+        tud_connect();
+    }
+}
+
+// USB 链路诊断串：c=已连接 r=端点就绪 q/d=入队/被取走
+// v1.3.4: dr=手机要描述符次数 rp=读完报告次数 idle/proto=HID 协议请求
+static void usbState(char *out, size_t n) {
+    snprintf(out, n, "conn=%d ready=%d q=%lu d=%lu re=%u dr=%lu rp=%lu idle=%lu proto=%lu",
+             tud_connected() ? 1 : 0, tud_hid_n_ready(0) ? 1 : 0,
+             (unsigned long) usbQueuedCount, (unsigned long) usbDrainedCount, usbReenumCount,
+             (unsigned long) g_usbHidDescReq, (unsigned long) g_usbHidReportDone,
+             (unsigned long) g_usbHidSetIdle, (unsigned long) g_usbHidSetProto);
+}
+
+// 输出通道是否就绪（USB 或 BLE 任一）
+static bool hidOutReady() {
+    return usbOutReady() || Keyboard.isConnected();
+}
+
 static inline void touchSend(uint8_t state, uint16_t x, uint16_t y) {
     lastX = x;
     lastY = y;
+    touchActive = (state & 0x01) != 0;
+    if (usbOutReady()) {
+        usbTouch.send(state, x, y);
+        usbNoteQueued();
+        char line[96];
+        snprintf(line, sizeof(line), "[%lus] TCH usb state=%u x=%u y=%u cid=%u", (unsigned long) (millis() / 1000), state, x, y, curContact);
+        traceAppend(line);
+        return;
+    }
     if (!Keyboard.isConnected()) {
         hidSkipCount++;
+        char line[128], us[48];
+        usbState(us, sizeof(us));
+        snprintf(line, sizeof(line), "[%lus] SKIP state=%u x=%u y=%u (未连接) usb:%s", (unsigned long) (millis() / 1000), state, x, y, us);
+        traceAppend(line);
         return;
     }
     // 限速：两次报告至少间隔 8ms。安卓的 HID host 对高频通知敏感，
@@ -146,8 +363,11 @@ static inline void touchSend(uint8_t state, uint16_t x, uint16_t y) {
     if (lastHidSendAt != 0 && now - lastHidSendAt < 8) {
         delay(8 - (now - lastHidSendAt));
     }
-    Mouse.send(state, (int16_t) x, (int16_t) y);
-    // 计数与时间戳由 hidSafeNotify 统一记录
+    Mouse.send(state, (int16_t) x, (int16_t) y, curContact);
+    // v1.2.6 诊断：记录触摸报文详情
+    char line[96];
+    snprintf(line, sizeof(line), "[%lus] TCH state=%u x=%u y=%u cid=%u", (unsigned long) (millis() / 1000), state, x, y, curContact);
+    traceAppend(line);
 }
 
 // 像素 → HID 坐标（描述符 Logical Maximum = 32767，与旧版官方固件一致）
@@ -160,18 +380,30 @@ static inline uint16_t toHid(int px, int screen) {
 }
 
 // 抬起复位：清除可能残留的按下状态（丢包会让固件以为手指还按着）
+// v1.2.8: 没有活动触点时不发任何报文——多余的抬起帧会污染下一个手势的时序
 void releaseTouch() {
+    if (!touchActive) return;
     touchSend(0x00, lastX, lastY);
 }
 
 // 心跳时间戳：App 探活打 GET /ping，用它判断链路是否真的活着
 static volatile unsigned long lastPingAt = 0;
 
+// v1.2.9: 读取当前连接间隔（单位 1.25ms；0=读取失败）。
+// 手机省电默认给长间隔时，触摸报文会被挤进同一连接事件变成 0ms 触摸被防误触丢弃。
+static uint16_t bleConnItvl() {
+    BLEServer *srv = BLEDevice::getServer();
+    if (srv == nullptr) return 0;
+    ble_gap_conn_desc desc;
+    if (ble_gap_conn_find(srv->getConnId(), &desc) != 0) return 0;
+    return desc.conn_itvl;
+}
+
 // 执行一段手势：coords 为扁平像素坐标数组，count 为坐标点数
 bool runGesture(const int *coords, int count, int duration, int sw, int sh) {
     if (count < 2 || sw <= 0 || sh <= 0) return false;
-    if (!Keyboard.isConnected()) {
-        Serial.printf("GESTURE rejected: BLE not connected\n");
+    if (!hidOutReady()) {
+        Serial.printf("GESTURE rejected: no HID output (BLE/USB)\n");
         return false;
     }
 
@@ -182,18 +414,51 @@ bool runGesture(const int *coords, int count, int duration, int sw, int sh) {
     int per = (count > 1) ? (int) (total / (count - 1)) : 0;
     if (per < 4 && total > 0) per = 4;
 
-    uint16_t hx = 0, hy = 0;
-    for (int i = 0; i < count; i++) {
-        int px = coords[i * 2];
-        int py = coords[i * 2 + 1];
-        hx = toHid(px, sw);
-        hy = toHid(py, sh);
-        touchSend(0x03, hx, hy);   // 按下 + 移动
-        if (per > 0) delay(per);
-        // 每 8 个点让出一次 CPU，避免看门狗与 BLE 任务饿死
-        if ((i & 7) == 7) yield();
+    // 每次手势换一个新 contact id —— 安卓靠它区分不同触点
+    curContact = (uint8_t) (curContact % 126) + 1;
+
+    uint16_t hx = toHid(coords[0], sw), hy = toHid(coords[1], sh);
+
+    // v1.2.9: 连接间隔自适应——间隔太长时重新请求快速参数，
+    // 并把按压时长拉到 ≥2 个连接间隔，保证按下/抬起落在不同连接事件里
+    uint16_t itvl = bleConnItvl();
+    int itvlMs = (int) (itvl * 1.25f);
+    if (itvl > 32) {   // >40ms 就太慢了，重新请求 20~30ms
+        BLEServer *srv = BLEDevice::getServer();
+        if (srv) srv->requestConnParams(srv->getConnId(), 16, 24, 0, 400);
     }
-    touchSend(0x00, hx, hy);       // 抬起
+
+    // v1.2.7 拟人序列：清残留 → 悬停 → 按下 → (微动) → 悬停抬起 → 离开
+    // 部分国产 ROM 的防误触会丢弃"凭空出现又瞬间消失"的静止触摸，
+    // 悬停帧 + 微小位移让触摸看起来像真人手指。
+    touchSend(0x00, hx, hy);           // 清残留
+    delay(10);
+    touchSend(0x02, hx, hy);           // 悬停（In Range 未按下）
+    delay(10);
+
+    bool tap = (count == 2 && coords[0] == coords[2] && coords[1] == coords[3]);
+    if (tap) {
+        // 单击：按下保持足够时长（≥2 个连接间隔且 ≥80ms），中途加微动
+        int hold = per;
+        if (hold < 80) hold = 80;
+        if (itvlMs > 0 && hold < itvlMs * 2) hold = itvlMs * 2;
+        touchSend(0x03, hx, hy);
+        delay(hold / 2);
+        touchSend(0x03, (uint16_t) (hx + 6), (uint16_t) (hy + 6));
+        delay(hold - hold / 2);
+        touchSend(0x03, hx, hy);
+    } else {
+        // 滑动/拖拽：沿路径移动
+        touchSend(0x03, hx, hy);
+        for (int i = 1; i < count; i++) {
+            if (per > 0) delay(per);
+            touchSend(0x03, toHid(coords[i * 2], sw), toHid(coords[i * 2 + 1], sh));
+            if ((i & 7) == 7) yield();
+        }
+    }
+    touchSend(0x02, hx, hy);           // 抬起，仍在感应范围
+    delay(10);
+    touchSend(0x00, hx, hy);           // 离开
     gestureCount++;
     return true;
 }
@@ -204,9 +469,17 @@ static void tapConsumer(uint16_t usage, int times = 1, int intervalMs = 60) {
     MediaKeyReport rep = {(uint8_t) (usage & 0xFF), (uint8_t) ((usage >> 8) & 0xFF)};
     MediaKeyReport none = {0, 0};
     for (int i = 0; i < times; i++) {
-        Keyboard.write(rep);
-        delay(25);
-        Keyboard.write(none);
+        if (usbOutReady()) {
+            usbConsumer.press(usage);
+            usbNoteQueued();
+            delay(25);
+            usbConsumer.release();
+            usbNoteQueued();
+        } else {
+            Keyboard.write(rep);
+            delay(25);
+            Keyboard.write(none);
+        }
         if (i + 1 < times) delay(intervalMs);
     }
 }
@@ -214,15 +487,23 @@ static void tapConsumer(uint16_t usage, int times = 1, int intervalMs = 60) {
 // Keyboard Page 普通键
 static void tapKey(uint8_t code, int times = 1, int intervalMs = 60) {
     for (int i = 0; i < times; i++) {
-        Keyboard.press(code);
-        delay(30);
-        Keyboard.release(code);
+        if (usbOutReady()) {
+            usbKb.rawPress(code);
+            usbNoteQueued();
+            delay(30);
+            usbKb.rawRelease();
+            usbNoteQueued();
+        } else {
+            Keyboard.press(code);
+            delay(30);
+            Keyboard.release(code);
+        }
         if (i + 1 < times) delay(intervalMs);
     }
 }
 
 bool sendKeyByName(const String &key, int times, int intervalMs) {
-    if (!Keyboard.isConnected()) return false;
+    if (!hidOutReady()) return false;
     if (key == "BACK")            { tapConsumer(0x0224, times, intervalMs); return true; }
     if (key == "HOME")            { tapConsumer(0x0223, times, intervalMs); return true; }
     if (key == "APP_SWITCH")      { tapConsumer(0x0221, times, intervalMs); return true; }
@@ -242,10 +523,11 @@ bool sendKeyByName(const String &key, int times, int intervalMs) {
 
 // ---------------- HID 键盘打字 ----------------
 bool sendText(const String &text, int intervalMs) {
-    if (!Keyboard.isConnected()) return false;
+    if (!hidOutReady()) return false;
     int iv = intervalMs < 0 ? 0 : (intervalMs > 500 ? 500 : intervalMs);
     for (size_t i = 0; i < text.length(); i++) {
-        Keyboard.write((uint8_t) text[i]);
+        if (usbOutReady()) { usbKb.writeAscii((char) text[i]); usbNoteQueued(); }
+        else Keyboard.write((uint8_t) text[i]);
         if (iv > 0) delay(iv);
         if ((i & 15) == 15) yield();
     }
@@ -264,6 +546,11 @@ void handleCommand(uint8_t *buf, size_t len) {
     size_t payloadLen = len - 1;
 
     Serial.printf("CMD 0x%02X length=%u connected=%d\n", cmd, (unsigned) len, Keyboard.isConnected() ? 1 : 0);
+    {   // v1.2.6 诊断：进入指令分发
+        char line[96];
+        snprintf(line, sizeof(line), "[%lus] CMD 0x%02X len=%u ble=%d", (unsigned long) (millis() / 1000), cmd, (unsigned) len, Keyboard.isConnected() ? 1 : 0);
+        traceAppend(line);
+    }
 
     switch (cmd) {
         case 0x06: {   // 手势
@@ -290,6 +577,15 @@ void handleCommand(uint8_t *buf, size_t len) {
             }
             int coords[128];
             for (int i = 0; i < count * 2; i++) coords[i] = a[i].as<int>();
+
+            {   // 诊断：手势解析结果 + 当前连接间隔 + USB 状态
+                char line[160], us[48];
+                usbState(us, sizeof(us));
+                snprintf(line, sizeof(line), "[%lus] GESTURE cmd: n=%d dur=%d screen=%dx%d p0=(%d,%d) itvl=%ums usb:%s",
+                         (unsigned long) (millis() / 1000), count, duration, sw, sh, coords[0], coords[1],
+                         (unsigned) (bleConnItvl() * 5 / 4), us);
+                traceAppend(line);
+            }
 
             bool ok = runGesture(coords, count, duration, sw, sh);
             Serial.printf("GESTURE %s: coords=%d duration=%d screen=%dx%d\n",
@@ -388,6 +684,15 @@ class BleCmdCallbacks : public BLECharacteristicCallbacks {
         size_t n = v.length();
         if (n == 0) return;
         const uint8_t *p = (const uint8_t *) v.c_str();
+
+        // v1.2.6 诊断：记录每次写入的原始字节（前 24 字节），排查 App 到底发了什么
+        char line[160];
+        int off = snprintf(line, sizeof(line), "[%lus] RX n=%u:", (unsigned long) (millis() / 1000), (unsigned) n);
+        for (size_t i = 0; i < n && i < 24 && off < (int) sizeof(line) - 3; i++) {
+            off += snprintf(line + off, sizeof(line) - off, " %02X", p[i]);
+        }
+        if (n > 24) off += snprintf(line + off, sizeof(line) - off, " ..");
+        traceAppend(line);
 
         if (p[0] == 0xFE) {                       // 分包首包
             if (n < 3) return;
@@ -601,6 +906,41 @@ void handlePing() {
     server.send(200, "text/plain", "pong " FW_VERSION);
 }
 
+// v1.3.7: USB HID 自测。浏览器打开 /usbtest 触发 8 秒指针移动+点击，
+// 用于分清"设备侧还是主机侧"问题：ESP32 插电脑后用手机浏览器触发，
+// 电脑上鼠标指针应该自动画圈并点击；插手机则手机屏幕出现指针。
+static uint32_t usbTestUntil = 0;
+static uint32_t usbTestLast = 0;
+static int usbTestStep = 0;
+
+void handleUsbTest() {
+    usbTestUntil = millis() + 8000;
+    usbTestStep = 0;
+    traceAppend("[usbtest] 启动 8s\n");
+    server.send(200, "text/plain", "usbtest started " FW_VERSION);
+}
+
+static void usbTestPoll() {
+    if (millis() > usbTestUntil) return;
+    if (millis() - usbTestLast < 400) return;
+    usbTestLast = millis();
+    // 8 步画圆 + 每圈一次点击
+    static const int cx = 16384, cy = 16384, r = 8000;
+    float ang = usbTestStep * 6.2832f / 8.0f;
+    uint16_t x = cx + (int) (r * cosf(ang));
+    uint16_t y = cy + (int) (r * sinf(ang));
+    uint8_t btn = (usbTestStep == 0) ? 1 : 0;   // 每圈第 1 步按住左键
+    if (usbOutReady()) {
+        uint8_t rp[5] = { btn, (uint8_t) (x & 0xFF), (uint8_t) (x >> 8), (uint8_t) (y & 0xFF), (uint8_t) (y >> 8) };
+        usbTouch.hidTouch.SendReport(USB_TOUCH_REPORT_ID, rp, sizeof(rp));
+        usbNoteQueued();
+        char line[64];
+        snprintf(line, sizeof(line), "[usbtest] step=%d btn=%u x=%u y=%u\n", usbTestStep, btn, x, y);
+        traceAppend(line);
+    }
+    if (++usbTestStep >= 8) usbTestStep = 0;
+}
+
 // 蓝牙排查页：手机连热点后直接打开 /blelog 就能看到事件轨迹，
 // 不用插串口也能判断配对断在连接、还是安全握手之后。
 void handleBleLog() {
@@ -613,6 +953,12 @@ void handleBleLog() {
          + " hidSkipped=" + String((unsigned long) hidSkipCount) + "\n";
     out += "cmdUdp=" + String(udpCount) + " cmdBle=" + String(bleCount)
          + " bleDrops=" + String(bleDropCount) + "\n";
+    // v1.3.3: USB HID 健康（usb 插着才有意义）
+    {
+        char us[80];
+        usbState(us, sizeof(us));
+        out += "usb:" + String(us) + " drain=" + String(usbEverDrained ? "yes" : "no") + "\n";
+    }
     out += "freeHeap=" + String(ESP.getFreeHeap()) + "\n";
     out += "resetReason=" + String(resetReasonName((uint8_t) esp_reset_reason()))
          + " (last=" + resetReasonName(prefs.getUChar("lastRst", 0xFF)) + ")\n";
@@ -859,7 +1205,42 @@ void setup() {
         startAp();
     }
 
-    setupBle();
+    // v1.3.0: USB 有线 HID 触摸 + 键盘（S3 USB-OTG），插上手机即枚举
+    // v1.3.3 关键修复：必须 addDevice 把触摸/键盘注册进 HID 报告描述符！
+    // USB 库把所有注册设备的描述符拼成一份给手机，之前漏注册导致手机拿到的
+    // 描述符里只有消费键，触摸(7)/键盘(1)报文手机内核不认 → 端点永远没人读。
+    // 注意：addDevice 必须在 USB.begin() 之前。
+    if (!usbTouch.hidTouch.addDevice(&usbTouch, sizeof(USB_TOUCH_REPORT_DESC))) {
+        Serial.println("USB: touch addDevice FAILED");
+    }
+    if (!usbKb.hidKb.addDevice(&usbKb, sizeof(USB_KB_REPORT_DESC))) {
+        Serial.println("USB: kb addDevice FAILED");
+    }
+    // v1.3.8: 伪装成通用 USB 鼠标厂商（Logitech 基础款 VID/PID），
+    // 规避个别 ROM 对开发板 VID 的输入设备白名单/管控
+    USB.VID(0x046D);
+    USB.PID(0xC077);
+    usbKb.hidKb.begin();
+    usbConsumer.begin();
+    usbTouch.hidTouch.begin();
+    USB.begin();
+    Serial.println("USB HID started (touch/keyboard/cdc)");
+
+    // v1.3.4: 描述符解析自检。若某份描述符解析失败，手机请求报告描述符
+    // 时库会返回 NULL → 控制传输 STALL → 手机 HID 驱动放弃绑定（永不轮询）。
+    {
+        esp_hid_report_map_t *m;
+        m = esp_hid_parse_report_map(USB_TOUCH_REPORT_DESC, sizeof(USB_TOUCH_REPORT_DESC));
+        Serial.printf("DIAG touch desc parse=%s nreports=%d\n", m ? "OK" : "FAIL", m ? m->reports_len : -1);
+        traceAppend(m ? "[boot] touch desc parse=OK\n" : "[boot] touch desc parse=FAIL\n");
+        if (m) esp_hid_free_report_map(m);
+        m = esp_hid_parse_report_map(USB_KB_REPORT_DESC, sizeof(USB_KB_REPORT_DESC));
+        Serial.printf("DIAG kb desc parse=%s nreports=%d\n", m ? "OK" : "FAIL", m ? m->reports_len : -1);
+        traceAppend(m ? "[boot] kb desc parse=OK\n" : "[boot] kb desc parse=FAIL\n");
+        if (m) esp_hid_free_report_map(m);
+    }
+
+setupBle();
     Keyboard.releaseAll();
     releaseTouch();
 
@@ -868,6 +1249,7 @@ void setup() {
     server.on("/wifi", HTTP_POST, handleWifi);
     server.on("/info", HTTP_GET, handleInfo);
     server.on("/ping", HTTP_GET, handlePing);
+    server.on("/usbtest", HTTP_GET, handleUsbTest);
     server.on("/blelog", HTTP_GET, handleBleLog);
     server.on("/update", HTTP_POST, handleOtaDone, handleOtaUpload);
     server.onNotFound([]() {
@@ -881,11 +1263,41 @@ void setup() {
     Serial.printf("UDP listen on :%d\n", UDP_PORT);
 }
 
+// v1.3.0: USB 串口指令通道。帧格式 = 命令字 + payload + '\n'（payload 内不会出现裸换行，
+// App 端 JSON 已对 \n 转义）。USB CDC 是流式通道，没有 UDP/GATT 的天然消息边界。
+static void pollUsbSerial() {
+    static uint8_t buf[600];
+    static size_t n = 0;
+    while (Serial.available() > 0) {
+        uint8_t ch = (uint8_t) Serial.read();
+        if (ch == '\n') {
+            if (n > 0) {
+                char line[64];
+                snprintf(line, sizeof(line), "[%lus] RX usb n=%u: %02X", (unsigned long) (millis() / 1000), (unsigned) n, buf[0]);
+                traceAppend(line);
+                handleCommand(buf, n);
+                n = 0;
+            }
+            continue;
+        }
+        if (n < sizeof(buf) - 1) {
+            buf[n++] = ch;
+        } else {
+            n = 0;   // 超长帧丢弃重同步
+        }
+    }
+}
+
 void loop() {
     server.handleClient();
     crashGuardConfirmHealth();
     pollUdp();
     pollBleCmd();   // v1.2.3: BLE GATT 指令通道
+#if ARDUINO_USB_CDC_ON_BOOT
+    pollUsbSerial();   // v1.3.8: 仅 CDC 形态下启用（纯 HID 固件无串口指令通道）
+#endif
+    usbHealthPoll();   // v1.3.3: 确认手机在取 HID 报告，否则自愈重枚举
+    usbTestPoll();     // v1.3.7: USB HID 自测
 
     // WiFi 断线重连（每 30 秒试一次，不阻塞主循环）
     static unsigned long lastCheck = 0;
