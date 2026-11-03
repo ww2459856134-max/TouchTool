@@ -38,14 +38,12 @@ TouchTool 采用直观的**蓝图式任务编辑器**，通过可视化节点连
 |---|---|
 | [App v92 回退版](https://github.com/ww2459856134-max/TouchTool/releases/tag/v92-rollback) | 移除 USB 通道，指令走蓝牙 GATT→WiFi/UDP，覆盖安装配置不丢 |
 | [固件 v1.2.9](https://github.com/ww2459856134-max/TouchTool/releases/tag/v1.2.9-firmware) | 单蓝牙稳定版（ESP32-S3），纯蓝牙点击方案，与 v92 实测全通 |
-| [固件 v1.3.8](https://github.com/ww2459856134-max/TouchTool/releases)（源码在 main 分支） | 纯 HID USB 输出形态：指令走蓝牙、USB 数据线专管触摸输出（罗技 VID/PID 过小米 HyperOS 输入管控） |
 
 > 固件刷写：Flash App 选芯片 **ESP32-S3**、offset **0x0**、flashSize **16MB**；刷完蓝牙需重新配对。
 
-### ESP32 单蓝牙 / USB 有线模式
+### ESP32 单蓝牙模式
 
 - **单蓝牙**：手机与 ESP32 蓝牙配对，App 设置里开启「蓝牙直连」并选择设备，执行通道选「HID 触摸(ESP32)」——不依赖 WiFi
-- **USB 有线（v1.3.8 固件）**：ESP32 数据线插手机（需 OTG），指令仍走蓝牙，触摸报文走 USB HID——延迟更低、不受蓝牙拥塞影响；插入后系统「实体键盘」页面应出现设备
 - 执行通道发送失败均自动回退无障碍，任务不中断
 
 ### 控件类动作
