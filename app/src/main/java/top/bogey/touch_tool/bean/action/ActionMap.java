@@ -55,6 +55,7 @@ public class ActionMap {
                     ActionType.LOG,
                     ActionType.HID_RELAY,
                     ActionType.HID_KEY,
+                    ActionType.HID_WHEEL,
                     ActionType.HID_INPUT_TEXT,
                     ActionType.STICK,
                     ActionType.CLOSE_STICK,
