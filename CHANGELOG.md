@@ -2,12 +2,6 @@
 
 本文件记录 TouchTool 定制版的版本演进。下载地址见 [Releases](https://github.com/ww2459856134-max/TouchTool/releases)。
 
-## v1.2.10 (2026-11-04) —— v1.2.9 稳定性优化版（可选升级）
-
-协议与 App v92 完全兼容，在 v1.2.9 基础上做纯稳定性修复：JSON 文档静态复用（零堆分配）、
-日志环形缓冲零搬移、触摸日志降频、BLE 指令队列 4→8、连续复位折叠、连接参数等待生效、
-坐标钳制、芯片标识修正、OTA 强制口令。源码见 main 分支，固件见 Release v1.2.10-firmware。
-
 ## v92 回退版 + 固件 v1.2.9 (2026-11-04) —— 当前推荐组合
 
 **下载**：[Release v92-rollback](https://github.com/ww2459856134-max/TouchTool/releases/tag/v92-rollback)（App）· [Release v1.2.9-firmware](https://github.com/ww2459856134-max/TouchTool/releases/tag/v1.2.9-firmware)（固件，源码见 `v1.2.9` 分支）
