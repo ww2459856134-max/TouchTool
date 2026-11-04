@@ -49,6 +49,7 @@ public enum ActionType {
     LOG,
     HID_RELAY,
     HID_KEY,
+    HID_WHEEL,
     HID_INPUT_TEXT,
     STICK,
     CLOSE_STICK,
