@@ -119,6 +119,7 @@ import top.bogey.touch_tool.bean.action.normal.DelayAction;
 import top.bogey.touch_tool.bean.action.normal.InputConfigAction;
 import top.bogey.touch_tool.bean.action.normal.HidInputTextAction;
 import top.bogey.touch_tool.bean.action.normal.HidKeyAction;
+import top.bogey.touch_tool.bean.action.normal.HidWheelAction;
 import top.bogey.touch_tool.bean.action.normal.HidRelayAction;
 import top.bogey.touch_tool.bean.action.normal.LoggerAction;
 import top.bogey.touch_tool.bean.action.area.MarkAreaAction;
@@ -305,6 +306,7 @@ public class ActionInfo {
     private final static ActionInfo LOG_INFO = new ActionInfo(ActionType.LOG, LoggerAction.class, R.drawable.icon_draw, R.string.log_action, R.string.log_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo HID_RELAY_INFO = new ActionInfo(ActionType.HID_RELAY, HidRelayAction.class, R.drawable.icon_bluetooth, R.string.hid_relay_action, R.string.hid_relay_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo HID_KEY_INFO = new ActionInfo(ActionType.HID_KEY, HidKeyAction.class, R.drawable.icon_keyboard, R.string.hid_key_action, R.string.hid_key_action_desc, 0, NormalActionCard.class);
+    private final static ActionInfo HID_WHEEL_INFO = new ActionInfo(ActionType.HID_WHEEL, HidWheelAction.class, R.drawable.icon_keyboard_arrow_up, R.string.hid_wheel_action, R.string.hid_wheel_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo HID_INPUT_TEXT_INFO = new ActionInfo(ActionType.HID_INPUT_TEXT, HidInputTextAction.class, R.drawable.icon_keyboard, R.string.hid_input_action, R.string.hid_input_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo STICK_INFO = new ActionInfo(ActionType.STICK, StickScreenAction.class, R.drawable.icon_note_stack, R.string.stick_screen_action, R.string.stick_screen_action_desc, 0, NormalActionCard.class);
     private final static ActionInfo CLOSE_STICK_INFO = new ActionInfo(ActionType.CLOSE_STICK, StickCloseAction.class, R.drawable.icon_note_stack, R.string.stick_close_action, R.string.stick_close_action_desc, 0, NormalActionCard.class);
@@ -595,6 +597,7 @@ public class ActionInfo {
             case LOG -> LOG_INFO;
             case HID_RELAY -> HID_RELAY_INFO;
             case HID_KEY -> HID_KEY_INFO;
+            case HID_WHEEL -> HID_WHEEL_INFO;
             case HID_INPUT_TEXT -> HID_INPUT_TEXT_INFO;
             case STICK -> STICK_INFO;
             case CLOSE_STICK -> CLOSE_STICK_INFO;
