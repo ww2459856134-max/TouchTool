@@ -85,6 +85,7 @@ public class HidClient {
     public static final byte CMD_KEY = 0x07;
     public static final byte CMD_TEXT = 0x08;
     public static final byte CMD_RESET = 0x09;
+    public static final byte CMD_WHEEL = 0x0A;   // v1.5.0 固件起支持：鼠标滚轮
 
     /**
      * 发送一次 HID 手势
@@ -134,6 +135,24 @@ public class HidClient {
     /** 抬起复位：清除设备端可能残留的按下状态（丢包会导致一直按着，之后所有点击变拖拽） */
     public static boolean sendReset(String host, int port, StringBuilder hexLog) {
         return sendCommand(host, port, "{}", CMD_RESET, hexLog);
+    }
+
+    /**
+     * 发送鼠标滚轮指令（需固件 v1.5.0+ 支持 0x0A 指令字）
+     *
+     * @param vertical   纵向格数：正=上滚，负=下滚（-127~127，1 格 ≈ 一行）
+     * @param horizontal 横向格数：正=右滚，负=左滚
+     * @param ticks      滚动次数（每格间隔由 intervalMs 决定）
+     */
+    public static boolean sendWheel(String host, int port, int vertical, int horizontal,
+                                    int ticks, long intervalMs, StringBuilder hexLog) {
+        if (vertical == 0 && horizontal == 0) return true;
+        int v = Math.max(-127, Math.min(127, vertical));
+        int h = Math.max(-127, Math.min(127, horizontal));
+        int n = Math.max(1, Math.min(200, ticks));
+        String json = "{\"d\":" + v + ",\"h\":" + h + ",\"n\":" + n
+                + ",\"i\":" + Math.max(0, intervalMs) + "}";
+        return sendCommand(host, port, json, CMD_WHEEL, hexLog);
     }
 
     // 统一发包：UDP 无连接，发出去只代表报文离开网卡。
