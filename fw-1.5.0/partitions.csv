@@ -1,0 +1,11 @@
+# ESP32-C3 蓝牙 HID 固件分区表
+# 与原厂 AutoJS HID 固件分区布局保持一致：
+#   bootloader 0x0 / 分区表 0x8000 / otadata 0xe000 / app0 0x10000
+# 双 app 分区是 OTA 的前提：升级时写另一块，写完才切换启动，升级失败可回滚
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+otadata,  data, ota,     0xe000,   0x2000,
+app0,     app,  ota_0,   0x10000,  0x1E0000,
+app1,     app,  ota_1,   0x1F0000, 0x1E0000,
+spiffs,   data, spiffs,  0x3D0000, 0x20000,
+coredump, data, coredump,0x3F0000, 0x10000,
