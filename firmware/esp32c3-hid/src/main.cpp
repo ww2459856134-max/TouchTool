@@ -52,6 +52,7 @@
 #include <BLEDevice.h>
 #include <host/ble_gap.h>
 #include <host/ble_store.h>
+#include <vector>
 #include <esp_mac.h>
 #include <nvs.h>
 #include <esp_ota_ops.h>
@@ -60,7 +61,7 @@
 #include <freertos/semphr.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.5.8"
+#define FW_VERSION   "1.5.9"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -245,10 +246,24 @@ static void bondTrace(const char *tag) {
 // 之前只能看到 onConnect/onDisconnect，断开原因（比如加密失败 0x06/0x0f）
 // 完全不可见 —— "重启后要重新配对"的关键证据一直缺失。
 static struct ble_gap_event_listener s_gapListener;
+static void bondBackupSaveNow(const char *why);   // 见下方 v1.5.9 备份实现
 static int gapEventCb(struct ble_gap_event *event, void *arg) {
     (void)arg;
     char line[TRACE_LINE_LEN];
     switch (event->type) {
+    case BLE_GAP_EVENT_CONNECT: {
+        // 对端 OTA 地址：Android 常用 RPA（每 15 分钟轮换），
+        // 若这里每次地址都不同而 bond 又按地址存，回连就会找不到密钥
+        struct ble_gap_conn_desc desc;
+        if (ble_gap_conn_find(event->connect.conn_handle, &desc) == 0) {
+            const ble_addr_t *a = &desc.peer_ota_addr;
+            snprintf(line, sizeof(line), "[%lus] gap conn t=%d %02x:%02x:%02x:%02x:%02x:%02x\n",
+                     (unsigned long) (millis() / 1000), (int) a->type,
+                     a->val[5], a->val[4], a->val[3], a->val[2], a->val[1], a->val[0]);
+            traceAppend(line);
+        }
+        break;
+    }
     case BLE_GAP_EVENT_DISCONNECT:
         snprintf(line, sizeof(line), "[%lus] gap disc rsn=0x%02x\n",
                  (unsigned long) (millis() / 1000), event->disconnect.reason);
@@ -262,6 +277,10 @@ static int gapEventCb(struct ble_gap_event *event, void *arg) {
                  bondCount(BLE_STORE_OBJ_TYPE_OUR_SEC),
                  bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC));
         traceAppend(line);
+        if (event->enc_change.status == 0) {
+            // v1.5.9: 每次绑定/加密成功都刷新自己的备份（不依赖内置持久化）
+            bondBackupSaveNow("enc");
+        }
         break;
     case BLE_GAP_EVENT_PASSKEY_ACTION:
         snprintf(line, sizeof(line), "[%lus] gap pkact=%d\n",
@@ -289,15 +308,143 @@ static int gapEventCb(struct ble_gap_event *event, void *arg) {
     return 0;
 }
 
-static void pollGapListener() {
-    // BLE 初始化在独立任务里异步完成，host 同步前注册会失败 —— 每圈重试，
-    // 成功后顺手把开机时的 bond 数写进轨迹（重启后 own/peer 是否还在一目了然）。
+// ==================== v1.5.9: bond 自备份（釜底抽薪） ====================
+// 实测证据（v1.5.8）：配对后 own=1 peer=1（协议栈 RAM 层写入成功），
+// 重启后 bonds boot own=0 peer=0 而 NVS used 条目数不变 ——
+// 内置的 NVS 持久化"写不回读不出"，具体断点在预编译库里无法修复。
+// 对策：不再依赖它。每次绑定成功后把密钥结构体原样备份到自己的
+// NVS 命名空间（ttbond）；开机时若协议栈 store 为空且备份存在，
+// 用官方 API ble_store_write_our_sec/peer_sec/cccd 重新注入。
+// 结构体是纯 POD（ble_store_value_sec），同版本编译无布局差异，可整体 memcpy。
+struct BondBackup {
+    std::vector<ble_store_value_sec> own;
+    std::vector<ble_store_value_sec> peer;
+    std::vector<ble_store_value_cccd> cccd;
+};
+
+static int bbCollectCb(int objType, union ble_store_value *val, void *arg) {
+    BondBackup *b = (BondBackup *)arg;
+    if (objType == BLE_STORE_OBJ_TYPE_OUR_SEC)      b->own.push_back(val->sec);
+    else if (objType == BLE_STORE_OBJ_TYPE_PEER_SEC) b->peer.push_back(val->sec);
+    else if (objType == BLE_STORE_OBJ_TYPE_CCCD)     b->cccd.push_back(val->cccd);
+    return 0;
+}
+
+static bool bondBackupCollect(BondBackup &b) {
+    ble_store_iterate(BLE_STORE_OBJ_TYPE_OUR_SEC,  bbCollectCb, &b);
+    ble_store_iterate(BLE_STORE_OBJ_TYPE_PEER_SEC, bbCollectCb, &b);
+    ble_store_iterate(BLE_STORE_OBJ_TYPE_CCCD,     bbCollectCb, &b);
+    return b.own.size() + b.peer.size() > 0;
+}
+
+#define BB_MAGIC 0x54544231  // "TTB1"
+#define BB_VER    1
+
+static bool bondBackupWrite(BondBackup &b) {
+    Preferences p;
+    if (!p.begin("ttbond", false)) return false;
+    // 头: magic(4) ver(2) nOwn(2) nPeer(2) nCccd(2) = 12 字节
+    std::vector<uint8_t> blob(12
+        + b.own.size()  * sizeof(ble_store_value_sec)
+        + b.peer.size() * sizeof(ble_store_value_sec)
+        + b.cccd.size() * sizeof(ble_store_value_cccd));
+    uint8_t *q = blob.data();
+    const uint32_t magicV = BB_MAGIC;
+    memcpy(q, &magicV, 4); q += 4;
+    uint16_t v = BB_VER, n;
+    v = BB_VER; memcpy(q, &v, 2); q += 2;
+    n = (uint16_t) b.own.size();  memcpy(q, &n, 2); q += 2;
+    n = (uint16_t) b.peer.size(); memcpy(q, &n, 2); q += 2;
+    n = (uint16_t) b.cccd.size(); memcpy(q, &n, 2); q += 2;
+    if (!b.own.empty())
+        memcpy(q, b.own.data(), b.own.size() * sizeof(ble_store_value_sec)), q += b.own.size() * sizeof(ble_store_value_sec);
+    if (!b.peer.empty())
+        memcpy(q, b.peer.data(), b.peer.size() * sizeof(ble_store_value_sec)), q += b.peer.size() * sizeof(ble_store_value_sec);
+    if (!b.cccd.empty())
+        memcpy(q, b.cccd.data(), b.cccd.size() * sizeof(ble_store_value_cccd));
+    size_t len = (size_t) (q - blob.data());
+    p.putBytes("blob", blob.data(), len);
+    p.end();
+    return true;
+}
+
+static void bondBackupSaveNow(const char *why) {
+    BondBackup b;
+    if (!bondBackupCollect(b)) return;   // store 空，没东西可备
+    if (bondBackupWrite(b)) {
+        char line[TRACE_LINE_LEN];
+        snprintf(line, sizeof(line), "[%lus] bond bkp(%s) own=%d peer=%d cccd=%d\n",
+                 (unsigned long) (millis() / 1000), why,
+                 (int) b.own.size(), (int) b.peer.size(), (int) b.cccd.size());
+        traceAppend(line);
+    }
+}
+
+static void bondBackupRestore() {
+    // 协议栈里已有密钥 → 内置层正常，不动它
+    if (bondCount(BLE_STORE_OBJ_TYPE_OUR_SEC) > 0 ||
+        bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC) > 0) return;
+    Preferences p;
+    if (!p.begin("ttbond", true)) return;
+    size_t len = p.getBytesLength("blob");
+    if (len < 12) { p.end(); return; }
+    std::vector<uint8_t> blob(len);
+    p.getBytes("blob", blob.data(), len);
+    p.end();
+    uint32_t magic;
+    uint16_t ver, nOwn, nPeer, nCccd;
+    const uint8_t *q = blob.data();
+    memcpy(&magic, q, 4); q += 4;
+    if (magic != BB_MAGIC) return;
+    memcpy(&ver, q, 2); q += 2;
+    if (ver != BB_VER) return;
+    memcpy(&nOwn, q, 2); q += 2;
+    memcpy(&nPeer, q, 2); q += 2;
+    memcpy(&nCccd, q, 2); q += 2;
+    int ro = 0, rp = 0, rc = 0;
+    for (uint16_t i = 0; i < nOwn; i++, q += sizeof(ble_store_value_sec)) {
+        ble_store_value_sec v;
+        memcpy(&v, q, sizeof v);
+        // 不看返回值：即使内置 NVS 落盘路径失败，RAM 层注入也已生效，
+        // 回连加密用的是 RAM 层数据；最终以注入后的 store 计数为准
+        ble_store_write_our_sec(&v);
+        ro++;
+    }
+    for (uint16_t i = 0; i < nPeer; i++, q += sizeof(ble_store_value_sec)) {
+        ble_store_value_sec v;
+        memcpy(&v, q, sizeof v);
+        ble_store_write_peer_sec(&v);
+        rp++;
+    }
+    for (uint16_t i = 0; i < nCccd; i++, q += sizeof(ble_store_value_cccd)) {
+        ble_store_value_cccd v;
+        memcpy(&v, q, sizeof v);
+        ble_store_write_cccd(&v);
+        rc++;
+    }
+    char line[TRACE_LINE_LEN];
+    snprintf(line, sizeof(line), "[%lus] bond restore put=%d/%d/%d -> own=%d peer=%d\n",
+             (unsigned long) (millis() / 1000), ro, rp, rc,
+             bondCount(BLE_STORE_OBJ_TYPE_OUR_SEC),
+             bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC));
+    traceAppend(line);
+}
+
+// 注册 GAP 监听（host 同步前注册会失败）。成功即代表协议栈就绪，
+// 立刻做 bond 恢复 —— 必须赶在手机开机自动回连（开机 ~1s）之前。
+static bool gapListenerEnsure() {
     static bool done = false;
-    if (done) return;
+    if (done) return true;
     if (ble_gap_event_listener_register(&s_gapListener, gapEventCb, NULL) == 0) {
         done = true;
         bondTrace("bonds boot");
+        bondBackupRestore();
     }
+    return done;
+}
+
+static void pollGapListener() {
+    gapListenerEnsure();   // loop 兜底（setupBle 里已提前抢跑）
 }
 static void pollBleState() {
     bool now = Keyboard.isConnected();
@@ -1411,6 +1558,47 @@ void handleBleLog() {
         int peer = bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC);
         out += "bond=own:" + String(own) + " peer:" + String(peer)
              + ((own > 0 || peer > 0) ? "" : " (none)") + stats + "\n";
+        // v1.5.9: 自备份状态 —— 重启后协议栈空、这里非 0 说明恢复可用
+        {
+            String bkp;
+            Preferences p;
+            if (p.begin("ttbond", true)) {
+                size_t len = p.getBytesLength("blob");
+                if (len >= 12) {
+                    uint8_t hdr[12];
+                    p.getBytes("blob", hdr, 12);
+                    uint16_t v, nO, nP, nC;
+                    memcpy(&v, hdr + 4, 2); memcpy(&nO, hdr + 6, 2);
+                    memcpy(&nP, hdr + 8, 2); memcpy(&nC, hdr + 10, 2);
+                    bkp = "bkp=own:" + String(nO) + " peer:" + String(nP)
+                        + " cccd:" + String(nC) + " bytes:" + String((unsigned) len);
+                } else {
+                    bkp = "bkp=none";
+                }
+                p.end();
+            } else {
+                bkp = "bkp=none";
+            }
+            out += bkp + "\n";
+        }
+        // 内置持久化层探针：NimBLE-Arduino/IDF 的 bond 存在
+        // "nimble_bond" 命名空间的 our_sec_1/peer_sec_1 等 blob 里。
+        // store 里 own/peer>0 而这里全 0 → 内置层写失败；反之加载失败。
+        {
+            nvs_handle_t h;
+            String probe;
+            if (nvs_open("nimble_bond", NVS_READONLY, &h) == ESP_OK) {
+                const char *keys[] = { "our_sec_1", "peer_sec_1", "our_sec", "peer_sec" };
+                for (unsigned i = 0; i < 4; i++) {
+                    size_t sz = 0;
+                    if (nvs_get_blob(h, keys[i], NULL, &sz) == ESP_OK && sz > 0) {
+                        probe += " " + String(keys[i]) + ":" + String((unsigned) sz);
+                    }
+                }
+                nvs_close(h);
+            }
+            out += "nvsbond=" + (probe.isEmpty() ? String("(none)") : probe) + "\n";
+        }
     }
     out += "---- trace ----\n";
 
@@ -1633,6 +1821,11 @@ void setupBle() {
     Mouse.begin();
     // begin() 只是创建任务，BLEDevice::init() 在那个任务里异步执行，
     // 此处不能直接调 startAdvertising()，广播由库内部在初始化完成后开启。
+    // v1.5.9: 抢跑等 host 同步（最多 ~6s），一同步立刻恢复 bond 并注册监听。
+    // 必须赶在 waitWifi() 的 12s 阻塞之前 —— 手机开机自动回连只要 ~1s。
+    for (int i = 0; i < 300 && !gapListenerEnsure(); i++) {
+        delay(20);
+    }
 #if FW_VERBOSE
     Serial.printf("BLE HID started: %s\n", deviceName.c_str());
 #endif
