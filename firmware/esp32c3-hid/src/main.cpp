@@ -58,12 +58,13 @@
 #include <esp_mac.h>
 #include <nvs.h>
 #include <esp_ota_ops.h>
+#include <esp_flash.h>
 #include <esp_system.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.5.14"
+#define FW_VERSION   "1.5.15"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -382,19 +383,24 @@ static bool bkpRawWrite(const uint8_t *data, size_t len) {
         traceAppend("[bkp] raw no-part\n");
         return false;
     }
-    esp_err_t e1 = esp_partition_erase_range(pt, 0, 4096);
-    esp_err_t e2 = e1 == ESP_OK ? esp_partition_write(pt, 0, data, len) : ESP_FAIL;
-    uint8_t rb[512];
-    int diff = -1;
+    // v1.5.15: 弃 esp_partition_*（mmap 缓存路径）改 esp_flash_* 直连 SPI。
+    // v1.5.14 实测：erase 生效（读回 0xFF）、write 返回 OK 但芯片上没写进去
+    //（cmp=206 = 0xFF-0x31，读回全是擦除值）—— 直连读写绕开缓存对照验证。
+    esp_err_t e1 = esp_flash_erase_region(NULL, pt->address, 4096);
+    esp_err_t e2 = e1 == ESP_OK ? esp_flash_write(NULL, data, pt->address, len) : ESP_FAIL;
+    uint8_t rb[512], rbC[512];
+    int cmpD = -1, cmpC = -1;
     if (e2 == ESP_OK && len <= sizeof(rb)) {
-        esp_partition_read(pt, 0, rb, len);
-        diff = memcmp(rb, data, len);
+        esp_flash_read(NULL, rb, pt->address, len);
+        cmpD = memcmp(rb, data, len);
+        esp_partition_read(pt, 0, rbC, len);
+        cmpC = memcmp(rbC, data, len);
     }
-    bool ok = e1 == ESP_OK && e2 == ESP_OK && diff == 0;
+    bool ok = e1 == ESP_OK && e2 == ESP_OK && cmpD == 0;
     char line[TRACE_LINE_LEN];
-    snprintf(line, sizeof(line), "[%lus] bkp raw(%s %uK) e=0x%x w=0x%x cmp=%d\n",
+    snprintf(line, sizeof(line), "[%lus] bkp rawF(%s) e=0x%x w=0x%x cmpD=%d cmpC=%d\n",
              (unsigned long) (millis() / 1000), pt->label,
-             (unsigned) (pt->size / 1024), (unsigned) e1, (unsigned) e2, diff);
+             (unsigned) e1, (unsigned) e2, cmpD, cmpC);
     traceAppend(line);
     return ok;
 }
@@ -403,7 +409,7 @@ static bool bkpRawRead(std::vector<uint8_t> &out) {
     const esp_partition_t *pt = bkpFindPart();
     if (!pt) return false;
     uint8_t buf[512];
-    if (esp_partition_read(pt, 0, buf, sizeof(buf)) != ESP_OK) return false;
+    if (esp_flash_read(NULL, buf, pt->address, sizeof(buf)) != ESP_OK) return false;
     uint32_t mg;
     memcpy(&mg, buf, 4);
     if (mg != BB_MAGIC) return false;
@@ -609,7 +615,7 @@ static void bondBackupRestore() {
 // 本版输出：字符串阶梯带写结果（w1r0 = 写返回成功但读回丢）、原始类型
 //（u8/u32，另一套写路径）、裸分区探测（esp_partition 直写 flash）。
 static void bondLadderTest() {
-    static const int sizes[] = { 4, 8, 12, 16, 24, 32, 48, 252 };
+    static const int sizes[] = { 4, 32, 252 };
     const int N = (int) (sizeof(sizes) / sizeof(sizes[0]));
     String res = "bkp ladder";
     bool wRes[8] = { false };
@@ -652,14 +658,13 @@ static void bondLadderTest() {
             res += " | raw=none";
         } else {
             const uint8_t pat[8] = { 'T', 'T', 'B', '1', 0, 1, 0, 2 };
-            esp_err_t e1 = esp_partition_erase_range(pt, 0, 4096);
-            esp_err_t e2 = e1 == ESP_OK ? esp_partition_write(pt, 0, pat, 8) : ESP_FAIL;
+            esp_err_t e1 = esp_flash_erase_region(NULL, pt->address, 4096);
+            esp_err_t e2 = e1 == ESP_OK ? esp_flash_write(NULL, pat, pt->address, 8) : ESP_FAIL;
             uint8_t rb[8] = { 0 };
             bool r = false;
-            if (e2 == ESP_OK && esp_partition_read(pt, 0, rb, 8) == ESP_OK)
+            if (e2 == ESP_OK && esp_flash_read(NULL, rb, pt->address, 8) == ESP_OK)
                 r = memcmp(rb, pat, 8) == 0;
-            res += String(" | raw=") + pt->label + ":" + (unsigned) (pt->size / 1024) + "K"
-                 + " e" + (unsigned) e1 + " w" + (unsigned) e2 + (r ? " r1" : " r0");
+            res += String(" | raw=") + pt->label + (r ? ":1" : ":0");
         }
     }
     res += "\n";
