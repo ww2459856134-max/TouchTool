@@ -54,6 +54,7 @@
 #include <host/ble_store.h>
 #include <vector>
 #include <SPIFFS.h>
+#include <mbedtls/base64.h>
 #include <esp_mac.h>
 #include <nvs.h>
 #include <esp_ota_ops.h>
@@ -62,7 +63,7 @@
 #include <freertos/semphr.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.5.11"
+#define FW_VERSION   "1.5.12"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -369,37 +370,49 @@ static bool bondBackupWrite(BondBackup &b) {
     size_t len = (size_t) (q - blob.data());
     bool ok = false;
 
-    // 介质 1：NVS（Preferences）。写入后立即用裸 NVS API 读回校验 ——
-    // v1.5.10 实测"commit 成功但同开机内读回为 0"，错误码必须现打现看
+    // v1.5.12: 不再用 nvs blob 存储！实测 188 字节 blob 走"变长 blob"路径
+    // （跨多条目），在这个 20KB 小分区上写入返回成功但立即读回 NOT_FOUND。
+    // 字符串路径（putString，设备名一直跨重启正常）可靠 —— 转 base64 存字符串。
     {
+        unsigned char b64[400];
+        size_t olen = 0;
+        if (mbedtls_base64_encode(b64, sizeof(b64), &olen, blob.data(), len) != 0) {
+            traceAppend("[bkp] b64 encode fail\n");
+            return false;
+        }
+        String s((char *) b64, olen);
         Preferences p;
         esp_err_t eo = p.begin("ttbond", false) ? ESP_OK : ESP_FAIL;
-        size_t w = eo == ESP_OK ? p.putBytes("blob", blob.data(), len) : 0;
+        size_t w = eo == ESP_OK ? p.putString("s", s) : 0;
         p.end();
+        // 立即读回校验（独立只读句柄）
         esp_err_t er = ESP_FAIL;
-        size_t sz = 0;
+        size_t sl = 0;
         nvs_handle_t h;
         if (nvs_open("ttbond", NVS_READONLY, &h) == ESP_OK) {
-            er = nvs_get_blob(h, "blob", NULL, &sz);
+            er = nvs_get_str(h, "s", NULL, &sl);
             nvs_close(h);
         }
         char line[TRACE_LINE_LEN];
         snprintf(line, sizeof(line), "[%lus] bkp nvs w=%d/%d open=0x%x get=0x%x sz=%d\n",
-                 (unsigned long) (millis() / 1000), (int) w, (int) len,
-                 (unsigned) eo, (unsigned) er, (unsigned) sz);
+                 (unsigned long) (millis() / 1000), (int) w, (int) s.length(),
+                 (unsigned) eo, (unsigned) er, (unsigned) sl);
         traceAppend(line);
-        if (eo == ESP_OK && w == len && er == ESP_OK && sz == len) ok = true;
+        if (eo == ESP_OK && w == s.length() && er == ESP_OK && sl == s.length() + 1) ok = true;
     }
     // 介质 2：SPIFFS（完全绕开 NVS）。任何一路成功即可恢复
     {
-        if (!SPIFFS.begin(false)) SPIFFS.begin(true);   // 挂不上就格式化
-        File f = SPIFFS.open("/bkp.bin", FILE_WRITE);
+        bool mounted = SPIFFS.begin(false);
+        if (!mounted) mounted = SPIFFS.begin(true);   // 挂不上就格式化
         size_t w = 0;
-        if (f) { w = f.write(blob.data(), len); f.close(); }
+        if (mounted) {
+            File f = SPIFFS.open("/bkp.bin", FILE_WRITE);
+            if (f) { w = f.write(blob.data(), len); f.close(); }
+        }
         if (w == len) ok = true;
         char line[TRACE_LINE_LEN];
-        snprintf(line, sizeof(line), "[%lus] bkp fs w=%d/%d\n",
-                 (unsigned long) (millis() / 1000), (int) w, (int) len);
+        snprintf(line, sizeof(line), "[%lus] bkp fs w=%d/%d mounted=%d\n",
+                 (unsigned long) (millis() / 1000), (int) w, (int) len, (int) mounted);
         traceAppend(line);
     }
     if (ok) bkpWrittenOnce = true;
@@ -418,19 +431,23 @@ static void bondBackupSaveNow(const char *why) {
     }
 }
 
-// 依次尝试 NVS / SPIFFS 读回备份 blob；都失败返回空
+// 依次尝试 NVS（base64 字符串）/ SPIFFS 读回备份 blob；都失败返回空
 static std::vector<uint8_t> bondBackupLoad(const char **src) {
     std::vector<uint8_t> blob;
     {
         Preferences p;
         if (p.begin("ttbond", true)) {
-            size_t len = p.getBytesLength("blob");
-            if (len >= 12) {
-                blob.resize(len);
-                p.getBytes("blob", blob.data(), len);
-                *src = "nvs";
-            }
+            String s = p.getString("s", "");
             p.end();
+            if (s.length() > 8) {
+                unsigned char raw[512];
+                size_t olen = 0;
+                if (mbedtls_base64_decode(raw, sizeof(raw), &olen,
+                                          (const unsigned char *) s.c_str(), s.length()) == 0 && olen >= 12) {
+                    blob.assign(raw, raw + olen);
+                    *src = "nvs";
+                }
+            }
         }
     }
     if (blob.empty()) {
@@ -2010,7 +2027,7 @@ void loop() {
             int sz = -1;
             if (nvs_open("ttbond", NVS_READONLY, &h) == ESP_OK) {
                 size_t s = 0;
-                sz = nvs_get_blob(h, "blob", NULL, &s) == ESP_OK ? (int) s : -1;
+                sz = nvs_get_str(h, "s", NULL, &s) == ESP_OK ? (int) s : -1;
                 nvs_close(h);
             } else {
                 sz = -2;
