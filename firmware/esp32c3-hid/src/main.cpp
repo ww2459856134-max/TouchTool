@@ -53,6 +53,7 @@
 #include <host/ble_gap.h>
 #include <host/ble_store.h>
 #include <vector>
+#include <SPIFFS.h>
 #include <esp_mac.h>
 #include <nvs.h>
 #include <esp_ota_ops.h>
@@ -61,7 +62,7 @@
 #include <freertos/semphr.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.5.10"
+#define FW_VERSION   "1.5.11"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -251,6 +252,7 @@ static void bondBackupSaveNow(const char *why);   // 见下方 v1.5.9 备份实�
 // NVS 写入（Preferences/commit）深调用曾直接把任务栈打爆（resetReason=panic）。
 // 回调里只置标志，由 loop 主线程执行。
 static volatile bool bkpReq = false;
+static volatile bool bkpWrittenOnce = false;   // v1.5.11: 巡检开关
 static int gapEventCb(struct ble_gap_event *event, void *arg) {
     (void)arg;
     char line[TRACE_LINE_LEN];
@@ -345,8 +347,6 @@ static bool bondBackupCollect(BondBackup &b) {
 #define BB_VER    1
 
 static bool bondBackupWrite(BondBackup &b) {
-    Preferences p;
-    if (!p.begin("ttbond", false)) return false;
     // 头: magic(4) ver(2) nOwn(2) nPeer(2) nCccd(2) = 12 字节
     std::vector<uint8_t> blob(12
         + b.own.size()  * sizeof(ble_store_value_sec)
@@ -367,16 +367,43 @@ static bool bondBackupWrite(BondBackup &b) {
     if (!b.cccd.empty())
         memcpy(q, b.cccd.data(), b.cccd.size() * sizeof(ble_store_value_cccd));
     size_t len = (size_t) (q - blob.data());
-    size_t w = p.putBytes("blob", blob.data(), len);
-    p.end();
-    if (w != len) {
+    bool ok = false;
+
+    // 介质 1：NVS（Preferences）。写入后立即用裸 NVS API 读回校验 ——
+    // v1.5.10 实测"commit 成功但同开机内读回为 0"，错误码必须现打现看
+    {
+        Preferences p;
+        esp_err_t eo = p.begin("ttbond", false) ? ESP_OK : ESP_FAIL;
+        size_t w = eo == ESP_OK ? p.putBytes("blob", blob.data(), len) : 0;
+        p.end();
+        esp_err_t er = ESP_FAIL;
+        size_t sz = 0;
+        nvs_handle_t h;
+        if (nvs_open("ttbond", NVS_READONLY, &h) == ESP_OK) {
+            er = nvs_get_blob(h, "blob", NULL, &sz);
+            nvs_close(h);
+        }
         char line[TRACE_LINE_LEN];
-        snprintf(line, sizeof(line), "[%lus] bond bkp FAIL put %d/%d\n",
+        snprintf(line, sizeof(line), "[%lus] bkp nvs w=%d/%d open=0x%x get=0x%x sz=%d\n",
+                 (unsigned long) (millis() / 1000), (int) w, (int) len,
+                 (unsigned) eo, (unsigned) er, (unsigned) sz);
+        traceAppend(line);
+        if (eo == ESP_OK && w == len && er == ESP_OK && sz == len) ok = true;
+    }
+    // 介质 2：SPIFFS（完全绕开 NVS）。任何一路成功即可恢复
+    {
+        if (!SPIFFS.begin(false)) SPIFFS.begin(true);   // 挂不上就格式化
+        File f = SPIFFS.open("/bkp.bin", FILE_WRITE);
+        size_t w = 0;
+        if (f) { w = f.write(blob.data(), len); f.close(); }
+        if (w == len) ok = true;
+        char line[TRACE_LINE_LEN];
+        snprintf(line, sizeof(line), "[%lus] bkp fs w=%d/%d\n",
                  (unsigned long) (millis() / 1000), (int) w, (int) len);
         traceAppend(line);
-        return false;
     }
-    return true;
+    if (ok) bkpWrittenOnce = true;
+    return ok;
 }
 
 static void bondBackupSaveNow(const char *why) {
@@ -391,27 +418,64 @@ static void bondBackupSaveNow(const char *why) {
     }
 }
 
+// 依次尝试 NVS / SPIFFS 读回备份 blob；都失败返回空
+static std::vector<uint8_t> bondBackupLoad(const char **src) {
+    std::vector<uint8_t> blob;
+    {
+        Preferences p;
+        if (p.begin("ttbond", true)) {
+            size_t len = p.getBytesLength("blob");
+            if (len >= 12) {
+                blob.resize(len);
+                p.getBytes("blob", blob.data(), len);
+                *src = "nvs";
+            }
+            p.end();
+        }
+    }
+    if (blob.empty()) {
+        if (SPIFFS.begin(false)) {
+            File f = SPIFFS.open("/bkp.bin", FILE_READ);
+            if (f && f.size() >= 12) {
+                blob.resize(f.size());
+                f.read(blob.data(), blob.size());
+                *src = "fs";
+            }
+            if (f) f.close();
+        }
+    }
+    if (!blob.empty()) {
+        uint32_t mg;
+        memcpy(&mg, blob.data(), 4);
+        if (mg != BB_MAGIC) blob.clear();
+    }
+    return blob;
+}
+
 static void bondBackupRestore() {
     // 协议栈里已有密钥 → 内置层正常，不动它
     if (bondCount(BLE_STORE_OBJ_TYPE_OUR_SEC) > 0 ||
         bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC) > 0) return;
-    Preferences p;
-    if (!p.begin("ttbond", true)) return;
-    size_t len = p.getBytesLength("blob");
-    if (len < 12) { p.end(); return; }
-    std::vector<uint8_t> blob(len);
-    p.getBytes("blob", blob.data(), len);
-    p.end();
-    uint32_t magic;
+    const char *src = "?";
+    std::vector<uint8_t> blob = bondBackupLoad(&src);
+    if (blob.empty()) return;
     uint16_t ver, nOwn, nPeer, nCccd;
-    const uint8_t *q = blob.data();
-    memcpy(&magic, q, 4); q += 4;
-    if (magic != BB_MAGIC) return;
+    const uint8_t *q = blob.data() + 4;
     memcpy(&ver, q, 2); q += 2;
     if (ver != BB_VER) return;
     memcpy(&nOwn, q, 2); q += 2;
     memcpy(&nPeer, q, 2); q += 2;
     memcpy(&nCccd, q, 2); q += 2;
+    // 防御：条目数异常（旧版本写坏的数据）直接放弃
+    if (nOwn > 8 || nPeer > 8 || nCccd > 16 ||
+        blob.size() < 12 + (size_t) nOwn * sizeof(ble_store_value_sec)
+                    + (size_t) nPeer * sizeof(ble_store_value_sec)
+                    + (size_t) nCccd * sizeof(ble_store_value_cccd)) {
+        char line[TRACE_LINE_LEN];
+        snprintf(line, sizeof(line), "[0s] bond restore skip bad hdr %d/%d/%d\n", nOwn, nPeer, nCccd);
+        traceAppend(line);
+        return;
+    }
     int ro = 0, rp = 0, rc = 0;
     for (uint16_t i = 0; i < nOwn; i++, q += sizeof(ble_store_value_sec)) {
         ble_store_value_sec v;
@@ -434,8 +498,8 @@ static void bondBackupRestore() {
         rc++;
     }
     char line[TRACE_LINE_LEN];
-    snprintf(line, sizeof(line), "[%lus] bond restore put=%d/%d/%d -> own=%d peer=%d\n",
-             (unsigned long) (millis() / 1000), ro, rp, rc,
+    snprintf(line, sizeof(line), "[%lus] bond restore(%s) put=%d/%d/%d -> own=%d peer=%d\n",
+             (unsigned long) (millis() / 1000), src, ro, rp, rc,
              bondCount(BLE_STORE_OBJ_TYPE_OUR_SEC),
              bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC));
     traceAppend(line);
@@ -1569,34 +1633,22 @@ void handleBleLog() {
         int peer = bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC);
         out += "bond=own:" + String(own) + " peer:" + String(peer)
              + ((own > 0 || peer > 0) ? "" : " (none)") + stats + "\n";
-        // v1.5.9/10: 自备份状态 —— 重启后协议栈空、这里非 0 说明恢复可用。
-        // missing=命名空间不存在 empty=无数据/太短 bad=头不认识 ok=正常
+        // v1.5.11: 自备份状态（双介质）。
+        // none=NVS 和 SPIFFS 都没有；bkp(nvs)/bkp(fs)=来源 + 条目数
         {
+            const char *src = "?";
+            std::vector<uint8_t> blob = bondBackupLoad(&src);
             String bkp;
-            Preferences p;
-            if (!p.begin("ttbond", true)) {
-                bkp = "bkp=missing";
+            if (blob.empty()) {
+                bkp = "bkp=none";
             } else {
-                size_t len = p.getBytesLength("blob");
-                if (len < 12) {
-                    bkp = "bkp=empty len:" + String((unsigned) len);
-                } else {
-                    uint8_t hdr[12];
-                    p.getBytes("blob", hdr, 12);
-                    uint32_t mg;
-                    uint16_t v, nO, nP, nC;
-                    memcpy(&mg, hdr, 4);
-                    memcpy(&v, hdr + 4, 2); memcpy(&nO, hdr + 6, 2);
-                    memcpy(&nP, hdr + 8, 2); memcpy(&nC, hdr + 10, 2);
-                    if (mg != 0x54544231) {
-                        bkp = "bkp=bad magic";
-                    } else {
-                        bkp = "bkp=own:" + String(nO) + " peer:" + String(nP)
-                            + " cccd:" + String(nC) + " bytes:" + String((unsigned) len)
-                            + " ver:" + String(v);
-                    }
-                }
-                p.end();
+                uint16_t v, nO, nP, nC;
+                memcpy(&v, blob.data() + 4, 2);
+                memcpy(&nO, blob.data() + 6, 2);
+                memcpy(&nP, blob.data() + 8, 2);
+                memcpy(&nC, blob.data() + 10, 2);
+                bkp = "bkp(" + String(src) + ")=own:" + String(nO) + " peer:" + String(nP)
+                    + " cccd:" + String(nC) + " bytes:" + String((unsigned) blob.size());
             }
             out += bkp + "\n";
         }
@@ -1947,6 +1999,30 @@ void loop() {
     if (bkpReq) {                // v1.5.10: 主线程执行密钥备份（协议栈任务只置标志）
         bkpReq = false;
         bondBackupSaveNow("enc");
+    }
+    // v1.5.11: 每 10s 巡检 NVS 备份是否被抹 —— 抓"写成功读不到"的现行
+    {
+        static unsigned long lastBkpChk = 0;
+        static int lastBkpSz = -1;
+        if (bkpWrittenOnce && millis() - lastBkpChk > 10000) {
+            lastBkpChk = millis();
+            nvs_handle_t h;
+            int sz = -1;
+            if (nvs_open("ttbond", NVS_READONLY, &h) == ESP_OK) {
+                size_t s = 0;
+                sz = nvs_get_blob(h, "blob", NULL, &s) == ESP_OK ? (int) s : -1;
+                nvs_close(h);
+            } else {
+                sz = -2;
+            }
+            if (sz != lastBkpSz) {
+                char line[TRACE_LINE_LEN];
+                snprintf(line, sizeof(line), "[%lus] bkp chk sz=%d (was %d)\n",
+                         (unsigned long) (millis() / 1000), sz, lastBkpSz);
+                traceAppend(line);
+                lastBkpSz = sz;
+            }
+        }
     }
     crashGuardConfirmHealth();
     drainCommand();              // 取一条执行（内部 waitYield 会继续 pumpIo）
