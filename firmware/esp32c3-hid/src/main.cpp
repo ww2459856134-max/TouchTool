@@ -61,7 +61,7 @@
 #include <freertos/semphr.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.5.9"
+#define FW_VERSION   "1.5.10"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -247,6 +247,10 @@ static void bondTrace(const char *tag) {
 // 完全不可见 —— "重启后要重新配对"的关键证据一直缺失。
 static struct ble_gap_event_listener s_gapListener;
 static void bondBackupSaveNow(const char *why);   // 见下方 v1.5.9 备份实现
+// v1.5.10: 备份写入不再在协议栈任务里做 —— NimBLE host 任务栈只有几 KB，
+// NVS 写入（Preferences/commit）深调用曾直接把任务栈打爆（resetReason=panic）。
+// 回调里只置标志，由 loop 主线程执行。
+static volatile bool bkpReq = false;
 static int gapEventCb(struct ble_gap_event *event, void *arg) {
     (void)arg;
     char line[TRACE_LINE_LEN];
@@ -278,8 +282,8 @@ static int gapEventCb(struct ble_gap_event *event, void *arg) {
                  bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC));
         traceAppend(line);
         if (event->enc_change.status == 0) {
-            // v1.5.9: 每次绑定/加密成功都刷新自己的备份（不依赖内置持久化）
-            bondBackupSaveNow("enc");
+            // v1.5.10: 只置标志，备份由 loop 主线程执行（防协议栈任务栈溢出）
+            bkpReq = true;
         }
         break;
     case BLE_GAP_EVENT_PASSKEY_ACTION:
@@ -363,8 +367,15 @@ static bool bondBackupWrite(BondBackup &b) {
     if (!b.cccd.empty())
         memcpy(q, b.cccd.data(), b.cccd.size() * sizeof(ble_store_value_cccd));
     size_t len = (size_t) (q - blob.data());
-    p.putBytes("blob", blob.data(), len);
+    size_t w = p.putBytes("blob", blob.data(), len);
     p.end();
+    if (w != len) {
+        char line[TRACE_LINE_LEN];
+        snprintf(line, sizeof(line), "[%lus] bond bkp FAIL put %d/%d\n",
+                 (unsigned long) (millis() / 1000), (int) w, (int) len);
+        traceAppend(line);
+        return false;
+    }
     return true;
 }
 
@@ -1558,26 +1569,34 @@ void handleBleLog() {
         int peer = bondCount(BLE_STORE_OBJ_TYPE_PEER_SEC);
         out += "bond=own:" + String(own) + " peer:" + String(peer)
              + ((own > 0 || peer > 0) ? "" : " (none)") + stats + "\n";
-        // v1.5.9: 自备份状态 —— 重启后协议栈空、这里非 0 说明恢复可用
+        // v1.5.9/10: 自备份状态 —— 重启后协议栈空、这里非 0 说明恢复可用。
+        // missing=命名空间不存在 empty=无数据/太短 bad=头不认识 ok=正常
         {
             String bkp;
             Preferences p;
-            if (p.begin("ttbond", true)) {
+            if (!p.begin("ttbond", true)) {
+                bkp = "bkp=missing";
+            } else {
                 size_t len = p.getBytesLength("blob");
-                if (len >= 12) {
+                if (len < 12) {
+                    bkp = "bkp=empty len:" + String((unsigned) len);
+                } else {
                     uint8_t hdr[12];
                     p.getBytes("blob", hdr, 12);
+                    uint32_t mg;
                     uint16_t v, nO, nP, nC;
+                    memcpy(&mg, hdr, 4);
                     memcpy(&v, hdr + 4, 2); memcpy(&nO, hdr + 6, 2);
                     memcpy(&nP, hdr + 8, 2); memcpy(&nC, hdr + 10, 2);
-                    bkp = "bkp=own:" + String(nO) + " peer:" + String(nP)
-                        + " cccd:" + String(nC) + " bytes:" + String((unsigned) len);
-                } else {
-                    bkp = "bkp=none";
+                    if (mg != 0x54544231) {
+                        bkp = "bkp=bad magic";
+                    } else {
+                        bkp = "bkp=own:" + String(nO) + " peer:" + String(nP)
+                            + " cccd:" + String(nC) + " bytes:" + String((unsigned) len)
+                            + " ver:" + String(v);
+                    }
                 }
                 p.end();
-            } else {
-                bkp = "bkp=none";
             }
             out += bkp + "\n";
         }
@@ -1925,6 +1944,10 @@ void loop() {
     pumpIo();                    // HTTP + UDP 收包（只入队，不执行）
     pollBleState();              // 连接状态跳变 → 计数 + 轨迹 + 重开广播
     pollGapListener();           // v1.5.8: 注册 GAP 监听（host 同步后），记录配对/断开事件
+    if (bkpReq) {                // v1.5.10: 主线程执行密钥备份（协议栈任务只置标志）
+        bkpReq = false;
+        bondBackupSaveNow("enc");
+    }
     crashGuardConfirmHealth();
     drainCommand();              // 取一条执行（内部 waitYield 会继续 pumpIo）
 
