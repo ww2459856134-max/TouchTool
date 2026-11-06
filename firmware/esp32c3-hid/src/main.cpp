@@ -44,6 +44,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 #include <ESPmDNS.h>
 #include <Update.h>
 #include <Preferences.h>
@@ -64,7 +65,7 @@
 #include <freertos/semphr.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.5.16"
+#define FW_VERSION   "1.5.17"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -119,10 +120,9 @@ uint32_t udpWlDropCount = 0;
 // 热点常开（AP+STA 共存）：连上路由器后热点仍保持，随时可连 192.168.4.1 救急改配置。
 // 默认关闭——多一路射频略增功耗，C3 堆紧张时可选。NVS "apsta"。
 bool apStaOn = false;
-static bool apStaApplied = false;
+// v1.5.17: apStaApplied/wifiBackoffMs 旧重连机制已由 WiFi 状态机取代
 // WiFi 重连指数退避：断线 2s 首试，之后 5s/15s/30s/60s 封顶，连上复位
-unsigned long wifiBackoffMs = 2000;
-unsigned long lastWifiTry = 0;
+static unsigned long staDownSince = 0;   // v1.5.17: STA 断线起始时刻
 // BLE 快广播窗口：断开后 30 秒内用 20-30ms 间隔广播（手机扫到即回连，1 秒级），
 // 之后自动降回慢速省电
 unsigned long fastAdvUntil = 0;
@@ -1398,10 +1398,55 @@ static bool waitWifi(unsigned long timeoutMs) {
     return WiFi.status() == WL_CONNECTED;
 }
 
+// ==================== v1.5.17: WiFi 状态机（热点信道永不漂移） ====================
+// 根因（v1.5.16 实测症状"手机一直获取 IP"）：STA 断线时旧逻辑把热点整个关掉
+// 并退避重连，重连扫描期间单射频信道来回跳；重连成功后热点重开在路由器信道
+// —— 手机关联上了热点，DHCP 握手却全被信道切换吞掉。
+// 新原则：热点开着的时候，信道绝不能变。
+//   STA 稳定连接 + apsta 开  → AP_STA 共存，热点锁在路由器信道（无扫描，稳定）
+//   STA 断线                 → 立即切 AP-only（信道固定 1），暂停自动重连
+//   AP-only 且无客户端       → 每 3 分钟静默重试 STA 一次（15s 超时回 AP-only）
+//   AP-only 有客户端         → 永不重试（绝不打断正在配置的用户）
+static DNSServer dnsAp;               // Captive Portal：AP 开着时全域名 → 192.168.4.1
+static bool dnsApRunning = false;
+static bool apUp = false;             // 热点当前是否开着（AP-only 或 AP_STA）
+static bool apOnly = false;           // 是否处于"AP-only 固定信道"模式
+static bool staRetrying = false;      // 正在静默重试 STA
+static unsigned long staRetryStart = 0;
+static unsigned long lastStaRetry = 0;
+
+static void stopApServices() {
+    if (dnsApRunning) { dnsAp.stop(); dnsApRunning = false; }
+}
+
+static void openAp(bool withSta) {
+    IPAddress apIP(192, 168, 4, 1);
+    WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+    int ch = withSta ? WiFi.channel() : 1;      // 共存=路由器信道；AP-only=固定 1
+    if (ch <= 0) ch = 1;
+    WiFi.softAP(apSsid().c_str(), AP_PASSWORD, ch, 0, 4);
+    WiFi.setSleep(false);
+    dnsAp.start(53, "*", apIP);
+    dnsApRunning = true;
+    apUp = true;
+    apOnly = !withSta;
+    char line[TRACE_LINE_LEN];
+    snprintf(line, sizeof(line), "[%lus] ap open %s ch=%d\n",
+             (unsigned long) (millis() / 1000), withSta ? "AP-STA" : "AP-only", ch);
+    traceAppend(line);
+}
+
+static void closeAp() {
+    stopApServices();
+    WiFi.softAPdisconnect(true);
+    apUp = false;
+    apOnly = false;
+}
+
 void startAp() {
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(apSsid().c_str(), AP_PASSWORD);    // v1.2.9-fix1: WiFi.mode(WIFI_AP) 会把省电设置恢复默认，
-    // 这里补一次，否则配网期间 BLE 连接间隔会被省电拉长、点击发飘。
+    openAp(false);              // 开机等不到路由器 → AP-only 固定信道 1
+    lastStaRetry = millis();    // 开机给 3 分钟宽限，别立刻切走热点
     WiFi.setSleep(false);
 #if FW_VERBOSE
     Serial.printf("AP started: %s  IP=%s\n", apSsid().c_str(),
@@ -1413,19 +1458,63 @@ void startAp() {
 // 注意：WiFi.getMode() 判断一律用按位与，AP_STA 模式下 mode == WIFI_STA 不再成立。
 void applyApSta() {
     bool staConnected = (WiFi.status() == WL_CONNECTED);
-    if (apStaOn && staConnected && !apStaApplied) {
-        WiFi.mode(WIFI_AP_STA);
-        WiFi.softAP(apSsid().c_str(), AP_PASSWORD);
-        WiFi.setSleep(false);
-        apStaApplied = true;
-        char line[TRACE_LINE_LEN];
-        snprintf(line, sizeof(line), "[%lus] AP-STA on ip=192.168.4.1",
-                 (unsigned long) (millis() / 1000));
-        traceAppend(line);
-    } else if ((!apStaOn || !staConnected) && apStaApplied) {
-        WiFi.softAPdisconnect(true);
-        WiFi.mode(WIFI_STA);
-        apStaApplied = false;
+
+    // —— STA 静默重试进行中（热点已临时收起，AP 空闲才允许走到这）——
+    if (staRetrying) {
+        if (staConnected) {
+            staRetrying = false;
+            traceAppend("[wifi] sta retry ok\n");
+            return;                     // 下个 tick 走上面共存分支重开热点
+        }
+        if (millis() - staRetryStart > 15000) {
+            staRetrying = false;
+            traceAppend("[wifi] sta retry fail -> AP-only\n");
+            WiFi.mode(WIFI_AP);
+            openAp(false);
+        }
+        return;
+    }
+
+    if (staConnected) {
+        if (apStaOn && !apUp) {
+            WiFi.mode(WIFI_AP_STA);
+            openAp(true);               // 热点锁在路由器信道
+        } else if (!apStaOn && apUp) {
+            closeAp();
+            WiFi.mode(WIFI_STA);
+        }
+        return;
+    }
+
+    // —— STA 断线 ——
+    if (apUp && !apOnly) {
+        // 共存模式掉线：立即转 AP-only 固定信道 1，杜绝扫描期信道漂移。
+        // 正关联在热点上的手机会被踢一次，重连后即稳定。
+        WiFi.mode(WIFI_AP);
+        closeAp();
+        openAp(false);
+        traceAppend("[wifi] sta down -> AP-only ch1 (reconnect paused)\n");
+        return;
+    }
+    if (!apUp) {
+        // 纯 STA 运行中断网 60s：自动开热点，保证配置通道永远可达
+        if (staDownSince == 0) staDownSince = millis();
+        if (millis() - staDownSince > 60000) {
+            WiFi.mode(WIFI_AP);
+            openAp(false);
+            traceAppend("[wifi] offline 60s -> AP-only\n");
+        }
+        return;
+    }
+    // apOnly：热点稳定运行中。空闲（无人连热点）时每 3 分钟静默重试一次 STA
+    if (staDownSince == 0) staDownSince = millis();
+    if (WiFi.softAPgetStationNum() == 0 && millis() - lastStaRetry > 180000) {
+        lastStaRetry = millis();
+        staRetrying = true;
+        staRetryStart = millis();
+        closeAp();
+        beginWifiAsync();               // 切 STA 并发起连接（非阻塞 begin）
+        traceAppend("[wifi] sta retry (ap idle)\n");
     }
 }
 
@@ -1490,6 +1579,12 @@ void handleRoot() {
     bool sta = WiFi.isConnected();
     String ip = sta ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
     String html = pageHeader("AutoJS HID");
+    // v1.5.17: 热点模式下的连接自救提示
+    if (WiFi.getMode() & WIFI_AP) {
+        html += "<p class=muted>进不来这个页面？① 地址栏输完整 <b>http://192.168.4.1</b>"
+                "（开头别少 http://）② 关掉手机移动数据/网络加速 ③ 连不上时给手机配静态 IP："
+                "192.168.4.2，网关 192.168.4.1，前缀 24</p>";
+    }
     html += "<div class=row><span>固件版本</span><span>" FW_VERSION "</span></div>";
     html += "<div class=row><span>芯片</span><span>" + chipName + "</span></div>";
     // 显示 SSID：从原厂固件升级上来时，用它确认沿用的是不是原来那个 WiFi
@@ -2200,21 +2295,14 @@ void loop() {
     crashGuardConfirmHealth();
     drainCommand();              // 取一条执行（内部 waitYield 会继续 pumpIo）
 
-    // WiFi 断线重连：指数退避（v1.5.4）。路由器重启期间不再无谓空转，
-    // 连上后退避复位；热点常开在连上时应用。
-    static unsigned long lastCheck = 0;
-    if (millis() - lastCheck > 500) {
-        lastCheck = millis();
-        if (WiFi.getMode() & WIFI_STA) {
-            if (WiFi.status() == WL_CONNECTED) {
-                wifiBackoffMs = 2000;
-                applyApSta();
-            } else if (millis() - lastWifiTry >= wifiBackoffMs) {
-                lastWifiTry = millis();
-                WiFi.reconnect();
-                unsigned long next = wifiBackoffMs * 5 / 2;
-                wifiBackoffMs = next > 60000 ? 60000 : next;
-            }
+    // v1.5.17: WiFi 状态机每 500ms 一跳（断线转 AP-only / 空闲重试 STA /
+    // 重试超时回热点），Captive Portal DNS 一并处理
+    {
+        static unsigned long lastCheck = 0;
+        if (millis() - lastCheck > 500) {
+            lastCheck = millis();
+            if (dnsApRunning && (WiFi.getMode() & WIFI_AP)) dnsAp.processNextRequest();
+            applyApSta();
         }
     }
 
