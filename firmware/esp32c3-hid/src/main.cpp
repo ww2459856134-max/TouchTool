@@ -63,7 +63,7 @@
 #include <freertos/semphr.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.5.12"
+#define FW_VERSION   "1.5.13"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -369,36 +369,64 @@ static bool bondBackupWrite(BondBackup &b) {
         memcpy(q, b.cccd.data(), b.cccd.size() * sizeof(ble_store_value_cccd));
     size_t len = (size_t) (q - blob.data());
     bool ok = false;
+    unsigned char b64[400];
+    size_t olen = 0;
+    if (mbedtls_base64_encode(b64, sizeof(b64), &olen, blob.data(), len) != 0) {
+        traceAppend("[bkp] b64 encode fail\n");
+        return false;
+    }
+    String s((char *) b64, olen);
 
-    // v1.5.12: 不再用 nvs blob 存储！实测 188 字节 blob 走"变长 blob"路径
-    // （跨多条目），在这个 20KB 小分区上写入返回成功但立即读回 NOT_FOUND。
-    // 字符串路径（putString，设备名一直跨重启正常）可靠 —— 转 base64 存字符串。
+    // v1.5.13: 关键发现 —— 这台设备上凡是跨多条目的 NVS 变长写入（blob>12B、
+    // 字符串>12B）都会"写入返回成功但立即读回 NOT_FOUND"（v1.5.11 实测 188B blob、
+    // v1.5.12 实测 252B 字符串同症状），而设备名（12B UTF-8）等小值一直可靠。
+    // 内置 nimble_bond 密钥（每条 >40B）从未落盘也是同一根因。
+    // 对策：base64 后切成 ≤12 字符的小块分键存储，全部走实测可靠的单条目路径。
     {
-        unsigned char b64[400];
-        size_t olen = 0;
-        if (mbedtls_base64_encode(b64, sizeof(b64), &olen, blob.data(), len) != 0) {
-            traceAppend("[bkp] b64 encode fail\n");
-            return false;
-        }
-        String s((char *) b64, olen);
+        const int CH = 12;
+        int n = (int) ((s.length() + CH - 1) / CH);
         Preferences p;
         esp_err_t eo = p.begin("ttbond", false) ? ESP_OK : ESP_FAIL;
-        size_t w = eo == ESP_OK ? p.putString("s", s) : 0;
-        p.end();
-        // 立即读回校验（独立只读句柄）
-        esp_err_t er = ESP_FAIL;
-        size_t sl = 0;
+        int wok = 0;
+        if (eo == ESP_OK) {
+            p.putUChar("n", (uint8_t) n);
+            p.putUInt("sz", (uint32_t) s.length());
+            for (int i = 0; i < n; i++) {
+                String key = "c" + String(i);
+                String piece = s.substring(i * CH, i * CH + CH);
+                if (p.putString(key.c_str(), piece) == (size_t) piece.length()) wok++;
+            }
+            p.end();
+        }
+        // 立即读回校验（独立只读句柄，重新拼串比对）
+        int rok = -1;
         nvs_handle_t h;
         if (nvs_open("ttbond", NVS_READONLY, &h) == ESP_OK) {
-            er = nvs_get_str(h, "s", NULL, &sl);
+            uint8_t nn = 0;
+            rok = 0;
+            if (nvs_get_u8(h, "n", &nn) == ESP_OK && nn == n) {
+                String re;
+                bool ok2 = true;
+                for (int i = 0; i < n && ok2; i++) {
+                    size_t sl = 0;
+                    char k[8];
+                    snprintf(k, sizeof(k), "c%d", i);
+                    if (nvs_get_str(h, k, NULL, &sl) == ESP_OK && sl > 0 && sl <= CH + 1) {
+                        char buf[CH + 1];
+                        if (nvs_get_str(h, k, buf, &sl) == ESP_OK) re += buf;
+                        else ok2 = false;
+                    } else ok2 = false;
+                }
+                rok = (ok2 && re == s) ? n : -1;
+            }
             nvs_close(h);
         }
         char line[TRACE_LINE_LEN];
-        snprintf(line, sizeof(line), "[%lus] bkp nvs w=%d/%d open=0x%x get=0x%x sz=%d\n",
-                 (unsigned long) (millis() / 1000), (int) w, (int) s.length(),
-                 (unsigned) eo, (unsigned) er, (unsigned) sl);
+        snprintf(line, sizeof(line), "[%lus] bkp nvs ch=%d/%d rb=%d/%d open=0x%x\n",
+                 (unsigned long) (millis() / 1000), wok, n,
+                 rok < 0 ? 0 : rok, n, (unsigned) eo);
         traceAppend(line);
-        if (eo == ESP_OK && w == s.length() && er == ESP_OK && sl == s.length() + 1) ok = true;
+        if (eo == ESP_OK && wok == n && rok == n) ok = true;
     }
     // 介质 2：SPIFFS（完全绕开 NVS）。任何一路成功即可恢复
     {
@@ -437,17 +465,28 @@ static std::vector<uint8_t> bondBackupLoad(const char **src) {
     {
         Preferences p;
         if (p.begin("ttbond", true)) {
-            String s = p.getString("s", "");
-            p.end();
-            if (s.length() > 8) {
-                unsigned char raw[512];
-                size_t olen = 0;
-                if (mbedtls_base64_decode(raw, sizeof(raw), &olen,
-                                          (const unsigned char *) s.c_str(), s.length()) == 0 && olen >= 12) {
-                    blob.assign(raw, raw + olen);
-                    *src = "nvs";
+            uint8_t n = p.getUChar("n", 0);
+            uint32_t sz = p.getUInt("sz", 0);
+            if (n > 0 && n <= 64 && sz > 12 && sz < 2048) {
+                String re;
+                bool ok2 = true;
+                for (int i = 0; i < n && ok2; i++) {
+                    String piece = p.getString(("c" + String(i)).c_str(), "");
+                    if (piece.length() > 0 && piece.length() <= 12) re += piece;
+                    else ok2 = false;
+                }
+                if (ok2 && (int) re.length() == (int) sz) {
+                    unsigned char raw[512];
+                    size_t olen = 0;
+                    if (mbedtls_base64_decode(raw, sizeof(raw), &olen,
+                                              (const unsigned char *) re.c_str(), re.length()) == 0
+                        && olen >= 12) {
+                        blob.assign(raw, raw + olen);
+                        *src = "nvs";
+                    }
                 }
             }
+            p.end();
         }
     }
     if (blob.empty()) {
@@ -522,6 +561,46 @@ static void bondBackupRestore() {
     traceAppend(line);
 }
 
+// v1.5.13: NVS 尺寸阶梯诊断。这台设备的 NVS 跨多条目变长写入静默丢失
+// （188B blob / 252B 字符串均写"成功"读回 NOT_FOUND，小值一直正常）。
+// 开机用 4..252 字节的字符串逐级写入+独立句柄读回，标定单条目可靠边界。
+static void bondLadderTest() {
+    static const int sizes[] = { 4, 8, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 252 };
+    const int N = (int) (sizeof(sizes) / sizeof(sizes[0]));
+    {
+        Preferences p;
+        if (!p.begin("ttbond", false)) {
+            traceAppend("[bkp] ladder begin fail\n");
+            return;
+        }
+        for (int i = 0; i < N; i++) {
+            String v;
+            v.reserve(sizes[i]);
+            for (int j = 0; j < sizes[i]; j++) v += (char) ('a' + i);
+            p.putString(("t" + String(i)).c_str(), v);
+        }
+        p.end();
+    }
+    String res = "bkp ladder";
+    {
+        Preferences q;
+        if (!q.begin("ttbond", true)) {
+            traceAppend("[bkp] ladder read fail\n");
+            return;
+        }
+        for (int i = 0; i < N; i++) {
+            String v;
+            v.reserve(sizes[i]);
+            for (int j = 0; j < sizes[i]; j++) v += (char) ('a' + i);
+            bool r = q.getString(("t" + String(i)).c_str(), "") == v;
+            res += " " + String(sizes[i]) + ":" + (r ? "1" : "0");
+        }
+        q.end();
+    }
+    res += "\n";
+    traceAppend(res.c_str());
+}
+
 // 注册 GAP 监听（host 同步前注册会失败）。成功即代表协议栈就绪，
 // 立刻做 bond 恢复 —— 必须赶在手机开机自动回连（开机 ~1s）之前。
 static bool gapListenerEnsure() {
@@ -536,7 +615,14 @@ static bool gapListenerEnsure() {
 }
 
 static void pollGapListener() {
-    gapListenerEnsure();   // loop 兜底（setupBle 里已提前抢跑）
+    if (gapListenerEnsure()) {
+        // v1.5.13: 协议栈就绪后做一次 NVS 尺寸阶梯诊断（每次开机一遍）
+        static bool ladderDone = false;
+        if (!ladderDone) {
+            ladderDone = true;
+            bondLadderTest();
+        }
+    }
 }
 static void pollBleState() {
     bool now = Keyboard.isConnected();
@@ -2017,7 +2103,7 @@ void loop() {
         bkpReq = false;
         bondBackupSaveNow("enc");
     }
-    // v1.5.11: 每 10s 巡检 NVS 备份是否被抹 —— 抓"写成功读不到"的现行
+    // v1.5.13: 每 10s 巡检备份块是否被抹 —— 抓"写成功读不到"的现行
     {
         static unsigned long lastBkpChk = 0;
         static int lastBkpSz = -1;
@@ -2026,8 +2112,8 @@ void loop() {
             nvs_handle_t h;
             int sz = -1;
             if (nvs_open("ttbond", NVS_READONLY, &h) == ESP_OK) {
-                size_t s = 0;
-                sz = nvs_get_str(h, "s", NULL, &s) == ESP_OK ? (int) s : -1;
+                uint8_t nn = 0;
+                sz = nvs_get_u8(h, "n", &nn) == ESP_OK ? (int) nn : -1;
                 nvs_close(h);
             } else {
                 sz = -2;
