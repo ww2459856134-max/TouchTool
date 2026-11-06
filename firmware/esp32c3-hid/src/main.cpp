@@ -63,7 +63,7 @@
 #include <freertos/semphr.h>
 
 // ---------------- 配置 ----------------
-#define FW_VERSION   "1.5.13"
+#define FW_VERSION   "1.5.14"
 #define UDP_PORT     21115
 #define HTTP_PORT    80
 #define AP_PASSWORD  "autojs1234"      // 与原厂固件一致，便于老用户沿用
@@ -347,6 +347,153 @@ static bool bondBackupCollect(BondBackup &b) {
 #define BB_MAGIC 0x54544231  // "TTB1"
 #define BB_VER    1
 
+// v1.5.14: 裸分区存储 —— 完全绕开 NVS 和文件系统。
+// v1.5.13 阶梯证实这台设备 NVS 连 4 字节字符串都写不进（写返回成功、
+// 独立句柄读回丢失），SPIFFS 也挂载失败。直接用 esp_partition API 裸写
+// flash，不经过任何中间层；写后立即读回 memcmp 校验。
+static const esp_partition_t *bkpFindPart() {
+    static const esp_partition_t *cached = nullptr;
+    if (cached) return cached;
+    const char *labels[] = { "spiffs", "coredump", "fatfs", "storage" };
+    for (unsigned i = 0; i < 4 && !cached; i++) {
+        const esp_partition_t *pt = esp_partition_find_first(
+            ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, labels[i]);
+        if (pt && pt->size >= 8192) cached = pt;
+    }
+    if (!cached) {
+        esp_partition_iterator_t it =
+            esp_partition_find(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, NULL);
+        while (it) {
+            const esp_partition_t *pt = esp_partition_get(it);
+            if (pt->size >= 8192 && strcmp(pt->label, "nvs") && strcmp(pt->label, "otadata")) {
+                cached = pt;
+                break;
+            }
+            it = esp_partition_next(it);
+        }
+        if (it) esp_partition_iterator_release(it);
+    }
+    return cached;
+}
+
+static bool bkpRawWrite(const uint8_t *data, size_t len) {
+    const esp_partition_t *pt = bkpFindPart();
+    if (!pt) {
+        traceAppend("[bkp] raw no-part\n");
+        return false;
+    }
+    esp_err_t e1 = esp_partition_erase_range(pt, 0, 4096);
+    esp_err_t e2 = e1 == ESP_OK ? esp_partition_write(pt, 0, data, len) : ESP_FAIL;
+    uint8_t rb[512];
+    int diff = -1;
+    if (e2 == ESP_OK && len <= sizeof(rb)) {
+        esp_partition_read(pt, 0, rb, len);
+        diff = memcmp(rb, data, len);
+    }
+    bool ok = e1 == ESP_OK && e2 == ESP_OK && diff == 0;
+    char line[TRACE_LINE_LEN];
+    snprintf(line, sizeof(line), "[%lus] bkp raw(%s %uK) e=0x%x w=0x%x cmp=%d\n",
+             (unsigned long) (millis() / 1000), pt->label,
+             (unsigned) (pt->size / 1024), (unsigned) e1, (unsigned) e2, diff);
+    traceAppend(line);
+    return ok;
+}
+
+static bool bkpRawRead(std::vector<uint8_t> &out) {
+    const esp_partition_t *pt = bkpFindPart();
+    if (!pt) return false;
+    uint8_t buf[512];
+    if (esp_partition_read(pt, 0, buf, sizeof(buf)) != ESP_OK) return false;
+    uint32_t mg;
+    memcpy(&mg, buf, 4);
+    if (mg != BB_MAGIC) return false;
+    uint16_t ver, nO, nP, nC;
+    memcpy(&ver, buf + 4, 2);
+    memcpy(&nO, buf + 6, 2);
+    memcpy(&nP, buf + 8, 2);
+    memcpy(&nC, buf + 10, 2);
+    if (ver != BB_VER || nO > 8 || nP > 8 || nC > 16) return false;
+    size_t need = 12 + (size_t) nO * sizeof(ble_store_value_sec)
+                + (size_t) nP * sizeof(ble_store_value_sec)
+                + (size_t) nC * sizeof(ble_store_value_cccd);
+    if (need < 12 || need > sizeof(buf)) return false;
+    out.assign(buf, buf + need);
+    return true;
+}
+
+// 介质 2：NVS 原始类型（u32 分键）。变长路径（blob/字符串）实测全坏，
+// 原始类型走的是另一套单条目写路径 —— 若它可用则双保险。
+static bool bkpPrimWrite(const uint8_t *data, size_t len) {
+    int n = (int) ((len + 3) / 4);
+    Preferences p;
+    if (!p.begin("ttprim", false)) {
+        traceAppend("[bkp] prim begin fail\n");
+        return false;
+    }
+    p.putUChar("wn", (uint8_t) n);
+    p.putUInt("wsz", (uint32_t) len);
+    int wok = 0;
+    for (int i = 0; i < n; i++) {
+        uint32_t w = 0;
+        size_t cp = len - i * 4 < 4 ? len - i * 4 : 4;
+        memcpy(&w, data + i * 4, cp);
+        if (p.putUInt(("w" + String(i)).c_str(), w) == 4) wok++;
+    }
+    p.end();
+    // 独立只读句柄读回校验
+    int rok = 0;
+    nvs_handle_t h;
+    if (nvs_open("ttprim", NVS_READONLY, &h) == ESP_OK) {
+        rok = -1;
+        uint8_t nn = 0;
+        if (nvs_get_u8(h, "wn", &nn) == ESP_OK && nn == n) {
+            rok = 0;
+            bool ok2 = true;
+            for (int i = 0; i < n && ok2; i++) {
+                uint32_t w = 0, want = 0;
+                char k[8];
+                snprintf(k, sizeof(k), "w%d", i);
+                size_t cp = len - i * 4 < 4 ? len - i * 4 : 4;
+                memcpy(&want, data + i * 4, cp);
+                if (nvs_get_u32(h, k, &w) == ESP_OK && w == want) continue;
+                ok2 = false;
+            }
+            rok = ok2 ? n : -1;
+        }
+        nvs_close(h);
+    }
+    char line[TRACE_LINE_LEN];
+    snprintf(line, sizeof(line), "[%lus] bkp prim w=%d/%d rb=%d/%d\n",
+             (unsigned long) (millis() / 1000), wok, n, rok < 0 ? 0 : rok, n);
+    traceAppend(line);
+    return wok == n && rok == n;
+}
+
+static bool bkpPrimRead(std::vector<uint8_t> &out) {
+    Preferences p;
+    if (!p.begin("ttprim", true)) return false;
+    uint8_t n = p.getUChar("wn", 0);
+    uint32_t sz = p.getUInt("wsz", 0);
+    bool ok2 = n > 0 && n <= 64 && sz >= 12 && sz < 512;
+    std::vector<uint8_t> buf;
+    if (ok2) {
+        buf.resize(sz);
+        for (int i = 0; i < n && ok2; i++) {
+            uint32_t w = p.getUInt(("w" + String(i)).c_str(), 0);
+            size_t off = (size_t) i * 4;
+            size_t cp = sz - off < 4 ? sz - off : 4;
+            memcpy(buf.data() + off, &w, cp);
+        }
+    }
+    p.end();
+    if (!ok2 || buf.size() < 12) return false;
+    uint32_t mg;
+    memcpy(&mg, buf.data(), 4);
+    if (mg != BB_MAGIC) return false;
+    out = buf;
+    return true;
+}
+
 static bool bondBackupWrite(BondBackup &b) {
     // 头: magic(4) ver(2) nOwn(2) nPeer(2) nCccd(2) = 12 字节
     std::vector<uint8_t> blob(12
@@ -369,80 +516,10 @@ static bool bondBackupWrite(BondBackup &b) {
         memcpy(q, b.cccd.data(), b.cccd.size() * sizeof(ble_store_value_cccd));
     size_t len = (size_t) (q - blob.data());
     bool ok = false;
-    unsigned char b64[400];
-    size_t olen = 0;
-    if (mbedtls_base64_encode(b64, sizeof(b64), &olen, blob.data(), len) != 0) {
-        traceAppend("[bkp] b64 encode fail\n");
-        return false;
-    }
-    String s((char *) b64, olen);
-
-    // v1.5.13: 关键发现 —— 这台设备上凡是跨多条目的 NVS 变长写入（blob>12B、
-    // 字符串>12B）都会"写入返回成功但立即读回 NOT_FOUND"（v1.5.11 实测 188B blob、
-    // v1.5.12 实测 252B 字符串同症状），而设备名（12B UTF-8）等小值一直可靠。
-    // 内置 nimble_bond 密钥（每条 >40B）从未落盘也是同一根因。
-    // 对策：base64 后切成 ≤12 字符的小块分键存储，全部走实测可靠的单条目路径。
-    {
-        const int CH = 12;
-        int n = (int) ((s.length() + CH - 1) / CH);
-        Preferences p;
-        esp_err_t eo = p.begin("ttbond", false) ? ESP_OK : ESP_FAIL;
-        int wok = 0;
-        if (eo == ESP_OK) {
-            p.putUChar("n", (uint8_t) n);
-            p.putUInt("sz", (uint32_t) s.length());
-            for (int i = 0; i < n; i++) {
-                String key = "c" + String(i);
-                String piece = s.substring(i * CH, i * CH + CH);
-                if (p.putString(key.c_str(), piece) == (size_t) piece.length()) wok++;
-            }
-            p.end();
-        }
-        // 立即读回校验（独立只读句柄，重新拼串比对）
-        int rok = -1;
-        nvs_handle_t h;
-        if (nvs_open("ttbond", NVS_READONLY, &h) == ESP_OK) {
-            uint8_t nn = 0;
-            rok = 0;
-            if (nvs_get_u8(h, "n", &nn) == ESP_OK && nn == n) {
-                String re;
-                bool ok2 = true;
-                for (int i = 0; i < n && ok2; i++) {
-                    size_t sl = 0;
-                    char k[8];
-                    snprintf(k, sizeof(k), "c%d", i);
-                    if (nvs_get_str(h, k, NULL, &sl) == ESP_OK && sl > 0 && sl <= CH + 1) {
-                        char buf[CH + 1];
-                        if (nvs_get_str(h, k, buf, &sl) == ESP_OK) re += buf;
-                        else ok2 = false;
-                    } else ok2 = false;
-                }
-                rok = (ok2 && re == s) ? n : -1;
-            }
-            nvs_close(h);
-        }
-        char line[TRACE_LINE_LEN];
-        snprintf(line, sizeof(line), "[%lus] bkp nvs ch=%d/%d rb=%d/%d open=0x%x\n",
-                 (unsigned long) (millis() / 1000), wok, n,
-                 rok < 0 ? 0 : rok, n, (unsigned) eo);
-        traceAppend(line);
-        if (eo == ESP_OK && wok == n && rok == n) ok = true;
-    }
-    // 介质 2：SPIFFS（完全绕开 NVS）。任何一路成功即可恢复
-    {
-        bool mounted = SPIFFS.begin(false);
-        if (!mounted) mounted = SPIFFS.begin(true);   // 挂不上就格式化
-        size_t w = 0;
-        if (mounted) {
-            File f = SPIFFS.open("/bkp.bin", FILE_WRITE);
-            if (f) { w = f.write(blob.data(), len); f.close(); }
-        }
-        if (w == len) ok = true;
-        char line[TRACE_LINE_LEN];
-        snprintf(line, sizeof(line), "[%lus] bkp fs w=%d/%d mounted=%d\n",
-                 (unsigned long) (millis() / 1000), (int) w, (int) len, (int) mounted);
-        traceAppend(line);
-    }
+    // v1.5.14: 介质 1 裸分区（主），介质 2 NVS 原始类型（备）。两路都执行并
+    // 各自带读回校验，trace 打结果 —— 哪路可用一目了然
+    ok = bkpRawWrite(blob.data(), len) || ok;
+    ok = bkpPrimWrite(blob.data(), len) || ok;
     if (ok) bkpWrittenOnce = true;
     return ok;
 }
@@ -460,50 +537,16 @@ static void bondBackupSaveNow(const char *why) {
 }
 
 // 依次尝试 NVS（base64 字符串）/ SPIFFS 读回备份 blob；都失败返回空
+// 依次尝试 裸分区 / NVS 原始类型 读回备份 blob；都失败返回空
 static std::vector<uint8_t> bondBackupLoad(const char **src) {
     std::vector<uint8_t> blob;
-    {
-        Preferences p;
-        if (p.begin("ttbond", true)) {
-            uint8_t n = p.getUChar("n", 0);
-            uint32_t sz = p.getUInt("sz", 0);
-            if (n > 0 && n <= 64 && sz > 12 && sz < 2048) {
-                String re;
-                bool ok2 = true;
-                for (int i = 0; i < n && ok2; i++) {
-                    String piece = p.getString(("c" + String(i)).c_str(), "");
-                    if (piece.length() > 0 && piece.length() <= 12) re += piece;
-                    else ok2 = false;
-                }
-                if (ok2 && (int) re.length() == (int) sz) {
-                    unsigned char raw[512];
-                    size_t olen = 0;
-                    if (mbedtls_base64_decode(raw, sizeof(raw), &olen,
-                                              (const unsigned char *) re.c_str(), re.length()) == 0
-                        && olen >= 12) {
-                        blob.assign(raw, raw + olen);
-                        *src = "nvs";
-                    }
-                }
-            }
-            p.end();
-        }
+    if (bkpRawRead(blob)) {
+        *src = "raw";
+        return blob;
     }
-    if (blob.empty()) {
-        if (SPIFFS.begin(false)) {
-            File f = SPIFFS.open("/bkp.bin", FILE_READ);
-            if (f && f.size() >= 12) {
-                blob.resize(f.size());
-                f.read(blob.data(), blob.size());
-                *src = "fs";
-            }
-            if (f) f.close();
-        }
-    }
-    if (!blob.empty()) {
-        uint32_t mg;
-        memcpy(&mg, blob.data(), 4);
-        if (mg != BB_MAGIC) blob.clear();
+    if (bkpPrimRead(blob)) {
+        *src = "prim";
+        return blob;
     }
     return blob;
 }
@@ -561,41 +604,63 @@ static void bondBackupRestore() {
     traceAppend(line);
 }
 
-// v1.5.13: NVS 尺寸阶梯诊断。这台设备的 NVS 跨多条目变长写入静默丢失
-// （188B blob / 252B 字符串均写"成功"读回 NOT_FOUND，小值一直正常）。
-// 开机用 4..252 字节的字符串逐级写入+独立句柄读回，标定单条目可靠边界。
+// v1.5.14: NVS 终局诊断 + 裸分区探测。
+// v1.5.13 阶梯证实：字符串 4B~252B 全部写"成功"读回丢失 —— NVS 变长路径全坏。
+// 本版输出：字符串阶梯带写结果（w1r0 = 写返回成功但读回丢）、原始类型
+//（u8/u32，另一套写路径）、裸分区探测（esp_partition 直写 flash）。
 static void bondLadderTest() {
-    static const int sizes[] = { 4, 8, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 252 };
+    static const int sizes[] = { 4, 8, 12, 16, 24, 32, 48, 252 };
     const int N = (int) (sizeof(sizes) / sizeof(sizes[0]));
+    String res = "bkp ladder";
+    bool wRes[8] = { false };
     {
         Preferences p;
-        if (!p.begin("ttbond", false)) {
-            traceAppend("[bkp] ladder begin fail\n");
-            return;
+        if (p.begin("ttbond", false)) {
+            for (int i = 0; i < N; i++) {
+                String v;
+                v.reserve(sizes[i]);
+                for (int j = 0; j < sizes[i]; j++) v += (char) ('a' + i);
+                wRes[i] = p.putString(("t" + String(i)).c_str(), v) == (size_t) sizes[i];
+            }
+            bool w8 = p.putUChar("pu8", 0xA5) == 1;
+            bool w32 = p.putUInt("pu32", 0x12345678u) == 4;
+            p.end();
+            res += String(" u8:") + (w8 ? "w1" : "w0") + " u32:" + (w32 ? "w1" : "w0");
+        } else {
+            res += " begin-fail";
         }
-        for (int i = 0; i < N; i++) {
-            String v;
-            v.reserve(sizes[i]);
-            for (int j = 0; j < sizes[i]; j++) v += (char) ('a' + i);
-            p.putString(("t" + String(i)).c_str(), v);
-        }
-        p.end();
     }
-    String res = "bkp ladder";
     {
         Preferences q;
-        if (!q.begin("ttbond", true)) {
-            traceAppend("[bkp] ladder read fail\n");
-            return;
+        if (q.begin("ttbond", true)) {
+            for (int i = 0; i < N; i++) {
+                String v;
+                v.reserve(sizes[i]);
+                for (int j = 0; j < sizes[i]; j++) v += (char) ('a' + i);
+                bool r = q.getString(("t" + String(i)).c_str(), "") == v;
+                res += String(" s") + sizes[i] + ":" + (wRes[i] ? "w1" : "w0") + (r ? "r1" : "r0");
+            }
+            bool r8 = q.getUChar("pu8", 0) == 0xA5;
+            bool r32 = q.getUInt("pu32", 0) == 0x12345678u;
+            res += String(" u8:") + (r8 ? "r1" : "r0") + " u32:" + (r32 ? "r1" : "r0");
+            q.end();
         }
-        for (int i = 0; i < N; i++) {
-            String v;
-            v.reserve(sizes[i]);
-            for (int j = 0; j < sizes[i]; j++) v += (char) ('a' + i);
-            bool r = q.getString(("t" + String(i)).c_str(), "") == v;
-            res += " " + String(sizes[i]) + ":" + (r ? "1" : "0");
+    }
+    {
+        const esp_partition_t *pt = bkpFindPart();
+        if (!pt) {
+            res += " | raw=none";
+        } else {
+            const uint8_t pat[8] = { 'T', 'T', 'B', '1', 0, 1, 0, 2 };
+            esp_err_t e1 = esp_partition_erase_range(pt, 0, 4096);
+            esp_err_t e2 = e1 == ESP_OK ? esp_partition_write(pt, 0, pat, 8) : ESP_FAIL;
+            uint8_t rb[8] = { 0 };
+            bool r = false;
+            if (e2 == ESP_OK && esp_partition_read(pt, 0, rb, 8) == ESP_OK)
+                r = memcmp(rb, pat, 8) == 0;
+            res += String(" | raw=") + pt->label + ":" + (unsigned) (pt->size / 1024) + "K"
+                 + " e" + (unsigned) e1 + " w" + (unsigned) e2 + (r ? " r1" : " r0");
         }
-        q.end();
     }
     res += "\n";
     traceAppend(res.c_str());
@@ -2103,7 +2168,7 @@ void loop() {
         bkpReq = false;
         bondBackupSaveNow("enc");
     }
-    // v1.5.13: 每 10s 巡检备份块是否被抹 —— 抓"写成功读不到"的现行
+    // v1.5.14: 每 10s 巡检备份块是否被抹 —— 抓"写成功读不到"的现行
     {
         static unsigned long lastBkpChk = 0;
         static int lastBkpSz = -1;
@@ -2111,9 +2176,9 @@ void loop() {
             lastBkpChk = millis();
             nvs_handle_t h;
             int sz = -1;
-            if (nvs_open("ttbond", NVS_READONLY, &h) == ESP_OK) {
+            if (nvs_open("ttprim", NVS_READONLY, &h) == ESP_OK) {
                 uint8_t nn = 0;
-                sz = nvs_get_u8(h, "n", &nn) == ESP_OK ? (int) nn : -1;
+                sz = nvs_get_u8(h, "wn", &nn) == ESP_OK ? (int) nn : -1;
                 nvs_close(h);
             } else {
                 sz = -2;
